@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { draftIdOfMessage, type DraftMode } from "../../api/drafts";
 import { neighbourInList, type ThreadLists } from "../../api/mutations/cache";
 import type { ThreadAction } from "../../api/mutations/threads";
 import { keys } from "../../api/keys";
@@ -11,6 +12,8 @@ import { t } from "../../lib/i18n";
 import { isSystemLabelId } from "../../lib/labels";
 import { useShortcutHandlers } from "../../shortcuts/useShortcuts";
 import { useActiveAccount } from "../account";
+import { openReply } from "../compose/actions";
+import { openDraft } from "../compose/session";
 import { LabelsPopover } from "../labels/LabelsPopover";
 import { PendingIcon } from "../sync/PendingIcon";
 import { ACTION_META } from "../threadlist/actionMeta";
@@ -101,7 +104,19 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
     if (folderActions.includes(a)) act(a);
   };
 
+  // Replies go to the last message that is not a draft or a message waiting to be sent.
+  const replyTarget = messages.findLast((m) => {
+    const ls = m.labelIds ?? [];
+    return !ls.includes("DRAFT") && !ls.includes("SCHEDULED");
+  });
+  const reply = (mode: DraftMode, messageId = replyTarget?.id) => {
+    if (messageId) void openReply(qc, messageId, mode);
+  };
+
   useShortcutHandlers({
+    reply: () => reply("reply"),
+    replyAll: () => reply("replyAll"),
+    forward: () => reply("forward"),
     back: ctx.backToList,
     next: () => open(older),
     prev: () => open(newer),
@@ -202,6 +217,19 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
                   </button>
                 );
               }
+              if ((m.labelIds ?? []).includes("DRAFT")) {
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => openDraft(qc, draftIdOfMessage(m.id))}
+                    className="flex w-full items-center gap-3 border-t border-line px-4 py-3 text-left hover:bg-surface"
+                  >
+                    <span className="w-48 shrink-0 font-medium text-error-ink">{t.draftLabel}</span>
+                    <span className="min-w-0 flex-1 truncate text-ink-muted">{m.snippet}</span>
+                  </button>
+                );
+              }
               return (
                 <MessageCard
                   key={m.id}
@@ -210,10 +238,11 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
                   me={account?.email ?? ""}
                   onToggle={() => toggle(m.id)}
                   onStar={(star) => act(star ? "star" : "unstar")}
+                  onReply={(mode) => reply(mode, m.id)}
                 />
               );
             })}
-            {messages.length > 0 && <ReplyBar />}
+            {replyTarget && <ReplyBar onReply={(mode) => reply(mode)} />}
           </>
         )}
       </div>

@@ -1,8 +1,11 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { openDraft } from "../features/compose/session";
 import { t } from "../lib/i18n";
+import { useCompose } from "../state/compose";
 import { setConnection } from "../state/connection";
-import { toast } from "../state/toasts";
+import { useToasts } from "../state/toasts";
 import { api, clientId } from "./client";
+import { draftIdOfMessage } from "./drafts";
 import { call } from "./errors";
 import { keys } from "./keys";
 import { updateLists, type LabelsData } from "./mutations/cache";
@@ -18,6 +21,7 @@ const EVENT_TYPES = [
   "thread.merged",
   "label.counts",
   "label.changed",
+  "draft.updated",
   "operation.failed",
   "outbound.status",
   "account.status",
@@ -110,9 +114,33 @@ export function applyEvent(qc: QueryClient, type: string, data: Data): void {
         threadIds: Array.isArray(data.threadIds) ? (data.threadIds as string[]) : [],
       });
       return;
-    case "outbound.status":
-      if (data.status === "failed") toast(t.sendFailed);
+    case "draft.updated": {
+      // Saved by another tab or program: the open window offers "Wczytaj / Nadpisz".
+      const draftId = str(data.draftId);
+      if (draftId && !own && typeof data.version === "number") {
+        useCompose.getState().setRemoteVersion(draftId, data.version);
+      }
       return;
+    }
+    case "outbound.status": {
+      const messageId = str(data.messageId);
+      if (accountId) void qc.invalidateQueries({ queryKey: keys.threadsAll(accountId) });
+      if (data.status !== "failed" || !messageId) return;
+      // The server made the message a draft again (plan 3.9 step 6).
+      const draftId = draftIdOfMessage(messageId);
+      useCompose.getState().setFailure(draftId, {
+        error: str(data.error),
+        failedRecipients: Array.isArray(data.failedRecipients)
+          ? (data.failedRecipients as string[])
+          : undefined,
+      });
+      void qc.invalidateQueries({ queryKey: keys.draft(draftId) });
+      useToasts.getState().show({
+        message: t.sendFailedOpen,
+        action: { label: t.open, run: () => openDraft(qc, draftId) },
+      });
+      return;
+    }
     case "account.sync_progress":
       if (!accountId) return;
       qc.setQueryData<SyncStatus>(keys.syncStatus(accountId), (s) =>

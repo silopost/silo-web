@@ -1,5 +1,6 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useState } from "react";
+import type { DraftMode } from "../../api/drafts";
 import type { Address, Message } from "../../api/types";
 import { Avatar } from "../../components/Avatar";
 import { Icon } from "../../components/Icon";
@@ -17,6 +18,7 @@ type Props = {
   me: string;
   onToggle: () => void;
   onStar: (starred: boolean) => void;
+  onReply: (mode: DraftMode) => void;
 };
 
 const list = (as: Address[] | null) => (as ?? []).map(displayName).join(", ");
@@ -66,7 +68,8 @@ function Recipients({ message, me }: { message: Message; me: string }) {
 }
 
 /** One message of a thread: collapsed to a line, or expanded with header, body and files. */
-export function MessageCard({ message, expanded, me, onToggle, onStar }: Props) {
+export function MessageCard({ message, expanded, me, onToggle, onStar, onReply }: Props) {
+  const sending = (message.labelIds ?? []).includes("SCHEDULED");
   const starred = (message.labelIds ?? []).includes("STARRED");
   const unread = (message.labelIds ?? []).includes("UNREAD");
 
@@ -107,6 +110,12 @@ export function MessageCard({ message, expanded, me, onToggle, onStar }: Props) 
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <PendingIcon pending={message.pendingSync} />
+          {sending && (
+            <span className="text-ink-muted" title={t.scheduledLabel}>
+              <Icon name="schedule" size={16} />
+              <span className="sr-only">{t.scheduledLabel}</span>
+            </span>
+          )}
           <span className="text-xs text-ink-muted" title={formatFullDate(message.date)}>
             {formatListDate(message.date)}
           </span>
@@ -117,6 +126,7 @@ export function MessageCard({ message, expanded, me, onToggle, onStar }: Props) 
             className={starred ? "text-star" : ""}
             onClick={() => onStar(!starred)}
           />
+          {!sending && <IconButton icon="reply" label={t.reply} onClick={() => onReply("reply")} />}
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
               <IconButton icon="moreVert" label={t.messageMenu} />
@@ -126,6 +136,22 @@ export function MessageCard({ message, expanded, me, onToggle, onStar }: Props) 
                 align="end"
                 className="z-50 min-w-48 rounded-lg bg-panel p-1 shadow-lg"
               >
+                {!sending &&
+                  (
+                    [
+                      ["reply", t.reply],
+                      ["replyAll", t.replyAll],
+                      ["forward", t.forward],
+                    ] as const
+                  ).map(([mode, label]) => (
+                    <DropdownMenu.Item
+                      key={mode}
+                      onSelect={() => onReply(mode)}
+                      className="rounded px-3 py-2 outline-none data-[highlighted]:bg-hover"
+                    >
+                      {label}
+                    </DropdownMenu.Item>
+                  ))}
                 <DropdownMenu.Item asChild>
                   <a
                     href={`/api/v1/messages/${encodeURIComponent(message.id)}/raw`}

@@ -30,6 +30,7 @@ type Props = {
 function rowLabel(th: Thread, unread: boolean, names: string, date: string): string {
   const parts = [unread ? t.unread : null, names, th.subject || t.noSubject, date];
   if (th.hasAttachments) parts.push(t.hasAttachment);
+  if (th.labelIds?.includes("SCHEDULED")) parts.push(t.scheduledLabel);
   if (th.pendingSync) parts.push(t.pendingSync);
   return parts.filter(Boolean).join(", ");
 }
@@ -109,6 +110,11 @@ export const ThreadRow = memo(function ThreadRow(p: Props) {
             {l.name}
           </span>
         ))}
+        {labelIds.includes("SCHEDULED") && (
+          <span className="shrink-0 text-ink-muted" title={t.scheduledLabel}>
+            <Icon name="schedule" size={16} />
+          </span>
+        )}
         <span className="truncate">
           <span className={unread ? "font-bold" : ""}>{th.subject || t.noSubject}</span>
           <span className="text-ink-muted"> – {th.snippet}</span>
