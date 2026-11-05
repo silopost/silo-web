@@ -10,7 +10,9 @@ export default defineConfig({
     proxy: {
       "/api": {
         target: process.env.VITE_API_PROXY ?? "http://localhost:8080",
-        changeOrigin: true,
+        // Keep the browser's Host: silo-server accepts an Origin equal to the served host, so
+        // the dev server and `vite preview` work on any port, not only on SILO_PUBLIC_URL.
+        changeOrigin: false,
       },
     },
   },
