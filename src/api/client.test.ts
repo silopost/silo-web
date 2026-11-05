@@ -2,7 +2,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, expect, it } from "vitest";
 import { version } from "../../package.json";
-import { api } from "./client";
+import { api, clientId } from "./client";
 import { setCsrfToken } from "./csrf";
 
 const seen: Request[] = [];
@@ -23,7 +23,8 @@ afterAll(() => server.close());
 it("sends X-Silo-Client on every request and no CSRF header for GET", async () => {
   setCsrfToken("tok");
   await api.GET("/meta");
-  expect(seen[0]?.headers.get("x-silo-client")).toBe(`silo-web/${version}`);
+  expect(clientId.startsWith(`silo-web/${version}#`)).toBe(true);
+  expect(seen[0]?.headers.get("x-silo-client")).toBe(clientId);
   expect(seen[0]?.headers.has("x-silo-csrf")).toBe(false);
 });
 

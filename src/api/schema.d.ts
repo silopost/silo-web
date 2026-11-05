@@ -148,6 +148,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/contacts/autocomplete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Suggest recipients
+         * @description Up to 8 addresses of the user whose address, name or a word of the name starts with q (case-insensitive): the most written to first, then the most recent. Learnt from received and sent mail.
+         */
+        get: operations["autocompleteContacts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a draft
+         * @description Creates a draft with the DRAFT label: a new message, or with replyToMessageId a reply (reply: the sender or Reply-To; replyAll: also the other recipients without the account) in the thread of that message, or a forward (new thread). Subject (Re:/Fwd:) and quoted body are prefilled. Nothing reaches the mail server before the first PUT.
+         */
+        post: operations["createDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/drafts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a draft
+         * @description The draft as last saved. The d_ id of a draft equals the m_ id of its message, so a message with the DRAFT label written in another program opens as d_<same id>: its content is read from the server (503 content_not_available while unreachable) and later saves replace it there.
+         */
+        get: operations["getDraft"];
+        /**
+         * Save a draft (autosave)
+         * @description Replaces the editable fields. version must be the version the client edited, else 409 draft_version_conflict (another window saved meanwhile). The draft and its thread are updated at once (thread.updated, draft.updated); the copy in the server's Drafts folder follows at least 30 s after the last save, always as exactly one message.
+         */
+        put: operations["updateDraft"];
+        post?: never;
+        /**
+         * Discard a draft
+         * @description Deletes the draft and its message in Silo at once; its copy in the server's Drafts folder is removed by a queued operation.
+         */
+        delete: operations["deleteDraft"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/drafts/{id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a draft
+         * @description Queues the draft as last saved (save it first). The message is built at once (Bcc only in the envelope) and labelled SCHEDULED; it leaves undoSendSeconds (5, 10, 20 or 30; 5 by default) later, or at sendAt. Until undoUntil, POST /outbound/{id}/cancel brings the draft back. After sending: SENT, a copy in the Sent folder (when the account's sentAppend is on; otherwise the server's own copy is matched by Message-ID), \Answered or $Forwarded on the original, the copy in Drafts removed. Delivery problems are retried (30 s, 2 min, 10 min, 30 min); a refusal fails the send at once and the message is a draft again (outbound.status event with error). 422 no_recipients / invalid_address, 413 message_too_large (over SILO_MAX_ATTACHMENT_BYTES; the SMTP server's SIZE is checked when sending), 409 send_in_progress.
+         */
+        post: operations["sendDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events": {
         parameters: {
             query?: never;
@@ -316,6 +404,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/operations/{id}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Undo an operation
+         * @description Until undoUntil (while its jobs still wait) the operation is cancelled: the jobs are deleted and the threads return to the state of the mail server in the same transaction, so the server never sees the operation; operationId and undoUntil of the answer are null. Later (the operation is being sent or was executed, e.g. flag changes, which are sent at once) the server applies the inverse itself: messages go back to the folders they came from, flags and user labels that the operation changed are changed back. That is a new operation, with its own operationId and undoUntil, which can be undone in turn. Either way the answer is the threads after the undo and the usual thread.updated events (with origin) are written. An operation can be undone once, for 24 hours; later 409 undo_expired. A permanent delete (/threads/delete) can only be undone inside its window, later 409 operation_not_undoable. An unknown operation, or one of another user, is 404.
+         */
+        post: operations["undoOperation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/outbound/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Undo send
+         * @description Cancels a queued send (undo send, or a scheduled send) before it leaves: nothing reaches the SMTP server and the message is the draft it was (same content and version), returned for the compose window. A send already being delivered or delivered is 409 send_in_progress; a cancelled or failed one returns its draft.
+         */
+        post: operations["cancelOutbound"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/session": {
         parameters: {
             query?: never;
@@ -328,7 +456,7 @@ export interface paths {
         put?: never;
         /**
          * Sign in
-         * @description In imap mode the credentials are verified with LOGIN on the default mail server. A new user and first account are created on first success. When the mail server is unreachable, a known user with the right password is let in and the account reports state `backoff`. Every failure answers 401 invalid_credentials after a constant minimum time.
+         * @description In imap mode the credentials are verified with LOGIN on the default mail server. A new user and first account are created on first success. When the mail server is unreachable, a known user with the right password is let in and the account reports state `backoff`. Every failure answers 401 invalid_credentials after a constant minimum time. Browsers get the silo_session cookie; with client.kind=bearer (native clients) no cookie is set and the body carries a token for the Authorization: Bearer header instead (shown once).
          */
         post: operations["login"];
         /** Sign out */
@@ -492,6 +620,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload a draft attachment
+         * @description multipart/form-data with one file part (any field name). The file is streamed to the blob store; its id goes to attachmentIds of PUT /drafts/{id}. Uploads not attached to a draft are deleted after 24 h. A file over the instance limit (SILO_MAX_ATTACHMENT_BYTES, 25 MB by default) is 413 upload_too_large.
+         */
+        post: operations["uploadAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -550,6 +698,15 @@ export interface components {
             /** @description Login name; defaults to email. */
             username?: string;
         };
+        ContactSuggestion: {
+            /** @example jan@firma.pl */
+            email: string;
+            /** @example Jan Kowalski */
+            name: string;
+        };
+        ContactSuggestions: {
+            contacts: components["schemas"]["ContactSuggestion"][] | null;
+        };
         CreateAccount: {
             displayName?: string;
             /** @description Sender address. */
@@ -569,6 +726,17 @@ export interface components {
             /** @description Login name; defaults to email. */
             username?: string;
         };
+        CreateDraftBody: {
+            /** @description Account of a new message; the active account when omitted. Ignored for replies (the account of the message replied to). */
+            accountId?: string;
+            /**
+             * @description With replyToMessageId; reply when omitted.
+             * @enum {string}
+             */
+            mode?: "reply" | "replyAll" | "forward";
+            /** @description m_ id of the message to reply to or forward. */
+            replyToMessageId?: string;
+        };
         CreateLabelBody: {
             /** @description Account; the active account when omitted. */
             accountId?: string;
@@ -581,6 +749,43 @@ export interface components {
              * @enum {string}
              */
             type: "user" | "folder";
+        };
+        Draft: {
+            /** @example acc_1 */
+            accountId: string;
+            attachments: components["schemas"]["UploadInfo"][] | null;
+            bcc: components["schemas"]["Address"][] | null;
+            bodyHtml: string;
+            /** @description Editor document (TipTap JSON) stored as given; null when never set. */
+            bodyJson: unknown;
+            cc: components["schemas"]["Address"][] | null;
+            /**
+             * @description Draft id; the draft's local message is messageId.
+             * @example d_4k2
+             */
+            id: string;
+            /** @description m_ id of the message replied to or forwarded. */
+            inReplyToMessageId: string | null;
+            /** @example m_4k2 */
+            messageId: string;
+            /** @description The copy in the server's Drafts folder was changed or removed by another program since Silo saved it. */
+            serverChanged: boolean;
+            subject: string;
+            /**
+             * Format: int32
+             * @description Version saved in the Drafts folder of the mail server (0: not yet). Saves reach the server at least 30 s after the last change.
+             */
+            syncedVersion: number;
+            /** @example t_8f3k2 */
+            threadId: string;
+            to: components["schemas"]["Address"][] | null;
+            /** Format: date-time */
+            updatedAt: string;
+            /**
+             * Format: int32
+             * @description Send it back with PUT; it grows with every save.
+             */
+            version: number;
         };
         ErrorDetail: {
             /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
@@ -664,7 +869,18 @@ export interface components {
         LabelsOutputBody: {
             labels: components["schemas"]["Label"][] | null;
         };
+        LoginClient: {
+            /**
+             * @description bearer: native client; the token is returned in the body and no cookie is set.
+             * @enum {string}
+             */
+            kind: "cookie" | "bearer";
+            /** @description Device name shown in the session list, e.g. "Pixel 8". */
+            name?: string;
+        };
         LoginInputBody: {
+            /** @description Kind of session to open; a browser cookie session when omitted. */
+            client?: components["schemas"]["LoginClient"];
             /** @description Mailbox address (or local part, per SILO_DEFAULT_LOGIN_FORMAT). */
             email: string;
             password: string;
@@ -816,6 +1032,10 @@ export interface components {
         PutFoldersInputBody: {
             folders: components["schemas"]["FolderChange"][] | null;
         };
+        Recipient: {
+            email: string;
+            name?: string;
+        };
         Resync: {
             /**
              * @description incremental: sync all folders now; full: also compare every flag; rebuild: drop and rebuild the cache (not implemented yet, 501).
@@ -824,14 +1044,42 @@ export interface components {
              */
             mode: "incremental" | "full" | "rebuild";
         };
+        SendDraftBody: {
+            /**
+             * Format: date-time
+             * @description Schedule the send (at most a year ahead). Omitted or earlier than the end of the undo window: the message leaves when the window ends.
+             */
+            sendAt?: string;
+        };
+        SendResult: {
+            /**
+             * @description The message, labelled SCHEDULED until it is sent, then SENT.
+             * @example m_4k2
+             */
+            messageId: string;
+            /**
+             * @description For POST /outbound/{id}/cancel and the outbound.status events.
+             * @example ob_9
+             */
+            outboundId: string;
+            /**
+             * Format: date-time
+             * @description The message leaves at this time; until then it can be cancelled.
+             */
+            undoUntil: string;
+        };
         SessionBody: {
             accounts: components["schemas"]["Account"][] | null;
-            /** @description Send as X-Silo-CSRF on every mutating request. */
+            /** @description Send as X-Silo-CSRF on every mutating request (cookie sessions only). */
             csrfToken: string;
             settings: components["schemas"]["Settings"];
+            /** @description Bearer token of a session opened with client.kind=bearer; returned once, by POST /session only. */
+            token?: string;
             user: components["schemas"]["User"];
         };
         SessionInfo: {
+            /** @description Device name given by a native client at sign-in; empty for browsers. */
+            clientName: string;
             /** Format: date-time */
             createdAt: string;
             /** @description Whether this is the session making the request. */
@@ -841,6 +1089,11 @@ export interface components {
             /** @example s_3k */
             id: string;
             ip: string | null;
+            /**
+             * @description cookie: browser session; bearer: native client token.
+             * @enum {string}
+             */
+            kind: "cookie" | "bearer";
             /** Format: date-time */
             lastSeenAt: string;
             userAgent: string;
@@ -970,6 +1223,22 @@ export interface components {
             resultSizeEstimate: number;
             threads: components["schemas"]["Thread"][] | null;
         };
+        UpdateDraftBody: {
+            /** @description u_ ids of uploads to attach; uploads left out are detached. */
+            attachmentIds?: string[] | null;
+            bcc?: components["schemas"]["Recipient"][] | null;
+            bodyHtml: string;
+            /** @description Editor document (TipTap JSON), stored as given. */
+            bodyJson?: unknown;
+            cc?: components["schemas"]["Recipient"][] | null;
+            subject: string;
+            to: components["schemas"]["Recipient"][] | null;
+            /**
+             * Format: int32
+             * @description Version the client edited (from the last GET/PUT); another save meanwhile is 409 draft_version_conflict.
+             */
+            version: number;
+        };
         UpdateLabelBody: {
             /** @description Empty string clears the colour. */
             colorBg?: string;
@@ -978,6 +1247,19 @@ export interface components {
             name?: string;
             /** @enum {string} */
             showInList?: "show" | "hide" | "show_if_unread";
+        };
+        UploadInfo: {
+            /** @example application/pdf */
+            contentType: string;
+            /** @example umowa.pdf */
+            filename: string;
+            /** @example u_91 */
+            id: string;
+            /**
+             * Format: int64
+             * @example 1203311
+             */
+            size: number;
         };
         User: {
             displayName: string;
@@ -1624,6 +1906,472 @@ export interface operations {
             };
             /** @description Service Unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    autocompleteContacts: {
+        parameters: {
+            query: {
+                /** @description Start of an address, a name or a word of the name. */
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactSuggestions"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    createDraft: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Silo-Client"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDraftBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Draft"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getDraft: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Silo-Client"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Draft"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    updateDraft: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Silo-Client"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDraftBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Draft"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deleteDraft: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Silo-Client"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    sendDraft: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Silo-Client"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SendDraftBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2311,6 +3059,164 @@ export interface operations {
             };
             /** @description Error */
             default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    undoOperation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Client id, echoed as origin in the events it causes. */
+                "X-Silo-Client"?: string;
+            };
+            path: {
+                /** @description operationId returned by a modify, trash, untrash, delete or undo request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationResult"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    cancelOutbound: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Silo-Client"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Draft"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3022,6 +3928,90 @@ export interface operations {
             };
             /** @description Unprocessable Entity */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    uploadAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description The file.
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadInfo"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };

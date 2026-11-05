@@ -1,5 +1,69 @@
 @import "tailwindcss";
 
+/* Gmail-like design tokens (plan 6.1). Text colours meet WCAG AA on their backgrounds:
+   ink #1f1f1f and ink-muted #444746 on white/surface, white on primary #0b57d0. */
 @theme {
-  /* Gmail-like design tokens (colors, density, typography) will be defined here. */
+  --font-sans: "Google Sans Text", Roboto, "Segoe UI", Arial, sans-serif;
+
+  --color-ink: #1f1f1f;
+  --color-ink-muted: #444746;
+  --color-surface: #f6f8fc;
+  --color-panel: #ffffff;
+  --color-line: #e0e3e7;
+  --color-hover: rgb(31 31 31 / 0.08);
+  --color-primary: #0b57d0;
+  --color-focus: #0b57d0;
+  --color-nav-active: #d3e3fd;
+  --color-compose: #c2e7ff;
+  --color-row-read: #f2f6fc;
+  --color-row-selected: #c2dbff;
+  --color-star: #b06000;
+  --color-warn-bg: #fef7e0;
+  --color-warn-ink: #3c2c00;
+  --color-error-bg: #fce8e6;
+  --color-error-ink: #8c1d18;
+  --color-tooltip: #3c4043;
+  --color-snackbar: #303030;
+}
+
+/* Density (plan 6.3): <html data-density>; ThreadList uses the same row heights (state/ui.ts). */
+:root,
+:root[data-density="default"] {
+  --row-h: 40px;
+  --row-px: 16px;
+  --avatar-size: 40px;
+}
+:root[data-density="comfortable"] {
+  --row-h: 40px;
+  --row-px: 16px;
+  --avatar-size: 32px;
+}
+:root[data-density="compact"] {
+  --row-h: 32px;
+  --row-px: 12px;
+  --avatar-size: 28px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-surface font-sans text-sm text-ink antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

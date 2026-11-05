@@ -5,7 +5,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "coverage", "src/api/schema.d.ts"] },
+  { ignores: ["dist", "coverage", "src/api/schema.d.ts", "src/routeTree.gen.ts"] },
   {
     files: ["**/*.{ts,tsx}"],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
@@ -18,5 +18,11 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
     },
+  },
+  {
+    // File routes export a Route object next to their components; the router plugin handles
+    // their hot reload (code splitting), so the fast-refresh rule does not apply.
+    files: ["src/routes/**/*.tsx"],
+    rules: { "react-refresh/only-export-components": "off" },
   },
 );
