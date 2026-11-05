@@ -90,21 +90,25 @@ it("shows the conflict bar on 409 and Nadpisz saves with the server's version", 
     expect(within(win).queryByText("Ta wersja robocza została zmieniona")).toBeNull(),
   );
   expect(mail.state.drafts.get("d_1")).toMatchObject({ version: 3, subject: "Moja wersja" });
+  // The version came with the 409 (Problem.currentVersion): no GET /drafts/{id}.
+  expect(mail.state.calls.getDraft).toEqual([]);
 });
 
-it("Wczytaj loads the server's version of a conflicting draft", async () => {
+it("Wczytaj loads the draft carried by the 409 without another GET", async () => {
   composeConfig.autosaveMs = 50;
   const { mail, user } = setup();
   const win = await openCompose(user);
   mail.saveElsewhere("d_1");
   await user.type(within(win).getByRole("textbox", { name: "Temat" }), "Moja wersja");
   await within(win).findByText("Ta wersja robocza została zmieniona");
+  const gets = mail.state.calls.getDraft.length;
   await user.click(within(win).getByRole("button", { name: "Wczytaj" }));
   await waitFor(() =>
     expect(within(win).getByRole("textbox", { name: "Temat" })).toHaveValue(
       "Zmieniony gdzie indziej",
     ),
   );
+  expect(mail.state.calls.getDraft).toHaveLength(gets);
 });
 
 it("a reply sends replyToMessageId and mode and opens prefilled", async () => {
@@ -176,6 +180,8 @@ it("uploads attachments with progress, attaches them on the next save and report
   composeConfig.autosaveMs = 50;
   FakeUploadXhr.paused = true;
   const { mail, user } = setup();
+  // /meta allows the file, the upload itself is refused: the message uses Problem.limit.
+  mail.state.metaMaxAttachmentBytes = 1_000_000;
   const win = await openCompose(user);
   const input = within(win).getByLabelText<HTMLInputElement>("Załącz pliki", {
     selector: "input",
@@ -190,7 +196,7 @@ it("uploads attachments with progress, attaches them on the next save and report
   FakeUploadXhr.paused = false;
   FakeUploadXhr.release();
   expect(
-    await within(list).findByText("Plik film.mov przekracza limit rozmiaru załącznika."),
+    await within(list).findByText("Plik film.mov przekracza limit załącznika 1000 B."),
   ).toBeInTheDocument();
   await waitFor(() =>
     expect(mail.state.calls.putDraft.at(-1)).toMatchObject({ attachmentIds: ["u_1"] }),
@@ -239,23 +245,79 @@ it("shows send refusals in the window", async () => {
   const win = await openCompose(user);
   await user.click(within(win).getByRole("button", { name: "Wyślij" }));
   expect(await within(win).findByText("Dodaj co najmniej jednego odbiorcę.")).toBeInTheDocument();
-  mail.state.sendProblem = { status: 413, code: "message_too_large" };
+  mail.state.sendProblem = {
+    status: 413,
+    code: "message_too_large",
+    limit: 25 * 1024 * 1024,
+    size: 30 * 1024 * 1024,
+  };
   await user.type(within(win).getByRole("combobox", { name: "Do" }), "dev2@silo.test,");
   await user.keyboard("{Control>}{Enter}{/Control}");
   expect(
-    await within(win).findByText("Wiadomość z załącznikami przekracza limit rozmiaru serwera."),
+    await within(win).findByText("Wiadomość z załącznikami (30,0 MB) przekracza limit 25,0 MB."),
   ).toBeInTheDocument();
+});
+
+it("refuses a file over maxAttachmentBytes of /meta before uploading it", async () => {
+  const { mail, user } = setup();
+  const win = await openCompose(user);
+  const input = within(win).getByLabelText<HTMLInputElement>("Załącz pliki", {
+    selector: "input",
+  });
+  await waitFor(() => expect(mail.state.calls.meta).toBeGreaterThan(0));
+  await user.upload(input, [new File(["x".repeat(5000)], "film.mov")]);
+  const list = await within(win).findByRole("list", { name: "Załączniki" });
+  expect(
+    await within(list).findByText("Plik film.mov przekracza limit załącznika 1000 B."),
+  ).toBeInTheDocument();
+  expect(mail.state.calls.uploads).toEqual([]);
+});
+
+it("invalid_address marks the refused recipient red and names it", async () => {
+  const { mail, user } = setup();
+  const win = await openCompose(user);
+  await user.type(within(win).getByRole("combobox", { name: "Do" }), "jan@firma.pl,zly@adres.pl,");
+  mail.state.sendProblem = {
+    status: 422,
+    code: "invalid_address",
+    address: "zly@adres.pl",
+    field: "to",
+  };
+  await user.click(within(win).getByRole("button", { name: "Wyślij" }));
+  expect(
+    await within(win).findByText(/Nieprawidłowy adres odbiorcy: zly@adres.pl/),
+  ).toBeInTheDocument();
+  const to = within(win).getByRole("list", { name: "Odbiorcy: Do" });
+  const chip = within(to).getByTitle("zly@adres.pl");
+  expect(within(chip).getByText("Nieprawidłowy adres")).toBeInTheDocument();
+  expect(
+    within(within(to).getByTitle("jan@firma.pl")).queryByText("Nieprawidłowy adres"),
+  ).toBeNull();
+
+  // Removing the address clears the mark.
+  await user.click(within(chip).getByRole("button"));
+  expect(within(to).queryByTitle("zly@adres.pl")).toBeNull();
 });
 
 it("outbound.status failed shows a snackbar that opens the draft with the error", async () => {
   const { mail } = setup();
   await screen.findByRole("grid");
-  mail.addDraftThread(9);
+  // The server writes Draft.lastSend in the transaction of the event.
+  mail.addDraftThread(9, {
+    lastSend: {
+      outboundId: "ob_7",
+      status: "failed",
+      error: "550 relay denied",
+      failedRecipients: ["x@y.pl"],
+      updatedAt: "2026-11-05T09:00:00Z",
+    },
+  });
   act(() =>
     FakeEventSource.latest().emit("outbound.status", {
       outboundId: "ob_7",
       accountId: "acc_1",
       messageId: "m_t_9_2",
+      draftId: "d_t_9_2",
       status: "failed",
       error: "550 relay denied",
       failedRecipients: ["x@y.pl"],
@@ -276,6 +338,37 @@ it("Odrzuć deletes the draft and closes the window", async () => {
   expect(screen.queryByRole("dialog", { name: "Nowa wiadomość" })).toBeNull();
   expect(await screen.findByText("Wersja robocza odrzucona")).toBeInTheDocument();
   await waitFor(() => expect(mail.state.calls.deleteDraft).toEqual(["d_1"]));
+});
+
+it("a draft whose last send failed shows the error after a reload (Draft.lastSend)", async () => {
+  const { mail, user } = setup("/u/0/drafts");
+  mail.addDraftThread(9, {
+    lastSend: {
+      outboundId: "ob_3",
+      status: "failed",
+      error: "554 message refused",
+      failedRecipients: [],
+      updatedAt: "2026-11-05T09:00:00Z",
+    },
+  });
+  await user.click(await screen.findByRole("row", { name: /Szkic 9/ }));
+  const win = await screen.findByRole("dialog", { name: "Szkic 9" });
+  expect(
+    await within(win).findByText("Nie udało się wysłać: 554 message refused"),
+  ).toBeInTheDocument();
+});
+
+it("closing the window saves with syncNow, also an autosaved draft", async () => {
+  composeConfig.autosaveMs = 50;
+  const { mail, user } = setup();
+  const win = await openCompose(user);
+  await user.type(within(win).getByRole("textbox", { name: "Temat" }), "Szkic");
+  await waitFor(() => expect(mail.state.calls.putDraft).toHaveLength(1));
+  expect(mail.state.calls.putDraft[0]?.syncNow).toBeUndefined();
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(mail.state.calls.putDraft).toHaveLength(2));
+  expect(mail.state.calls.putDraft[1]).toMatchObject({ subject: "Szkic", syncNow: true });
+  expect(mail.state.drafts.get("d_1")).toMatchObject({ syncedVersion: 3, version: 3 });
 });
 
 it("Esc saves and closes; an untouched new draft is dropped", async () => {

@@ -20,6 +20,8 @@ type Props = {
   onChange: (value: Address[]) => void;
   /** Extra controls at the end of the row (the DW / UDW links). */
   children?: ReactNode;
+  /** An address the server refused (Problem.address of this field): its chip is red too. */
+  invalidAddress?: string;
 };
 
 /** Autocomplete waits this long after typing (plan 6.3). */
@@ -33,7 +35,7 @@ const same = (a: Address, b: Address) => a.email.toLowerCase() === b.email.toLow
  * Backspace removes the last one, pasted lists are split, invalid addresses are red. Suggestions
  * from GET /contacts/autocomplete, navigated with the arrow keys.
  */
-export function RecipientInput({ id, label, value, onChange, children }: Props) {
+export function RecipientInput({ id, label, value, onChange, children, invalidAddress }: Props) {
   const [text, setText] = useState("");
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -134,7 +136,7 @@ export function RecipientInput({ id, label, value, onChange, children }: Props) 
       </label>
       <ul aria-label={t.recipientsOf(label)} className="contents">
         {value.map((a) => {
-          const valid = isValidEmail(a.email);
+          const valid = isValidEmail(a.email) && a.email !== invalidAddress;
           return (
             <li
               key={a.email}

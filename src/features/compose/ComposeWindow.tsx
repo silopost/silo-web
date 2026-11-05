@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useEffect,
   useRef,
@@ -7,6 +7,7 @@ import {
   type DragEvent,
   type KeyboardEvent,
 } from "react";
+import { metaQuery } from "../../api/queries/meta";
 import { IconButton } from "../../components/IconButton";
 import { t } from "../../lib/i18n";
 import { useCompose, type WindowMode } from "../../state/compose";
@@ -59,6 +60,10 @@ export function ComposeWindow({ draftId, mode }: { draftId: string; mode: Window
   const failure = useCompose((s) => s.failures[draftId]);
   const remoteVersion = useCompose((s) => s.remoteVersions[draftId] ?? 0);
   const account = useSession()?.accounts?.find((a) => a.id === state.accountId);
+  // maxAttachmentBytes for the check before an upload (DraftSession.addFiles).
+  useQuery(metaQuery);
+  const invalidIn = (field: "to" | "cc" | "bcc") =>
+    state.invalid?.field === field ? state.invalid.address : undefined;
   const [ccOpen, setCcOpen] = useState(false);
   const [bccOpen, setBccOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -236,6 +241,7 @@ export function ComposeWindow({ draftId, mode }: { draftId: string; mode: Window
                   id={ids.to}
                   label={t.toLabel}
                   value={form.to}
+                  invalidAddress={invalidIn("to")}
                   onChange={(to) => session.edit(() => ({ to }))}
                 >
                   <span className="flex shrink-0 gap-2 text-ink-muted">
@@ -266,6 +272,7 @@ export function ComposeWindow({ draftId, mode }: { draftId: string; mode: Window
                     id={ids.cc}
                     label={t.cc}
                     value={form.cc}
+                    invalidAddress={invalidIn("cc")}
                     onChange={(cc) => session.edit(() => ({ cc }))}
                   />
                 )}
@@ -274,6 +281,7 @@ export function ComposeWindow({ draftId, mode }: { draftId: string; mode: Window
                     id={ids.bcc}
                     label={t.bcc}
                     value={form.bcc}
+                    invalidAddress={invalidIn("bcc")}
                     onChange={(bcc) => session.edit(() => ({ bcc }))}
                   />
                 )}

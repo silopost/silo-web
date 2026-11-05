@@ -1,3 +1,4 @@
+import { formatSize } from "./format";
 import { plural } from "./plural";
 
 const n3 = (n: number, one: string, few: string, many: string) =>
@@ -150,8 +151,24 @@ export const t = {
   },
   undone: "Cofnięto",
   undoExpired: "Tej operacji nie można już cofnąć.",
-  operationFailed: (n: number) =>
-    `Nie udało się zmienić ${n3(n, "wątku", "wątków", "wątków")} na serwerze poczty – przywrócono stan z serwera`,
+  /** operation.failed by kind (plan 5.4): what the server could not do. */
+  operationFailed: (kind: string | undefined, n: number): string => {
+    const what = n3(n, "wątku", "wątków", "wątków");
+    const action: Record<string, string> = {
+      move: `przenieść ${what}`,
+      flags: `zmienić oznaczeń ${what}`,
+      labels: `zmienić etykiet ${what}`,
+      expunge: `usunąć ${what}`,
+      append: "zapisać wersji roboczej w folderze Wersje robocze",
+      delete_draft: "usunąć wersji roboczej z folderu Wersje robocze",
+      create_folder: "utworzyć folderu",
+      delete_folder: "usunąć folderu",
+    };
+    const a = kind ? action[kind] : undefined;
+    return a
+      ? `Nie udało się ${a} na serwerze poczty – przywrócono stan z serwera`
+      : `Nie udało się zmienić ${what} na serwerze poczty – przywrócono stan z serwera`;
+  },
 
   // thread
   threadNotFound: "Nie znaleziono wątku.",
@@ -235,10 +252,18 @@ export const t = {
   failedRecipients: (list: string) => `Odrzuceni odbiorcy: ${list}`,
   noRecipients: "Dodaj co najmniej jednego odbiorcę.",
   invalidAddress: "Nieprawidłowy adres odbiorcy. Popraw adresy oznaczone na czerwono.",
-  messageTooLarge: "Wiadomość z załącznikami przekracza limit rozmiaru serwera.",
+  invalidAddressOf: (address: string) =>
+    `Nieprawidłowy adres odbiorcy: ${address}. Popraw adres oznaczony na czerwono.`,
+  messageTooLarge: (limit?: number, size?: number) =>
+    limit
+      ? `Wiadomość z załącznikami${size ? ` (${formatSize(size)})` : ""} przekracza limit ${formatSize(limit)}.`
+      : "Wiadomość z załącznikami przekracza limit rozmiaru serwera.",
   sendInProgress: "Ta wiadomość jest już wysyłana.",
   uploadsPending: "Poczekaj na zakończenie przesyłania załączników.",
-  uploadTooLarge: (name: string) => `Plik ${name} przekracza limit rozmiaru załącznika.`,
+  uploadTooLarge: (name: string, limit?: number) =>
+    limit
+      ? `Plik ${name} przekracza limit załącznika ${formatSize(limit)}.`
+      : `Plik ${name} przekracza limit rozmiaru załącznika.`,
   uploadFailed: (name: string) => `Nie udało się przesłać pliku ${name}.`,
   unsavedChanges: "Masz niezapisane zmiany w wersji roboczej.",
 };

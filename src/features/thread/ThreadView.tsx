@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { draftIdOfMessage, type DraftMode } from "../../api/drafts";
+import type { DraftMode } from "../../api/drafts";
 import { neighbourInList, type ThreadLists } from "../../api/mutations/cache";
 import type { ThreadAction } from "../../api/mutations/threads";
 import { keys } from "../../api/keys";
@@ -217,12 +217,13 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
                   </button>
                 );
               }
-              if ((m.labelIds ?? []).includes("DRAFT")) {
+              const draftId = m.draftId;
+              if (draftId) {
                 return (
                   <button
                     key={m.id}
                     type="button"
-                    onClick={() => openDraft(qc, draftIdOfMessage(m.id))}
+                    onClick={() => openDraft(qc, draftId)}
                     className="flex w-full items-center gap-3 border-t border-line px-4 py-3 text-left hover:bg-surface"
                   >
                     <span className="w-48 shrink-0 font-medium text-error-ink">{t.draftLabel}</span>

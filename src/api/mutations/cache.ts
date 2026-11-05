@@ -138,6 +138,17 @@ export function applyOptimistic(
   adjustCounts(qc, accountId, changes);
 }
 
+/** A thread row from any cached list (all accounts). */
+export function findCachedThread(qc: QueryClient, id: string): Thread | undefined {
+  for (const [, data] of qc.getQueriesData<ThreadLists>({ queryKey: ["threads"] })) {
+    for (const page of data?.pages ?? []) {
+      const t = page.threads?.find((x) => x.id === id);
+      if (t) return t;
+    }
+  }
+  return undefined;
+}
+
 /** Removes threads from every list (permanent delete). */
 export function removeFromLists(qc: QueryClient, accountId: string, ids: string[]): void {
   const set = new Set(ids);

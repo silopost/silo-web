@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { createDraft, draftIdOfMessage, type DraftMode } from "../../api/drafts";
+import { createDraft, type DraftMode } from "../../api/drafts";
 import { keys } from "../../api/keys";
+import { findCachedThread } from "../../api/mutations/cache";
 import { threadQuery } from "../../api/queries/threads";
 import { t } from "../../lib/i18n";
 import { toast } from "../../state/toasts";
@@ -34,10 +35,15 @@ export const openReply = (qc: QueryClient, messageId: string, mode: DraftMode) =
 /** A row of the Drafts list opens its draft in a compose window instead of the thread. */
 export async function openDraftOfThread(qc: QueryClient, threadId: string): Promise<boolean> {
   try {
-    const thread = await qc.fetchQuery(threadQuery(threadId));
-    const draft = (thread.messages ?? []).findLast((m) => (m.labelIds ?? []).includes("DRAFT"));
-    if (!draft) return false;
-    openDraft(qc, draftIdOfMessage(draft.id));
+    // Thread.draftId of the row; the thread is fetched only when the row is not cached.
+    const row = findCachedThread(qc, threadId);
+    const draftId =
+      row?.draftId !== undefined
+        ? row.draftId
+        : (await qc.fetchQuery(threadQuery(threadId))).messages?.findLast((m) => m.draftId)
+            ?.draftId;
+    if (!draftId) return false;
+    openDraft(qc, draftId);
     return true;
   } catch {
     toast(t.genericError);

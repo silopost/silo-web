@@ -120,16 +120,26 @@ export function runThreadAction(qc: QueryClient, input: ThreadActionInput): Prom
   const add = spec.add ?? [];
   const remove = spec.remove ?? [];
 
+  const optimistic = () => {
+    const snapshot = takeSnapshot(qc, accountId, ids);
+    if (spec.endpoint === "delete") removeFromLists(qc, accountId, ids);
+    else applyOptimistic(qc, accountId, ids, add, remove);
+    return snapshot;
+  };
+  // With no list refetch in flight the local change is made right here, in the keydown or click
+  // that started the action, so that it shows in the next frame (DoD Faza 3: the row leaves the
+  // list within one frame). A refetch in flight is cancelled first: its revert would otherwise
+  // overwrite the change.
+  const early = qc.isFetching({ queryKey: keys.threadsAll(accountId) }) > 0 ? null : optimistic();
+
   const mutation = qc.getMutationCache().build(qc, {
     mutationKey: MUTATION_KEY,
     scope: { id: scopeOf(ids) },
     mutationFn: () => request(spec, ids, add, remove),
     onMutate: async () => {
+      if (early) return early;
       await qc.cancelQueries({ queryKey: keys.threadsAll(accountId) });
-      const snapshot = takeSnapshot(qc, accountId, ids);
-      if (spec.endpoint === "delete") removeFromLists(qc, accountId, ids);
-      else applyOptimistic(qc, accountId, ids, add, remove);
-      return snapshot;
+      return optimistic();
     },
     onSuccess: (res: OperationResult, _vars, snapshot) => {
       mergeServerThreads(qc, accountId, res.threads ?? []);
@@ -208,7 +218,7 @@ export function undoOperation(qc: QueryClient, input: UndoInput): Promise<void> 
  */
 export function handleOperationFailed(
   qc: QueryClient,
-  event: { operationId?: string; accountId?: string; threadIds?: string[] },
+  event: { operationId?: string; accountId?: string; kind?: string; threadIds?: string[] },
 ): void {
   const entry = event.operationId ? recentOps.get(event.operationId) : undefined;
   if (entry) {
@@ -222,7 +232,7 @@ export function handleOperationFailed(
     void qc.invalidateQueries({ queryKey: keys.labels(accountId) });
   }
   for (const id of ids) void qc.invalidateQueries({ queryKey: keys.thread(id) });
-  toast(t.operationFailed(Math.max(ids.length, 1)));
+  toast(t.operationFailed(event.kind, Math.max(ids.length, 1)));
 }
 
 /** Thread actions bound to the query client. */

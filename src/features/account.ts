@@ -14,8 +14,8 @@ export function useAccountIndex(): string {
   return params.account ?? "0";
 }
 
-/** The account of the URL, by position in the session's account list. */
+/** The account of the URL: /u/<n> is the account with Account.position n. */
 export function useActiveAccount(): Account | undefined {
   const index = Number(useAccountIndex());
-  return useSession()?.accounts?.[index];
+  return useSession()?.accounts?.find((a) => a.position === index);
 }

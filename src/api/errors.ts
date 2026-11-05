@@ -1,6 +1,6 @@
 import type { components } from "./schema";
 
-type Problem = components["schemas"]["Problem"];
+export type Problem = components["schemas"]["Problem"];
 
 /** An RFC 9457 problem answered by the server (plan 5.3); `code` is the stable field to branch on. */
 export class ApiError extends Error {
@@ -8,6 +8,8 @@ export class ApiError extends Error {
   readonly code: string | undefined;
   /** Seconds from the Retry-After header (429, 503). */
   readonly retryAfter: number | undefined;
+  /** The whole problem: limit/size (413), currentVersion/current (409), address/field (400). */
+  readonly problem: Problem | undefined;
 
   constructor(status: number, problem: Problem | undefined, retryAfter: number | undefined) {
     super(problem?.detail || problem?.title || `HTTP ${status}`);
@@ -15,6 +17,7 @@ export class ApiError extends Error {
     this.status = status;
     this.code = problem?.code;
     this.retryAfter = retryAfter;
+    this.problem = problem;
   }
 }
 

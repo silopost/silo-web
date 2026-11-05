@@ -5,9 +5,6 @@ import { ApiError, call } from "./errors";
 import { keys } from "./keys";
 import type { Address, Draft, SendResult, UploadInfo } from "./types";
 
-/** Draft ids equal the ids of their messages with another prefix (OpenAPI getDraft). */
-export const draftIdOfMessage = (messageId: string) => `d_${messageId.replace(/^m_/, "")}`;
-
 export const draftQuery = (id: string) =>
   queryOptions({
     queryKey: keys.draft(id),
@@ -37,7 +34,13 @@ export type DraftFields = {
 const recipients = (list: Address[]) =>
   list.map((a) => (a.name ? { email: a.email, name: a.name } : { email: a.email }));
 
-export const saveDraft = (id: string, version: number, f: DraftFields): Promise<Draft> =>
+/** syncNow: the copy in the server's Drafts folder is written at once (window closed, plan 3.8). */
+export const saveDraft = (
+  id: string,
+  version: number,
+  f: DraftFields,
+  syncNow = false,
+): Promise<Draft> =>
   call(
     api.PUT("/drafts/{id}", {
       params: { path: { id } },
@@ -50,6 +53,7 @@ export const saveDraft = (id: string, version: number, f: DraftFields): Promise<
         bodyHtml: f.bodyHtml,
         bodyJson: f.bodyJson ?? undefined,
         attachmentIds: f.attachmentIds,
+        ...(syncNow ? { syncNow: true } : {}),
       },
     }),
   );

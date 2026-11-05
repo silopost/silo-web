@@ -202,7 +202,7 @@ export interface paths {
         get: operations["getDraft"];
         /**
          * Save a draft (autosave)
-         * @description Replaces the editable fields. version must be the version the client edited, else 409 draft_version_conflict (another window saved meanwhile). The draft and its thread are updated at once (thread.updated, draft.updated); the copy in the server's Drafts folder follows at least 30 s after the last save, always as exactly one message.
+         * @description Replaces the editable fields. version must be the version the client edited, else 409 draft_version_conflict (another window saved meanwhile). The draft and its thread are updated at once (thread.updated, draft.updated); the copy in the server's Drafts folder follows at least 30 s after the last save (right away with syncNow, when the compose window closes), always as exactly one message. The 409 carries currentVersion and current (the draft as saved meanwhile). An invalid address is 400 validation_failed with address and field.
          */
         put: operations["updateDraft"];
         post?: never;
@@ -657,6 +657,11 @@ export interface components {
             imapTls: "implicit" | "starttls" | "none";
             /** Format: date-time */
             lastSyncAt: string | null;
+            /**
+             * Format: int64
+             * @description Order of the account among the user's accounts (0 first); account lists are sorted by it. silo-web maps /u/<n> to the n-th account.
+             */
+            position: number;
             /** @enum {string} */
             provider: "generic" | "gmail" | "microsoft";
             /** @description Whether Silo copies sent messages to the Sent folder itself (servers that do not). */
@@ -766,6 +771,8 @@ export interface components {
             id: string;
             /** @description m_ id of the message replied to or forwarded. */
             inReplyToMessageId: string | null;
+            /** @description The last send of this draft when it failed (it is a draft again); null otherwise. Kept until the next send, so a failure is still visible after a reload. */
+            lastSend: components["schemas"]["LastSend"];
             /** @example m_4k2 */
             messageId: string;
             /** @description The copy in the server's Drafts folder was changed or removed by another program since Silo saved it. */
@@ -869,6 +876,21 @@ export interface components {
         LabelsOutputBody: {
             labels: components["schemas"]["Label"][] | null;
         };
+        LastSend: {
+            /** @description Reply of the SMTP server or the connection error; interrupted: the server restarted during delivery (the message may have left; send it again only after checking Sent). */
+            error: string;
+            /** @description Recipients refused by the SMTP server. */
+            failedRecipients: string[] | null;
+            /** @example ob_9 */
+            outboundId: string;
+            /**
+             * @description Only failed for now; a cancelled send (undo send) is not reported.
+             * @enum {string}
+             */
+            status: "failed";
+            /** Format: date-time */
+            updatedAt: string;
+        } | null;
         LoginClient: {
             /**
              * @description bearer: native client; the token is returned in the body and no cookie is set.
@@ -897,6 +919,11 @@ export interface components {
             cc: components["schemas"]["Address"][] | null;
             /** Format: date-time */
             date: string;
+            /**
+             * @description d_ id for GET/PUT /drafts/{id} when the message is a draft (DRAFT label; also one written in another program); null otherwise.
+             * @example d_1x9
+             */
+            draftId: string | null;
             folder: components["schemas"]["MessageFolder"];
             from: components["schemas"]["Address"];
             /** @description A text/html part exists; known once the body is downloaded. */
@@ -906,7 +933,8 @@ export interface components {
             labelIds: string[] | null;
             listUnsubscribe: string | null;
             pendingSync: boolean;
-            replyTo: components["schemas"]["Address"];
+            /** @description Reply-To of the message; absent without one. */
+            replyTo?: components["schemas"]["Address"];
             snippet: string;
             subject: string;
             to: components["schemas"]["Address"][] | null;
@@ -927,7 +955,7 @@ export interface components {
             id: string;
             name: string;
             role: string;
-        };
+        } | null;
         Meta: {
             /** @description Whether users may add accounts on arbitrary IMAP/SMTP hosts. */
             allowCustomServers: boolean;
@@ -941,6 +969,12 @@ export interface components {
              * @enum {string}
              */
             authMode: "imap" | "local";
+            /**
+             * Format: int64
+             * @description Limit in bytes of one upload and of a sent message with its attachments (SILO_MAX_ATTACHMENT_BYTES); larger ones are 413 upload_too_large / message_too_large.
+             * @example 26214400
+             */
+            maxAttachmentBytes: number;
             /**
              * @description Oldest silo-web release this server supports.
              * @example 0.3.0
@@ -1004,12 +1038,36 @@ export interface components {
             type: string;
         };
         Problem: {
+            /** @description invalid_address (and validation_failed of a draft save): the refused address as given. */
+            address?: string;
             /** @description Stable machine-readable error code. */
             code?: string;
+            /** @description draft_version_conflict: the draft as saved meanwhile (as GET /drafts/{id}), so that the client needs no extra request. */
+            current?: components["schemas"]["Draft"];
+            /**
+             * Format: int32
+             * @description draft_version_conflict: the version saved meanwhile.
+             */
+            currentVersion?: number;
             /** @description Explanation specific to this occurrence. */
             detail?: string;
             /** @description Individual validation errors. */
             errors?: components["schemas"]["ErrorDetail"][] | null;
+            /**
+             * @description invalid_address (and validation_failed of a draft save): the recipient field of address.
+             * @enum {string}
+             */
+            field?: "to" | "cc" | "bcc";
+            /**
+             * Format: int64
+             * @description upload_too_large, message_too_large: the limit in bytes (SILO_MAX_ATTACHMENT_BYTES).
+             */
+            limit?: number;
+            /**
+             * Format: int64
+             * @description upload_too_large, message_too_large: size in bytes of what was refused (for an upload: the request's Content-Length when sent, including the multipart framing).
+             */
+            size?: number;
             /**
              * Format: int64
              * @description HTTP status code.
@@ -1186,6 +1244,11 @@ export interface components {
         Thread: {
             /** @example acc_1 */
             accountId: string;
+            /**
+             * @description d_ id of the newest draft in the thread (a message with the DRAFT label), for opening it in compose; null without one.
+             * @example d_4k2
+             */
+            draftId: string | null;
             hasAttachments: boolean;
             /** @example t_8f3k2 */
             id: string;
@@ -1232,6 +1295,8 @@ export interface components {
             bodyJson?: unknown;
             cc?: components["schemas"]["Recipient"][] | null;
             subject: string;
+            /** @description Save the copy in the server's Drafts folder right away instead of 30 s after the last change: the last save when the compose window closes (plan 3.8 step 2). */
+            syncNow?: boolean;
             to: components["schemas"]["Recipient"][] | null;
             /**
              * Format: int32

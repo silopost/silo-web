@@ -76,13 +76,18 @@ it("rolls back on operation.failed from the event stream", async () => {
     FakeEventSource.latest().emit("operation.failed", {
       operationId: "op_1",
       accountId: "acc_1",
+      kind: "move",
       reason: "imap",
       threadIds: ["t_4"],
     }),
   );
 
   expect(await row("Temat 4")).toBeInTheDocument();
-  expect(screen.getByText(/Nie udało się zmienić 1 wątku na serwerze poczty/)).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      "Nie udało się przenieść 1 wątku na serwerze poczty – przywrócono stan z serwera",
+    ),
+  ).toBeInTheDocument();
 });
 
 it("selects rows with SelectMenu and acts on the selection", async () => {

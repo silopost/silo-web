@@ -9,6 +9,7 @@ import {
   uploadFile,
 } from "../../api/drafts";
 import { isApiError } from "../../api/errors";
+import { metaQuery } from "../../api/queries/meta";
 import { keys } from "../../api/keys";
 import type { Address, Draft, SendResult, UploadInfo } from "../../api/types";
 import { t } from "../../lib/i18n";
@@ -54,6 +55,8 @@ export type SessionState = {
   sending: boolean;
   /** Message shown in the window (send refused, load failed). */
   error: string | null;
+  /** The recipient refused by the server (400/422 with address and field): its chip is red. */
+  invalid: { address: string; field: "to" | "cc" | "bcc" } | null;
 };
 
 const emptyForm: Form = {
@@ -96,6 +99,7 @@ export class DraftSession {
     serverChanged: false,
     sending: false,
     error: null,
+    invalid: null,
   };
   private listeners = new Set<() => void>();
   private dirty = false;
@@ -105,6 +109,10 @@ export class DraftSession {
   /** Created by this window (new message, reply) and never saved: closing drops it. */
   createdHere = false;
   private saved = false;
+  /** Draft.syncedVersion of the last load or save: the version in the server's Drafts folder. */
+  private syncedVersion = 0;
+  /** The draft as saved meanwhile, from the last 409 (Problem.current): "Wczytaj" needs no GET. */
+  private conflictCurrent: Draft | null = null;
   closed = false;
 
   constructor(
@@ -131,7 +139,18 @@ export class DraftSession {
   load(d: Draft) {
     clearTimeout(this.timer);
     this.dirty = false;
+    this.conflictCurrent = null;
+    this.syncedVersion = d.syncedVersion;
     this.qc.setQueryData(keys.draft(this.id), d);
+    // Draft.lastSend: a failed send stays visible in the window after a reload (plan 3.9).
+    useCompose
+      .getState()
+      .setFailure(
+        this.id,
+        d.lastSend
+          ? { error: d.lastSend.error, failedRecipients: d.lastSend.failedRecipients ?? undefined }
+          : null,
+      );
     this.set({
       loaded: true,
       loadSeq: this.state.loadSeq + 1,
@@ -142,6 +161,7 @@ export class DraftSession {
       serverChanged: d.serverChanged,
       save: "idle",
       error: null,
+      invalid: null,
     });
   }
 
@@ -158,7 +178,10 @@ export class DraftSession {
   /** "Wczytaj": the draft as the server has it now; local edits are dropped (no merging). */
   async reload() {
     try {
-      const d = await this.qc.fetchQuery({ ...draftQuery(this.id), staleTime: 0 });
+      // After a 409 the problem carried the current draft; after draft.updated it is fetched.
+      const d =
+        this.conflictCurrent ??
+        (await this.qc.fetchQuery({ ...draftQuery(this.id), staleTime: 0 }));
       this.load(d);
       this.set({ serverChanged: false });
     } catch {
@@ -169,9 +192,12 @@ export class DraftSession {
   /** "Nadpisz": save the local content over the server's version. */
   async overwrite() {
     try {
-      const d = await this.qc.fetchQuery({ ...draftQuery(this.id), staleTime: 0 });
+      const version =
+        this.conflictCurrent?.version ??
+        (await this.qc.fetchQuery({ ...draftQuery(this.id), staleTime: 0 })).version;
+      this.conflictCurrent = null;
       this.dirty = true;
-      this.set({ version: d.version, conflict: false });
+      this.set({ version, conflict: false });
       await this.save();
     } catch {
       this.set({ error: t.draftLoadError });
@@ -180,7 +206,10 @@ export class DraftSession {
 
   edit(change: (f: Form) => Partial<Form>) {
     this.dirty = true;
-    this.set({ form: { ...this.state.form, ...change(this.state.form) }, save: "idle" });
+    const form = { ...this.state.form, ...change(this.state.form) };
+    const bad = this.state.invalid;
+    const stillBad = bad !== null && form[bad.field].some((a) => a.email === bad.address);
+    this.set({ form, save: "idle", ...(stillBad ? {} : { invalid: null }) });
     this.schedule();
   }
 
@@ -190,8 +219,11 @@ export class DraftSession {
     this.timer = setTimeout(() => void this.save(), composeConfig.autosaveMs);
   }
 
-  /** PUT /drafts/{id} if there are unsaved edits; resolves false when the save failed. */
-  async save(): Promise<boolean> {
+  /**
+   * PUT /drafts/{id} if there are unsaved edits; resolves false when the save failed. syncNow
+   * asks the server to write the Drafts folder copy at once (window closed, plan 3.8).
+   */
+  async save(syncNow = false): Promise<boolean> {
     clearTimeout(this.timer);
     while (this.saving) await this.saving;
     if (this.state.conflict) return false;
@@ -201,16 +233,22 @@ export class DraftSession {
     this.set({ save: "saving" });
     const run = (async () => {
       try {
-        const d = await saveDraft(this.id, this.state.version, {
-          to: f.to,
-          cc: f.cc,
-          bcc: f.bcc,
-          subject: f.subject,
-          bodyHtml: f.bodyHtml,
-          bodyJson: f.bodyJson,
-          attachmentIds: f.attachments.map((a) => a.id),
-        });
+        const d = await saveDraft(
+          this.id,
+          this.state.version,
+          {
+            to: f.to,
+            cc: f.cc,
+            bcc: f.bcc,
+            subject: f.subject,
+            bodyHtml: f.bodyHtml,
+            bodyJson: f.bodyJson,
+            attachmentIds: f.attachments.map((a) => a.id),
+          },
+          syncNow,
+        );
         this.saved = true;
+        this.syncedVersion = d.syncedVersion;
         this.qc.setQueryData(keys.draft(this.id), d);
         this.set({
           version: d.version,
@@ -221,8 +259,10 @@ export class DraftSession {
         return true;
       } catch (err) {
         this.dirty = true;
-        if (isApiError(err, 409)) this.set({ conflict: true, save: "idle" });
-        else this.set({ save: "error" });
+        if (isApiError(err, 409)) {
+          this.conflictCurrent = err.problem?.current ?? null;
+          this.set({ conflict: true, save: "idle" });
+        } else this.set({ save: "error", invalid: invalidOf(err) ?? this.state.invalid });
         return false;
       }
     })();
@@ -234,15 +274,28 @@ export class DraftSession {
   }
 
   /** Saves until nothing is left (edits made during a save are saved too). */
-  private async flush(): Promise<boolean> {
+  private async flush(syncNow = false): Promise<boolean> {
     for (let i = 0; i < 3 && (this.dirty || this.saving); i++) {
-      if (!(await this.save())) return false;
+      if (!(await this.save(syncNow))) return false;
     }
     return !this.dirty;
   }
 
   addFiles(files: Iterable<File>) {
+    // GET /meta maxAttachmentBytes: a file over the limit is refused before it is uploaded.
+    const max = this.qc.getQueryData(metaQuery.queryKey)?.maxAttachmentBytes;
     for (const file of files) {
+      if (max && file.size > max) {
+        const item: UploadItem = {
+          key: ++uploadSeq,
+          name: file.name,
+          size: file.size,
+          progress: 0,
+          error: t.uploadTooLarge(file.name, max),
+        };
+        this.set({ uploads: [...this.state.uploads, item] });
+        continue;
+      }
       const key = ++uploadSeq;
       const abort = new AbortController();
       this.uploadAborts.set(key, abort);
@@ -265,7 +318,9 @@ export class DraftSession {
           this.uploadAborts.delete(key);
           if (err instanceof DOMException && err.name === "AbortError") return;
           patch({
-            error: isApiError(err, 413) ? t.uploadTooLarge(file.name) : t.uploadFailed(file.name),
+            error: isApiError(err, 413)
+              ? t.uploadTooLarge(file.name, err.problem?.limit ?? max)
+              : t.uploadFailed(file.name),
           });
         },
       );
@@ -295,11 +350,18 @@ export class DraftSession {
     useCompose.getState().close(this.id);
   }
 
-  /** X or Esc: save and close; a new draft nobody wrote in is dropped, as in Gmail. */
+  /**
+   * X or Esc: the last save with syncNow, so that the Drafts folder copy is written at once
+   * instead of 30 s later (plan 3.8). A new draft nobody wrote in is deleted at once, as in
+   * Gmail: the server drops such drafts only after 24 h and they would sit in Drafts meanwhile.
+   */
   async close() {
     this.stop();
-    if (this.dirty || this.saving) {
-      const ok = await this.flush();
+    const unsynced = this.saved && this.syncedVersion < this.state.version;
+    if (this.dirty || this.saving || unsynced) {
+      // An autosave not yet in the Drafts folder is sent again, now with syncNow.
+      this.dirty = true;
+      const ok = await this.flush(true);
       if (!ok) toast(t.draftNotSaved);
     } else if (this.createdHere && !this.saved) {
       await deleteDraft(this.id).catch(() => undefined);
@@ -342,7 +404,11 @@ export class DraftSession {
     try {
       res = await sendDraft(this.id);
     } catch (err) {
-      this.set({ sending: false, error: sendErrorMessage(err) });
+      this.set({
+        sending: false,
+        error: sendErrorMessage(err),
+        invalid: invalidOf(err) ?? this.state.invalid,
+      });
       return;
     }
     this.stop();
@@ -353,15 +419,22 @@ export class DraftSession {
   }
 }
 
+/** The refused recipient of invalid_address / validation_failed (Problem.address, field). */
+function invalidOf(err: unknown): SessionState["invalid"] {
+  if (!isApiError(err)) return null;
+  const p = err.problem;
+  return p?.address && p.field ? { address: p.address, field: p.field } : null;
+}
+
 function sendErrorMessage(err: unknown): string {
   if (!isApiError(err)) return t.genericError;
   switch (err.code) {
     case "no_recipients":
       return t.noRecipients;
     case "invalid_address":
-      return t.invalidAddress;
+      return err.problem?.address ? t.invalidAddressOf(err.problem.address) : t.invalidAddress;
     case "message_too_large":
-      return t.messageTooLarge;
+      return t.messageTooLarge(err.problem?.limit, err.problem?.size);
     case "send_in_progress":
       return t.sendInProgress;
     default:

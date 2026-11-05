@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { api } from "../api/client";
 import { call, isApiError } from "../api/errors";
 import { keys } from "../api/keys";
+import { metaQuery } from "../api/queries/meta";
 import { adoptSession } from "../api/queries/session";
 import { t } from "../lib/i18n";
 
@@ -23,11 +24,7 @@ function errorText(err: unknown): string {
 }
 
 function ServerVersion() {
-  const meta = useQuery({
-    queryKey: ["meta"],
-    queryFn: ({ signal }) => call(api.GET("/meta", { signal })),
-    retry: false,
-  });
+  const meta = useQuery(metaQuery);
   return (
     <p className="text-xs text-ink-muted" role="status">
       {meta.isPending && t.loading}

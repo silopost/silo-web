@@ -5,7 +5,6 @@ import { useCompose } from "../state/compose";
 import { setConnection } from "../state/connection";
 import { useToasts } from "../state/toasts";
 import { api, clientId } from "./client";
-import { draftIdOfMessage } from "./drafts";
 import { call } from "./errors";
 import { keys } from "./keys";
 import { updateLists, type LabelsData } from "./mutations/cache";
@@ -111,6 +110,7 @@ export function applyEvent(qc: QueryClient, type: string, data: Data): void {
       handleOperationFailed(qc, {
         operationId: str(data.operationId),
         accountId,
+        kind: str(data.kind),
         threadIds: Array.isArray(data.threadIds) ? (data.threadIds as string[]) : [],
       });
       return;
@@ -123,11 +123,10 @@ export function applyEvent(qc: QueryClient, type: string, data: Data): void {
       return;
     }
     case "outbound.status": {
-      const messageId = str(data.messageId);
+      const draftId = str(data.draftId);
       if (accountId) void qc.invalidateQueries({ queryKey: keys.threadsAll(accountId) });
-      if (data.status !== "failed" || !messageId) return;
+      if (data.status !== "failed" || !draftId) return;
       // The server made the message a draft again (plan 3.9 step 6).
-      const draftId = draftIdOfMessage(messageId);
       useCompose.getState().setFailure(draftId, {
         error: str(data.error),
         failedRecipients: Array.isArray(data.failedRecipients)
