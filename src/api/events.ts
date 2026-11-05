@@ -1,0 +1,266 @@
+import type { QueryClient } from "@tanstack/react-query";
+import { t } from "../lib/i18n";
+import { setConnection } from "../state/connection";
+import { toast } from "../state/toasts";
+import { api, clientId } from "./client";
+import { call } from "./errors";
+import { keys } from "./keys";
+import { updateLists, type LabelsData } from "./mutations/cache";
+import { handleOperationFailed, isThreadOpRunning } from "./mutations/threads";
+import type { SyncStatus, Thread, ThreadDetail } from "./types";
+
+type Data = Record<string, unknown>;
+
+const EVENT_TYPES = [
+  "message.new",
+  "thread.updated",
+  "thread.deleted",
+  "thread.merged",
+  "label.counts",
+  "label.changed",
+  "operation.failed",
+  "outbound.status",
+  "account.status",
+  "account.sync_progress",
+  "account.error",
+  "resync",
+] as const;
+
+const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+
+/** Maps one event to cache updates and invalidations (plan 5.4). */
+export function applyEvent(qc: QueryClient, type: string, data: Data): void {
+  const accountId = str(data.accountId);
+  const own = data.origin === clientId;
+  switch (type) {
+    case "message.new":
+    case "thread.merged":
+      if (accountId) void qc.invalidateQueries({ queryKey: keys.threadsAll(accountId) });
+      if (str(data.intoId)) void qc.invalidateQueries({ queryKey: keys.thread(str(data.intoId)!) });
+      return;
+    case "thread.updated": {
+      const id = str(data.threadId);
+      if (!id || !accountId) return;
+      // Our own change while an operation is in flight: its answer updates the cache, the event
+      // would overwrite the optimistic state (plan 5.4).
+      if (own && isThreadOpRunning(qc)) return;
+      const labelIds = Array.isArray(data.labelIds) ? (data.labelIds as string[]) : [];
+      const patch: Partial<Thread> = {
+        labelIds,
+        unreadCount: Number(data.unreadCount ?? 0),
+        pendingSync: Boolean(data.pendingSync),
+      };
+      if (typeof data.messageCount === "number") patch.messageCount = data.messageCount;
+      if (str(data.lastMessageAt)) patch.lastMessageAt = str(data.lastMessageAt)!;
+      if (typeof data.snippet === "string") patch.snippet = data.snippet;
+      let seen = false;
+      let moved = false;
+      updateLists(qc, accountId, (row) => {
+        if (row.id !== id) return row;
+        seen = true;
+        moved ||= patch.lastMessageAt !== undefined && patch.lastMessageAt !== row.lastMessageAt;
+        return { ...row, ...patch };
+      });
+      qc.setQueryData<ThreadDetail>(keys.thread(id), (d) => (d ? { ...d, labelIds } : d));
+      // A thread new to a list (or moved within it) needs the server's row and order.
+      if (!seen || moved) {
+        void qc.invalidateQueries({ queryKey: keys.threadsAll(accountId) });
+      }
+      if (patch.messageCount !== undefined)
+        void qc.invalidateQueries({ queryKey: keys.thread(id) });
+      return;
+    }
+    case "thread.deleted": {
+      const id = str(data.threadId);
+      if (!id) return;
+      if (accountId) updateLists(qc, accountId, (row) => (row.id === id ? null : row));
+      qc.removeQueries({ queryKey: keys.thread(id) });
+      return;
+    }
+    case "label.counts": {
+      if (!accountId || !Array.isArray(data.labels)) return;
+      const counts = new Map(
+        (data.labels as { id: string; threadsUnread: number; threadsTotal: number }[]).map((l) => [
+          l.id,
+          l,
+        ]),
+      );
+      qc.setQueryData<LabelsData>(keys.labels(accountId), (d) =>
+        d?.labels
+          ? {
+              ...d,
+              labels: d.labels.map((l) => {
+                const c = counts.get(l.id);
+                return c
+                  ? { ...l, threadsUnread: c.threadsUnread, threadsTotal: c.threadsTotal }
+                  : l;
+              }),
+            }
+          : d,
+      );
+      return;
+    }
+    case "label.changed":
+      if (accountId) void qc.invalidateQueries({ queryKey: keys.labels(accountId) });
+      return;
+    case "operation.failed":
+      handleOperationFailed(qc, {
+        operationId: str(data.operationId),
+        accountId,
+        threadIds: Array.isArray(data.threadIds) ? (data.threadIds as string[]) : [],
+      });
+      return;
+    case "outbound.status":
+      if (data.status === "failed") toast(t.sendFailed);
+      return;
+    case "account.sync_progress":
+      if (!accountId) return;
+      qc.setQueryData<SyncStatus>(keys.syncStatus(accountId), (s) =>
+        s
+          ? {
+              ...s,
+              initialSync: { ...s.initialSync, ...(data as Partial<SyncStatus["initialSync"]>) },
+            }
+          : s,
+      );
+      return;
+    case "account.status":
+    case "account.error":
+      if (accountId) void qc.invalidateQueries({ queryKey: keys.syncStatus(accountId) });
+      void qc.invalidateQueries({ queryKey: keys.session });
+      return;
+    case "resync":
+      void qc.invalidateQueries();
+      return;
+  }
+}
+
+type EventSourceLike = Pick<EventSource, "addEventListener" | "close"> & {
+  onopen: ((ev: Event) => unknown) | null;
+  onerror: ((ev: Event) => unknown) | null;
+  readyState: number;
+};
+
+export const eventsConfig = {
+  url: "/api/v1/events",
+  /** Failed SSE attempts in a row (never opened) before switching to polling. */
+  maxSseFailures: 3,
+  pollIntervalMs: 5000,
+  /** While polling, how often to try SSE again. */
+  sseRetryMs: 60_000,
+  createEventSource: (url: string): EventSourceLike | null =>
+    typeof EventSource === "undefined" ? null : new EventSource(url, { withCredentials: true }),
+};
+
+/**
+ * Connects the tab to the event stream: EventSource with Last-Event-ID (the browser sends it on
+ * its own reconnects; a new EventSource gets it as ?lastEventId=), and GET /events/poll when SSE
+ * keeps failing (plan 5.4). Returns a cleanup function.
+ */
+export function connectEvents(qc: QueryClient): () => void {
+  let lastId: number | null = null;
+  let source: EventSourceLike | null = null;
+  let failures = 0;
+  let stopped = false;
+  let polling = false;
+  let pollTimer: ReturnType<typeof setTimeout> | undefined;
+  let sseRetryTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const handle = (type: string, id: string | number | undefined, raw: unknown) => {
+    const n = Number(id);
+    if (Number.isFinite(n) && id !== "" && id !== undefined) lastId = n;
+    let data: Data = {};
+    if (typeof raw === "string") {
+      try {
+        data = JSON.parse(raw) as Data;
+      } catch {
+        return;
+      }
+    } else if (raw && typeof raw === "object") data = raw as Data;
+    applyEvent(qc, type, data);
+  };
+
+  const openSse = () => {
+    const url = lastId === null ? eventsConfig.url : `${eventsConfig.url}?lastEventId=${lastId}`;
+    const es = eventsConfig.createEventSource(url);
+    if (!es) return startPolling();
+    source = es;
+    for (const type of EVENT_TYPES) {
+      es.addEventListener(type, (ev) => {
+        const me = ev as MessageEvent;
+        handle(type, me.lastEventId, me.data);
+      });
+    }
+    es.onopen = () => {
+      failures = 0;
+      polling = false;
+      clearTimeout(pollTimer);
+      clearTimeout(sseRetryTimer);
+      setConnection("live");
+    };
+    es.onerror = () => {
+      failures += 1;
+      // EventSource retries by itself; after repeated failures (or a closed stream) fall back.
+      if (es.readyState === 2 || failures >= eventsConfig.maxSseFailures) {
+        es.close();
+        source = null;
+        startPolling();
+      } else {
+        void probe();
+      }
+    };
+  };
+
+  // Tells "server unreachable" (offline banner) apart from "SSE not available".
+  const probe = async () => {
+    try {
+      await call(api.GET("/meta"));
+    } catch {
+      if (!stopped) setConnection("offline");
+    }
+  };
+
+  const poll = async () => {
+    if (stopped || source) {
+      polling = false;
+      return;
+    }
+    try {
+      const res = await call(
+        api.GET("/events/poll", { params: { query: { after: lastId ?? 0 } } }),
+      );
+      if (lastId === null) {
+        // First poll without a position: skip the retained backlog, refetch the current state.
+        lastId = res.nextAfter;
+        void qc.invalidateQueries();
+      } else {
+        for (const ev of res.events ?? []) handle(ev.type, ev.id, ev.data);
+        lastId = res.nextAfter;
+      }
+      setConnection("polling");
+    } catch {
+      setConnection("offline");
+    }
+    if (!stopped) pollTimer = setTimeout(poll, eventsConfig.pollIntervalMs);
+  };
+
+  const startPolling = () => {
+    if (stopped || polling) return;
+    polling = true;
+    void poll();
+    clearTimeout(sseRetryTimer);
+    sseRetryTimer = setTimeout(() => {
+      if (stopped) return;
+      failures = 0;
+      openSse();
+    }, eventsConfig.sseRetryMs);
+  };
+
+  openSse();
+  return () => {
+    stopped = true;
+    source?.close();
+    clearTimeout(pollTimer);
+    clearTimeout(sseRetryTimer);
+  };
+}
