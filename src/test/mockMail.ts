@@ -45,6 +45,8 @@ export function createMockMail() {
       signature: "",
       timezone: "Europe/Warsaw",
       undoSendSeconds: 5,
+      desktopNotifications: false,
+      updatedAt: null,
     },
     accounts: [
       {
@@ -80,6 +82,8 @@ export function createMockMail() {
     labelIds: ["INBOX"],
     participants: [{ email: `osoba${n}@firma.pl`, name: `Osoba ${n}`, unread: false }],
     snoozedUntil: null,
+    scheduledAt: null,
+    outboundId: null,
     pendingSync: false,
     draftId: null,
     ...extra,
@@ -155,6 +159,9 @@ export function createMockMail() {
     accountId: t.accountId,
     subject: t.subject,
     labelIds: t.labelIds,
+    snoozedUntil: t.snoozedUntil,
+    scheduledAt: t.scheduledAt,
+    outboundId: t.outboundId,
     messages: [1, 2].map((m) => ({
       id: `m_${t.id}_${m}`,
       from: { email: `osoba@firma.pl`, name: `Nadawca ${m}` },
@@ -186,6 +193,7 @@ export function createMockMail() {
                 size: 284113,
                 inline: false,
                 downloaded: true,
+                thumbnail: false,
               },
             ]
           : [],
@@ -493,6 +501,9 @@ export function createMockMail() {
         filename: file.name,
         size: file.size,
         contentType: file.type || "application/octet-stream",
+        cid: null,
+        inline: false,
+        thumbnail: false,
       };
       state.uploads.set(info.id, info);
       return HttpResponse.json(info, { status: 201 });

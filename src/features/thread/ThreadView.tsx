@@ -52,6 +52,9 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
             subject: row.subject,
             labelIds: row.labelIds,
             messages: null,
+            snoozedUntil: row.snoozedUntil,
+            scheduledAt: row.scheduledAt,
+            outboundId: row.outboundId,
           } satisfies ThreadDetail;
         }
       }
