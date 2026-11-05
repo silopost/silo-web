@@ -33,7 +33,7 @@ The layout follows section 6.2 of the plan (`ARCHITECTURE_AND_PLAN.md` in `silo`
 | `src/api/`                    | `client.ts` (openapi-fetch, CSRF, `X-Silo-Client` per tab), `queries/`, `mutations/` (optimistic thread actions and undo), `events.ts` (SSE with polling fallback) |
 | `src/state/`                  | zustand: UI state, preferences in localStorage, snackbar, connection                                                                                               |
 | `src/shortcuts/`              | `keymap.ts`, `useShortcuts.ts`, `ShortcutsHelpDialog.tsx`                                                                                                          |
-| `src/features/`               | `nav`, `topbar`, `sync`, `threadlist`, `thread`, `labels`, `compose`, `toasts`                                                                                     |
+| `src/features/`               | `nav`, `topbar`, `search`, `snooze`, `sync`, `threadlist`, `thread`, `labels`, `compose`, `toasts`                                                                 |
 | `src/components/`, `src/lib/` | icons, buttons, avatar; dates, Polish strings (`i18n.ts`), message HTML sanitising                                                                                 |
 
 URLs are Gmail-like: `/u/<account index>/<label>` with system slugs (`inbox`, `starred`,
@@ -41,7 +41,7 @@ URLs are Gmail-like: `/u/<account index>/<label>` with system slugs (`inbox`, `s
 label id (`l_…`), `/u/<n>/<label>/<threadId>` and `/u/<n>/search?q=`.
 
 Tests (`npm test`) render the whole app with msw handlers (`src/test/mockMail.ts`, a stateful
-fake server with threads, drafts, uploads, sending and contacts), a fake `EventSource`
+fake server with threads, drafts, uploads, sending, contacts, search and snooze), a fake `EventSource`
 (`src/test/fakeEventSource.ts`) and a fake upload `XMLHttpRequest` (`src/test/fakeUploadXhr.ts`).
 
 ## Compose
@@ -56,6 +56,48 @@ progress, three at a time. Sending is `POST /drafts/{id}/send` after the last sa
 `POST /outbound/{id}/cancel`, whose `Draft` reopens the window. The server owns autosave,
 deduplication and the send queue (plan 2.6); the browser keeps no copy of drafts and only warns
 on leaving the page with unsaved edits.
+
+## Search
+
+`src/features/search` (plan 3.12, 6.3). The client has no query parser (plan 2.6): the text in
+the box is sent as `q` to `GET /threads` and the server parses it. The operators (`from:`,
+`to:`, `subject:`, `label:`, `in:`, `is:`, `has:`, `before:`/`after:`, `older_than:`,
+`larger:`, `OR`, `-`, brackets, "phrases"...) are described in the
+[silo-server README](https://github.com/silopost/silo-server#configuration) (search section) and
+in `api/openapi.yaml`.
+
+- `SearchBox`: a combobox (`aria-autocomplete="list"`, listbox grouped as Ostatnie / Kontakty /
+  Etykiety / Operatory) fed by `GET /search/suggest` 150 ms after typing; accepting a suggestion
+  puts its `text` (the whole query) in the box, a recent query searches at once. History entries
+  are removed with their × button or Shift+Delete (`DELETE /search/history?query=`), all of them
+  with "Wyczyść historię". Enter → `/u/<n>/search?q=`; `/` focuses the box, Esc leaves it.
+- `SearchChips` (`SearchHeader.tsx`): the query split at the spaces outside quotes and
+  brackets, for display only; removing a chip removes that text from `q`.
+- `AdvancedSearchPopover`: Gmail's options (from, to, subject, words, without, attachment,
+  size, date range, where) joined into the text of `q` (`lib/searchText.ts`). "Utwórz filtr"
+  opens `/u/<n>/settings/filters?criteria=<q>` once that route exists; until then it is disabled.
+- Results show "Indeksowanie treści: NN% – wyniki mogą być niepełne" while `indexing.done < 1`,
+  a notice when the search hit the server's time limit (`approximate`), the estimate ("ok. 1240
+  wyników", "2000+ wyników") and `422 invalid_query` under the box.
+
+## Snooze
+
+`src/features/snooze` (plan 3.10): `SnoozeMenu` lists `GET /snooze/presets` (computed by the
+server in the user's time zone; the menu translates the label by `key` and formats `until`)
+and "Wybierz datę i godzinę" (a `datetime-local` field whose value is sent as RFC 3339). It is
+offered by the row (hover), the list toolbar for the selection (one `POST /threads/{id}/snooze`
+per thread, at most 50), the thread view and the `b` shortcut. The threads leave Inbox at once;
+"Cofnij" undoes every operation (`POST /operations/{id}/undo`). "Odłożone" (`SNOOZED`) shows
+the wake time in orange, "Wybudź teraz" (`DELETE /threads/{id}/snooze`) and "Zmień termin";
+the thread view of a snoozed thread says until when.
+
+## Scheduled
+
+The arrow next to "Wyślij" opens "Zaplanuj wysyłkę": the `tomorrow` and `next_week` snooze
+presets of the server ("Jutro rano", "W poniedziałek rano") and a picked date and time, sent as
+`POST /drafts/{id}/send {sendAt}`; the snackbar's "Cofnij" cancels it. "Zaplanowane"
+(`SCHEDULED`) lists the messages with their `scheduledAt`; "Anuluj wysyłkę" is
+`POST /outbound/{outboundId}/cancel`, whose draft opens in a compose window.
 
 ## End-to-end tests
 
