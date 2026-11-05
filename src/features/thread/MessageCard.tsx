@@ -40,7 +40,7 @@ function Recipients({ message, me }: { message: Message; me: string }) {
           e.stopPropagation();
           setOpen((o) => !o);
         }}
-        className="inline-flex items-center rounded hover:bg-hover"
+        className="inline-flex min-h-6 items-center rounded hover:bg-hover"
       >
         {short}
         <Icon name="arrowDropDown" size={16} />

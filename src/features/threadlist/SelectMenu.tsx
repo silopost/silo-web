@@ -35,12 +35,12 @@ export function SelectMenu({ total, selected, onSelect }: Props) {
         checked={all}
         onChange={() => onSelect(selected > 0 ? "none" : "all")}
         aria-label={t.select}
-        className="ml-2 size-4 accent-primary"
+        className="mr-1 ml-2 size-4 accent-primary"
       />
       <DropdownMenu.Root>
         <DropdownMenu.Trigger
           aria-label={t.selectMenu}
-          className="flex h-8 w-5 items-center justify-center text-ink-muted"
+          className="flex h-8 w-6 items-center justify-center text-ink-muted"
         >
           <Icon name="arrowDropDown" />
         </DropdownMenu.Trigger>

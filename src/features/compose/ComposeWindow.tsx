@@ -42,6 +42,9 @@ function Bar({
   );
 }
 
+/** Esc in the editor closes the window too (ProseMirror marks the key as handled). */
+const isEditor = (target: EventTarget) => target instanceof HTMLElement && target.isContentEditable;
+
 const SIZE: Record<WindowMode, string> = {
   normal: "h-[min(36rem,85vh)] w-[min(34rem,95vw)]",
   minimized: "w-64",
@@ -104,7 +107,7 @@ export function ComposeWindow({ draftId, mode }: { draftId: string; mode: Window
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       e.preventDefault();
       void session.send();
-    } else if (e.key === "Escape" && !e.defaultPrevented) {
+    } else if (e.key === "Escape" && (!e.defaultPrevented || isEditor(e.target))) {
       e.preventDefault();
       void session.close();
     } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "C" || e.key === "c")) {
