@@ -1,4 +1,4 @@
-import { memo, type CSSProperties } from "react";
+import { memo } from "react";
 import type { ThreadAction } from "../../api/mutations/threads";
 import type { Label, Thread } from "../../api/types";
 import { Icon } from "../../components/Icon";
@@ -12,7 +12,8 @@ import { ACTION_META } from "./actionMeta";
 type Props = {
   thread: Thread;
   index: number;
-  style: CSSProperties;
+  /** Offset of the row in the virtual list (px); a number, so that memo holds while scrolling. */
+  start: number;
   selected: boolean;
   focused: boolean;
   labels: Label[];
@@ -58,7 +59,7 @@ export const ThreadRow = memo(function ThreadRow(p: Props) {
       aria-label={rowLabel(th, unread, namesText, date)}
       tabIndex={p.focused ? 0 : -1}
       data-thread-id={th.id}
-      style={p.style}
+      style={{ transform: `translateY(${p.start}px)` }}
       onClick={() => p.onOpen(th.id)}
       onFocus={(e) => e.target === e.currentTarget && p.onFocus(th.id)}
       onMouseEnter={() => p.onHoverIntent(th.id)}

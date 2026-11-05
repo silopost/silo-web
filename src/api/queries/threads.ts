@@ -27,6 +27,9 @@ export const threadsQuery = (accountId: string, filter: ListFilter) =>
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     staleTime: 30_000,
+    // A long list holds many pages; comparing all of them deeply on every new page costs more
+    // than it saves (rows are memoised per thread, only the visible ones re-render).
+    structuralSharing: false,
   });
 
 export const threadQuery = (id: string) =>

@@ -35,7 +35,8 @@ export function ThreadList({ ctx }: { ctx: ListContext }) {
   const { setSelection, toggleSelected, setFocused } = useUi.getState();
   const resync = useResync();
   const { run, dialog } = useThreadCommands(ctx.accountId);
-  const actions = actionsForView(ctx.filter);
+  // Stable props keep the memoised rows from re-rendering on every scroll event.
+  const actions = useMemo(() => actionsForView(ctx.filter), [ctx.filter]);
 
   // The selection and cursor belong to one list.
   const listKey = JSON.stringify([ctx.accountId, ctx.filter]);
@@ -201,7 +202,7 @@ export function ThreadList({ ctx }: { ctx: ListContext }) {
                   key={row.id}
                   thread={row}
                   index={item.index}
-                  style={{ transform: `translateY(${item.start}px)` }}
+                  start={item.start}
                   selected={selection.has(row.id)}
                   focused={row.id === tabStop}
                   labels={labels}
