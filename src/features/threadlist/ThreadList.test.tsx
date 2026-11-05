@@ -119,19 +119,20 @@ it("moves with j/k, archives with e and undoes with z", async () => {
   const { mail, user } = setup();
   await row("Temat 5");
 
-  await user.keyboard("j");
-  await waitFor(() =>
-    expect(document.activeElement).toBe(screen.getByRole("row", { name: /Temat 1/ })),
-  );
+  // The first row is the cursor before any key (Gmail): j goes to the second one.
+  expect(screen.getByRole("row", { name: /Temat 1/ })).toHaveAttribute("tabindex", "0");
   await user.keyboard("j");
   await waitFor(() =>
     expect(document.activeElement).toBe(screen.getByRole("row", { name: /Temat 2/ })),
   );
+  await user.keyboard("j");
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByRole("row", { name: /Temat 3/ })),
+  );
   await user.keyboard("k");
   await waitFor(() =>
-    expect(document.activeElement).toBe(screen.getByRole("row", { name: /Temat 1/ })),
+    expect(document.activeElement).toBe(screen.getByRole("row", { name: /Temat 2/ })),
   );
-  await user.keyboard("j");
 
   await user.keyboard("e");
   await waitFor(() => expect(screen.queryByRole("row", { name: /Temat 2/ })).toBeNull());

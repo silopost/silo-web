@@ -121,7 +121,8 @@ export function ThreadList({ ctx }: { ctx: ListContext }) {
     onAction(action, ids);
   };
   useShortcutHandlers({
-    next: () => focusRow(focusedIndex < 0 ? 0 : Math.min(focusedIndex + 1, rows.length - 1)),
+    // Without a cursor the first row is shown as the cursor (tab stop), so j goes to the second.
+    next: () => focusRow(Math.min(Math.max(focusedIndex, 0) + 1, rows.length - 1)),
     prev: () => focusRow(Math.max(focusedIndex - 1, 0)),
     open: () => focusedId && ctx.openThread(focusedId),
     select: () => focusedId && toggleSelected(focusedId),
