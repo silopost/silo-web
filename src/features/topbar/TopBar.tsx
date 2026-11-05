@@ -1,15 +1,17 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
 import { api } from "../../api/client";
 import { setCsrfToken } from "../../api/csrf";
 import { call } from "../../api/errors";
+import { usePatchSettings } from "../../api/queries/settings";
 import { Avatar } from "../../components/Avatar";
+import { Icon } from "../../components/Icon";
 import { IconButton } from "../../components/IconButton";
 import { t } from "../../lib/i18n";
 import { usePrefs, useUi, type Density } from "../../state/ui";
-import { useActiveAccount, useSession } from "../account";
+import { useAccountIndex, useActiveAccount, useSession } from "../account";
 import { SyncStatusIndicator } from "../sync/SyncStatusIndicator";
 import { SearchBox } from "../search/SearchBox";
 
@@ -20,6 +22,7 @@ const menuContent = "z-50 min-w-48 rounded-lg bg-panel p-1 shadow-lg";
 function DensityMenu() {
   const density = usePrefs((s) => s.density);
   const setDensity = usePrefs((s) => s.setDensity);
+  const patch = usePatchSettings();
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
@@ -30,7 +33,13 @@ function DensityMenu() {
           <DropdownMenu.Label className="px-3 py-1 text-xs text-ink-muted">
             {t.density}
           </DropdownMenu.Label>
-          <DropdownMenu.RadioGroup value={density} onValueChange={(v) => setDensity(v as Density)}>
+          <DropdownMenu.RadioGroup
+            value={density}
+            onValueChange={(v) => {
+              setDensity(v as Density);
+              patch.mutate({ density: v });
+            }}
+          >
             {(Object.keys(t.densities) as Density[]).map((d) => (
               <DropdownMenu.RadioItem key={d} value={d} className={menuItem}>
                 <span className="w-4">{density === d ? "✓" : ""}</span>
@@ -89,6 +98,7 @@ export function TopBar() {
   const toggleNav = usePrefs((s) => s.toggleNav);
   const collapsed = usePrefs((s) => s.navCollapsed);
   const openHelp = useUi((s) => s.setShortcutsHelpOpen);
+  const account = useAccountIndex();
   return (
     <header className="flex h-16 shrink-0 items-center gap-2 px-3">
       <IconButton
@@ -104,6 +114,15 @@ export function TopBar() {
         <SyncStatusIndicator />
         <IconButton icon="keyboard" label={t.shortcuts} onClick={() => openHelp(true)} />
         <DensityMenu />
+        <Link
+          to="/u/$account/settings/general"
+          params={{ account }}
+          aria-label={t.settingsTitle}
+          title={t.settingsTitle}
+          className="inline-flex size-9 items-center justify-center rounded-full text-ink-muted hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus"
+        >
+          <Icon name="settings" size={20} />
+        </Link>
         <UserMenu />
       </div>
     </header>

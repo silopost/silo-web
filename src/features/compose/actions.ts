@@ -2,20 +2,43 @@ import type { QueryClient } from "@tanstack/react-query";
 import { createDraft, type DraftMode } from "../../api/drafts";
 import { keys } from "../../api/keys";
 import { findCachedThread } from "../../api/mutations/cache";
+import { sessionQuery } from "../../api/queries/session";
 import { threadQuery } from "../../api/queries/threads";
+import type { Draft, Session, Settings } from "../../api/types";
 import { t } from "../../lib/i18n";
 import { toast } from "../../state/toasts";
 import { openDraft, openLoaded } from "./session";
 
 let creating = false;
 
+/**
+ * The signature of the settings goes into a new draft as a div.silo-signature under the first
+ * (empty) paragraph, above the quote of a reply (plan 5.1 /settings). Text only: the draft is
+ * saved with it once the user edits.
+ */
+function withSignature(qc: QueryClient, d: Draft): Draft {
+  const settings =
+    qc.getQueryData<Settings>(keys.settings) ??
+    qc.getQueryData<Session>(sessionQuery.queryKey)?.settings;
+  const signature = settings?.signature?.trim();
+  if (!signature || d.bodyJson) return d;
+  const rest = d.bodyHtml.replace(/^<p><\/p>/, "");
+  return {
+    ...d,
+    bodyHtml: `<p></p><div class="silo-signature">${signature}</div>${rest}`,
+  };
+}
+
 async function create(qc: QueryClient, body: Parameters<typeof createDraft>[0], maximized = false) {
   // A second `c` while the first draft is being created must not create another one.
   if (creating) return;
   creating = true;
   try {
-    const d = await createDraft(body);
+    const d = withSignature(qc, await createDraft(body));
     openLoaded(qc, d, { created: true, maximized });
+    // Forward: parts of the original that could not be carried over (plan 5.1 POST /drafts).
+    const warnings = (d.warnings ?? []).map((w) => t.forwardWarnings[w]).filter(Boolean);
+    if (warnings.length > 0) toast(warnings.join(" "));
     void qc.invalidateQueries({ queryKey: keys.threadsAll(d.accountId) });
   } catch {
     toast(t.genericError);

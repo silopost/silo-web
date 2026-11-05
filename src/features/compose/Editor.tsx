@@ -1,4 +1,5 @@
 import * as Popover from "@radix-ui/react-popover";
+import { Node, mergeAttributes } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -10,30 +11,130 @@ import {
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useRef, useState } from "react";
+import type { UploadInfo } from "../../api/types";
 import { IconButton } from "../../components/IconButton";
 import type { IconName } from "../../components/Icon";
 import { t } from "../../lib/i18n";
+import { inlinePreviewUrl } from "../../lib/inlineImages";
 import { sanitizePastedHtml } from "../../lib/pasteHtml";
 
 type Props = {
   /** Id of the editable element (focus on open). */
   id: string;
+  /** Accessible name; the message body by default. */
+  label?: string;
   /** TipTap JSON, or HTML (the server's prefill for replies) when there is none. */
   content: unknown;
   /** Grows when the draft is (re)loaded from the server: the content is replaced. */
   loadSeq: number;
   onChange: (html: string, json: unknown) => void;
-  /** Files pasted or dropped into the text. */
-  onFiles: (files: File[]) => void;
+  /** Files pasted or dropped into the text (not pictures, when onInlineImage is given). */
+  onFiles?: (files: File[]) => void;
+  /** Uploads a pasted or dropped picture as an inline upload (POST /uploads inline=true). */
+  onInlineImage?: (file: File) => Promise<UploadInfo>;
 };
 
 const filesOf = (list: FileList | null | undefined) => (list ? Array.from(list) : []);
 
+/**
+ * Pictures with the cid of their inline upload (data-cid) and, while uploading, the key of the
+ * placeholder (data-upload-key); lib/inlineImages turns them into cid: sources for the server.
+ */
+const InlineImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      cid: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.getAttribute("data-cid"),
+        renderHTML: (a: { cid?: string | null }) => (a.cid ? { "data-cid": a.cid } : {}),
+      },
+      uploadKey: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.getAttribute("data-upload-key"),
+        renderHTML: (a: { uploadKey?: string | null }) =>
+          a.uploadKey ? { "data-upload-key": a.uploadKey } : {},
+      },
+    };
+  },
+});
+
+/** The signature block of the settings (div.silo-signature), kept as is. */
+const Signature = Node.create({
+  name: "signature",
+  group: "block",
+  content: "block+",
+  defining: true,
+  parseHTML: () => [{ tag: "div.silo-signature" }],
+  renderHTML: ({ HTMLAttributes }) => [
+    "div",
+    mergeAttributes(HTMLAttributes, { class: "silo-signature" }),
+    0,
+  ],
+});
+
+let uploadKeySeq = 0;
+
 /** Rich text of the message (plan 6.1): TipTap with StarterKit, Link, Placeholder and Image. */
-export function Editor({ id, content, loadSeq, onChange, onFiles }: Props) {
-  const callbacks = useRef({ onChange, onFiles });
+export function Editor({ id, label, content, loadSeq, onChange, onFiles, onInlineImage }: Props) {
+  const callbacks = useRef({ onChange, onFiles, onInlineImage });
   useEffect(() => {
-    callbacks.current = { onChange, onFiles };
+    callbacks.current = { onChange, onFiles, onInlineImage };
+  });
+  const editorRef = useRef<TiptapEditor | null>(null);
+
+  /** Puts a picture in the text at once (placeholder) and swaps in the upload when it is done. */
+  const insertInline = (file: File) => {
+    const e = editorRef.current;
+    const upload = callbacks.current.onInlineImage;
+    if (!e || !upload) return;
+    const key = String(++uploadKeySeq);
+    const preview = typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : "";
+    e.chain()
+      .focus()
+      .insertContent({
+        type: "image",
+        attrs: { src: preview, alt: t.inlineUploading(file.name), uploadKey: key },
+      })
+      .run();
+    const settle = (attrs: Record<string, unknown> | null) => {
+      if (preview) URL.revokeObjectURL(preview);
+      const ed = editorRef.current;
+      if (!ed || ed.isDestroyed) return;
+      ed.commands.command(({ tr, state }) => {
+        state.doc.descendants((node, pos) => {
+          if (node.type.name !== "image" || node.attrs.uploadKey !== key) return true;
+          if (attrs) tr.setNodeMarkup(pos, undefined, { ...node.attrs, ...attrs });
+          else tr.delete(pos, pos + node.nodeSize);
+          return false;
+        });
+        return true;
+      });
+    };
+    upload(file).then(
+      (info) =>
+        settle({
+          src: inlinePreviewUrl(info.id),
+          alt: info.filename,
+          cid: info.cid,
+          uploadKey: null,
+        }),
+      () => settle(null),
+    );
+  };
+
+  /** Pictures go in the text as inline uploads, other files to the attachments. */
+  const takeFiles = (files: File[]): boolean => {
+    const { onFiles: toAttachments, onInlineImage: upload } = callbacks.current;
+    const pictures = upload ? files.filter((f) => f.type.startsWith("image/")) : [];
+    const others = files.filter((f) => !pictures.includes(f));
+    if (others.length > 0) toAttachments?.(others);
+    for (const file of pictures) insertInline(file);
+    return pictures.length > 0 || (others.length > 0 && !!toAttachments);
+  };
+  const take = useRef(takeFiles);
+  useEffect(() => {
+    take.current = takeFiles;
   });
 
   const editor = useEditor({
@@ -41,7 +142,8 @@ export function Editor({ id, content, loadSeq, onChange, onFiles }: Props) {
       StarterKit.configure({ link: false }),
       Link.configure({ openOnClick: false, autolink: true, defaultProtocol: "https" }),
       Placeholder.configure({ placeholder: t.bodyPlaceholder }),
-      Image.configure({ inline: false, allowBase64: false }),
+      InlineImage.configure({ inline: false, allowBase64: false }),
+      Signature,
     ],
     content: (content as string | object | null) ?? "",
     editorProps: {
@@ -49,27 +151,28 @@ export function Editor({ id, content, loadSeq, onChange, onFiles }: Props) {
         id,
         role: "textbox",
         "aria-multiline": "true",
-        "aria-label": t.messageBody,
+        "aria-label": label ?? t.messageBody,
         class: "compose-body min-h-32 px-3 py-2 outline-none",
       },
       transformPastedHTML: sanitizePastedHtml,
-      // Pasted or dropped files become attachments; inline images (cid:) need server support.
       handlePaste: (_view, event) => {
         const files = filesOf(event.clipboardData?.files);
         if (files.length === 0) return false;
-        callbacks.current.onFiles(files);
-        return true;
+        return take.current(files);
       },
       handleDrop: (_view, event) => {
         const files = filesOf((event as DragEvent).dataTransfer?.files);
         if (files.length === 0) return false;
         event.preventDefault();
-        callbacks.current.onFiles(files);
+        take.current(files);
         return true;
       },
     },
     onUpdate: ({ editor: e }) => callbacks.current.onChange(e.getHTML(), e.getJSON()),
   });
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
 
   const applied = useRef(loadSeq);
   useEffect(() => {

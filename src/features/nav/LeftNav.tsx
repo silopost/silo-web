@@ -10,6 +10,8 @@ import { SYSTEM_VIEWS, type SystemView } from "../../lib/labels";
 import { usePrefs } from "../../state/ui";
 import { useAccountIndex, useActiveAccount } from "../account";
 import { openNewCompose } from "../compose/actions";
+import { KeywordWarning } from "../labels/KeywordWarning";
+import { keywordWarning, useFolderNames } from "../labels/keywords";
 
 type ItemProps = {
   slug: string;
@@ -19,10 +21,11 @@ type ItemProps = {
   bold: boolean;
   collapsed: boolean;
   color?: string | null;
-  title?: string;
+  /** Keyword warning of a user label (plan 3.7). */
+  warning?: string | null;
 };
 
-function NavItem({ slug, name, icon, count, bold, collapsed, color, title }: ItemProps) {
+function NavItem({ slug, name, icon, count, bold, collapsed, color, warning }: ItemProps) {
   const account = useAccountIndex();
   const params = useParams({ strict: false }) as { label?: string };
   const active = params.label === slug;
@@ -33,7 +36,7 @@ function NavItem({ slug, name, icon, count, bold, collapsed, color, title }: Ite
         params={{ account, label: slug }}
         aria-current={active ? "page" : undefined}
         aria-label={collapsed ? name : undefined}
-        title={title ?? (collapsed ? name : undefined)}
+        title={collapsed ? name : undefined}
         className={`flex h-8 items-center gap-4 rounded-r-full pr-3 pl-6 ${
           active ? "bg-nav-active font-semibold" : "hover:bg-hover"
         } ${bold ? "font-semibold" : ""}`}
@@ -44,6 +47,7 @@ function NavItem({ slug, name, icon, count, bold, collapsed, color, title }: Ite
         {!collapsed && (
           <>
             <span className="flex-1 truncate">{name}</span>
+            <KeywordWarning text={warning ?? null} plain />
             {count > 0 && <span className="text-xs">{formatCount(count)}</span>}
           </>
         )}
@@ -117,10 +121,22 @@ export function LeftNav() {
         </li>
       </ul>
       {userLabels.length > 0 && (
-        <LabelSection title={t.labels} labels={userLabels} icon="label" collapsed={collapsed} />
+        <LabelSection
+          title={t.labels}
+          labels={userLabels}
+          icon="label"
+          collapsed={collapsed}
+          accountId={account?.id}
+        />
       )}
       {folders.length > 0 && (
-        <LabelSection title={t.folders} labels={folders} icon="folder" collapsed={collapsed} />
+        <LabelSection
+          title={t.folders}
+          labels={folders}
+          icon="folder"
+          collapsed={collapsed}
+          accountId={account?.id}
+        />
       )}
     </nav>
   );
@@ -131,7 +147,9 @@ function LabelSection(props: {
   labels: Label[];
   icon: IconName;
   collapsed: boolean;
+  accountId: string | undefined;
 }) {
+  const folderNames = useFolderNames(props.accountId);
   return (
     <section aria-label={props.title} className="mt-4">
       {!props.collapsed && <h2 className="px-6 py-1 text-base">{props.title}</h2>}
@@ -146,7 +164,7 @@ function LabelSection(props: {
             bold={l.threadsUnread > 0}
             collapsed={props.collapsed}
             color={l.colorBg}
-            title={l.keywordState === "local_only" ? `${l.name} – ${t.localOnlyLabel}` : undefined}
+            warning={keywordWarning(l, folderNames)}
           />
         ))}
       </ul>

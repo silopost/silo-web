@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { openDraft } from "../features/compose/session";
+import { notifyNewMessage } from "../features/notifications/desktop";
 import { t } from "../lib/i18n";
 import { useCompose } from "../state/compose";
 import { setConnection } from "../state/connection";
@@ -8,6 +9,7 @@ import { api, clientId } from "./client";
 import { call } from "./errors";
 import { keys } from "./keys";
 import { updateLists, type LabelsData } from "./mutations/cache";
+import { appliedHere } from "./queries/filters";
 import { handleOperationFailed, isThreadOpRunning } from "./mutations/threads";
 import type { SyncStatus, Thread, ThreadDetail } from "./types";
 
@@ -23,6 +25,8 @@ const EVENT_TYPES = [
   "draft.updated",
   "operation.failed",
   "outbound.status",
+  "filter.applied",
+  "settings.updated",
   "account.status",
   "account.sync_progress",
   "account.error",
@@ -37,6 +41,9 @@ export function applyEvent(qc: QueryClient, type: string, data: Data): void {
   const own = data.origin === clientId;
   switch (type) {
     case "message.new":
+      notifyNewMessage(qc, data);
+      if (accountId) void qc.invalidateQueries({ queryKey: keys.threadsAll(accountId) });
+      return;
     case "thread.merged":
       if (accountId) void qc.invalidateQueries({ queryKey: keys.threadsAll(accountId) });
       if (str(data.intoId)) void qc.invalidateQueries({ queryKey: keys.thread(str(data.intoId)!) });
@@ -116,6 +123,21 @@ export function applyEvent(qc: QueryClient, type: string, data: Data): void {
     case "label.changed":
       if (accountId) void qc.invalidateQueries({ queryKey: keys.labels(accountId) });
       return;
+    case "settings.updated":
+      // Another session changed the settings: GET /settings again (our own answer is cached).
+      if (!own) void qc.invalidateQueries({ queryKey: keys.settings });
+      return;
+    case "filter.applied": {
+      if (accountId) {
+        void qc.invalidateQueries({ queryKey: keys.threadsAll(accountId) });
+        void qc.invalidateQueries({ queryKey: keys.labels(accountId) });
+      }
+      const filterId = str(data.filterId);
+      if (filterId && appliedHere.delete(filterId)) {
+        useToasts.getState().show({ message: t.filtersPanel.applied(Number(data.threads ?? 0)) });
+      }
+      return;
+    }
     case "operation.failed":
       handleOperationFailed(qc, {
         operationId: str(data.operationId),

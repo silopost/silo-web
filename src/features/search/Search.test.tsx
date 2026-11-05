@@ -177,11 +177,7 @@ it("the advanced search joins its fields into q", async () => {
   await user.click(within(form).getByRole("checkbox", { name: "Ma załącznik" }));
   fireEvent.change(within(form).getByLabelText("Po dniu"), { target: { value: "2026-11-01" } });
   await user.selectOptions(within(form).getByRole("combobox", { name: "Szukaj w" }), "in:inbox");
-  // The filter editor does not exist yet: the button is disabled with a hint.
-  expect(within(form).getByRole("button", { name: "Utwórz filtr" })).toHaveAttribute(
-    "aria-disabled",
-    "true",
-  );
+  expect(within(form).getByRole("button", { name: "Utwórz filtr" })).toBeEnabled();
   await user.click(within(form).getByRole("button", { name: "Szukaj" }));
 
   await waitFor(() =>

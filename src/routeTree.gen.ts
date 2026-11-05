@@ -14,8 +14,14 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppUAccountLabelRouteImport } from './routes/_app.u.$account.$label'
 import { Route as AppUAccountSearchRouteImport } from './routes/_app.u.$account.search'
+import { Route as AppUAccountSettingsRouteImport } from './routes/_app.u.$account.settings'
 import { Route as AppUAccountLabelThreadIdRouteImport } from './routes/_app.u.$account.$label.$threadId'
 import { Route as AppUAccountSearchThreadIdRouteImport } from './routes/_app.u.$account.search.$threadId'
+import { Route as AppUAccountSettingsIndexRouteImport } from './routes/_app.u.$account.settings.index'
+import { Route as AppUAccountSettingsAccountsRouteImport } from './routes/_app.u.$account.settings.accounts'
+import { Route as AppUAccountSettingsFiltersRouteImport } from './routes/_app.u.$account.settings.filters'
+import { Route as AppUAccountSettingsGeneralRouteImport } from './routes/_app.u.$account.settings.general'
+import { Route as AppUAccountSettingsLabelsRouteImport } from './routes/_app.u.$account.settings.labels'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -41,6 +47,11 @@ const AppUAccountSearchRoute = AppUAccountSearchRouteImport.update({
   path: '/u/$account/search',
   getParentRoute: () => AppRoute,
 } as any)
+const AppUAccountSettingsRoute = AppUAccountSettingsRouteImport.update({
+  id: '/u/$account/settings',
+  path: '/u/$account/settings',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppUAccountLabelThreadIdRoute =
   AppUAccountLabelThreadIdRouteImport.update({
     id: '/$threadId',
@@ -53,14 +64,50 @@ const AppUAccountSearchThreadIdRoute =
     path: '/$threadId',
     getParentRoute: () => AppUAccountSearchRoute,
   } as any)
+const AppUAccountSettingsIndexRoute =
+  AppUAccountSettingsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppUAccountSettingsRoute,
+  } as any)
+const AppUAccountSettingsAccountsRoute =
+  AppUAccountSettingsAccountsRouteImport.update({
+    id: '/accounts',
+    path: '/accounts',
+    getParentRoute: () => AppUAccountSettingsRoute,
+  } as any)
+const AppUAccountSettingsFiltersRoute =
+  AppUAccountSettingsFiltersRouteImport.update({
+    id: '/filters',
+    path: '/filters',
+    getParentRoute: () => AppUAccountSettingsRoute,
+  } as any)
+const AppUAccountSettingsGeneralRoute =
+  AppUAccountSettingsGeneralRouteImport.update({
+    id: '/general',
+    path: '/general',
+    getParentRoute: () => AppUAccountSettingsRoute,
+  } as any)
+const AppUAccountSettingsLabelsRoute =
+  AppUAccountSettingsLabelsRouteImport.update({
+    id: '/labels',
+    path: '/labels',
+    getParentRoute: () => AppUAccountSettingsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/u/$account/$label': typeof AppUAccountLabelRouteWithChildren
   '/u/$account/search': typeof AppUAccountSearchRouteWithChildren
+  '/u/$account/settings': typeof AppUAccountSettingsRouteWithChildren
   '/u/$account/$label/$threadId': typeof AppUAccountLabelThreadIdRoute
   '/u/$account/search/$threadId': typeof AppUAccountSearchThreadIdRoute
+  '/u/$account/settings/accounts': typeof AppUAccountSettingsAccountsRoute
+  '/u/$account/settings/filters': typeof AppUAccountSettingsFiltersRoute
+  '/u/$account/settings/general': typeof AppUAccountSettingsGeneralRoute
+  '/u/$account/settings/labels': typeof AppUAccountSettingsLabelsRoute
+  '/u/$account/settings/': typeof AppUAccountSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -69,6 +116,11 @@ export interface FileRoutesByTo {
   '/u/$account/search': typeof AppUAccountSearchRouteWithChildren
   '/u/$account/$label/$threadId': typeof AppUAccountLabelThreadIdRoute
   '/u/$account/search/$threadId': typeof AppUAccountSearchThreadIdRoute
+  '/u/$account/settings/accounts': typeof AppUAccountSettingsAccountsRoute
+  '/u/$account/settings/filters': typeof AppUAccountSettingsFiltersRoute
+  '/u/$account/settings/general': typeof AppUAccountSettingsGeneralRoute
+  '/u/$account/settings/labels': typeof AppUAccountSettingsLabelsRoute
+  '/u/$account/settings': typeof AppUAccountSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,8 +129,14 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/u/$account/$label': typeof AppUAccountLabelRouteWithChildren
   '/_app/u/$account/search': typeof AppUAccountSearchRouteWithChildren
+  '/_app/u/$account/settings': typeof AppUAccountSettingsRouteWithChildren
   '/_app/u/$account/$label/$threadId': typeof AppUAccountLabelThreadIdRoute
   '/_app/u/$account/search/$threadId': typeof AppUAccountSearchThreadIdRoute
+  '/_app/u/$account/settings/accounts': typeof AppUAccountSettingsAccountsRoute
+  '/_app/u/$account/settings/filters': typeof AppUAccountSettingsFiltersRoute
+  '/_app/u/$account/settings/general': typeof AppUAccountSettingsGeneralRoute
+  '/_app/u/$account/settings/labels': typeof AppUAccountSettingsLabelsRoute
+  '/_app/u/$account/settings/': typeof AppUAccountSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -87,8 +145,14 @@ export interface FileRouteTypes {
     | '/login'
     | '/u/$account/$label'
     | '/u/$account/search'
+    | '/u/$account/settings'
     | '/u/$account/$label/$threadId'
     | '/u/$account/search/$threadId'
+    | '/u/$account/settings/accounts'
+    | '/u/$account/settings/filters'
+    | '/u/$account/settings/general'
+    | '/u/$account/settings/labels'
+    | '/u/$account/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -97,6 +161,11 @@ export interface FileRouteTypes {
     | '/u/$account/search'
     | '/u/$account/$label/$threadId'
     | '/u/$account/search/$threadId'
+    | '/u/$account/settings/accounts'
+    | '/u/$account/settings/filters'
+    | '/u/$account/settings/general'
+    | '/u/$account/settings/labels'
+    | '/u/$account/settings'
   id:
     | '__root__'
     | '/'
@@ -104,8 +173,14 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/u/$account/$label'
     | '/_app/u/$account/search'
+    | '/_app/u/$account/settings'
     | '/_app/u/$account/$label/$threadId'
     | '/_app/u/$account/search/$threadId'
+    | '/_app/u/$account/settings/accounts'
+    | '/_app/u/$account/settings/filters'
+    | '/_app/u/$account/settings/general'
+    | '/_app/u/$account/settings/labels'
+    | '/_app/u/$account/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -151,6 +226,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUAccountSearchRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/u/$account/settings': {
+      id: '/_app/u/$account/settings'
+      path: '/u/$account/settings'
+      fullPath: '/u/$account/settings'
+      preLoaderRoute: typeof AppUAccountSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/u/$account/$label/$threadId': {
       id: '/_app/u/$account/$label/$threadId'
       path: '/$threadId'
@@ -164,6 +246,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/u/$account/search/$threadId'
       preLoaderRoute: typeof AppUAccountSearchThreadIdRouteImport
       parentRoute: typeof AppUAccountSearchRoute
+    }
+    '/_app/u/$account/settings/': {
+      id: '/_app/u/$account/settings/'
+      path: '/'
+      fullPath: '/u/$account/settings/'
+      preLoaderRoute: typeof AppUAccountSettingsIndexRouteImport
+      parentRoute: typeof AppUAccountSettingsRoute
+    }
+    '/_app/u/$account/settings/accounts': {
+      id: '/_app/u/$account/settings/accounts'
+      path: '/accounts'
+      fullPath: '/u/$account/settings/accounts'
+      preLoaderRoute: typeof AppUAccountSettingsAccountsRouteImport
+      parentRoute: typeof AppUAccountSettingsRoute
+    }
+    '/_app/u/$account/settings/filters': {
+      id: '/_app/u/$account/settings/filters'
+      path: '/filters'
+      fullPath: '/u/$account/settings/filters'
+      preLoaderRoute: typeof AppUAccountSettingsFiltersRouteImport
+      parentRoute: typeof AppUAccountSettingsRoute
+    }
+    '/_app/u/$account/settings/general': {
+      id: '/_app/u/$account/settings/general'
+      path: '/general'
+      fullPath: '/u/$account/settings/general'
+      preLoaderRoute: typeof AppUAccountSettingsGeneralRouteImport
+      parentRoute: typeof AppUAccountSettingsRoute
+    }
+    '/_app/u/$account/settings/labels': {
+      id: '/_app/u/$account/settings/labels'
+      path: '/labels'
+      fullPath: '/u/$account/settings/labels'
+      preLoaderRoute: typeof AppUAccountSettingsLabelsRouteImport
+      parentRoute: typeof AppUAccountSettingsRoute
     }
   }
 }
@@ -190,14 +307,35 @@ const AppUAccountSearchRouteChildren: AppUAccountSearchRouteChildren = {
 const AppUAccountSearchRouteWithChildren =
   AppUAccountSearchRoute._addFileChildren(AppUAccountSearchRouteChildren)
 
+interface AppUAccountSettingsRouteChildren {
+  AppUAccountSettingsAccountsRoute: typeof AppUAccountSettingsAccountsRoute
+  AppUAccountSettingsFiltersRoute: typeof AppUAccountSettingsFiltersRoute
+  AppUAccountSettingsGeneralRoute: typeof AppUAccountSettingsGeneralRoute
+  AppUAccountSettingsLabelsRoute: typeof AppUAccountSettingsLabelsRoute
+  AppUAccountSettingsIndexRoute: typeof AppUAccountSettingsIndexRoute
+}
+
+const AppUAccountSettingsRouteChildren: AppUAccountSettingsRouteChildren = {
+  AppUAccountSettingsAccountsRoute: AppUAccountSettingsAccountsRoute,
+  AppUAccountSettingsFiltersRoute: AppUAccountSettingsFiltersRoute,
+  AppUAccountSettingsGeneralRoute: AppUAccountSettingsGeneralRoute,
+  AppUAccountSettingsLabelsRoute: AppUAccountSettingsLabelsRoute,
+  AppUAccountSettingsIndexRoute: AppUAccountSettingsIndexRoute,
+}
+
+const AppUAccountSettingsRouteWithChildren =
+  AppUAccountSettingsRoute._addFileChildren(AppUAccountSettingsRouteChildren)
+
 interface AppRouteChildren {
   AppUAccountLabelRoute: typeof AppUAccountLabelRouteWithChildren
   AppUAccountSearchRoute: typeof AppUAccountSearchRouteWithChildren
+  AppUAccountSettingsRoute: typeof AppUAccountSettingsRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppUAccountLabelRoute: AppUAccountLabelRouteWithChildren,
   AppUAccountSearchRoute: AppUAccountSearchRouteWithChildren,
+  AppUAccountSettingsRoute: AppUAccountSettingsRouteWithChildren,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

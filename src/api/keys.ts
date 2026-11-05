@@ -15,4 +15,6 @@ export const keys = {
   searchSuggest: (accountId: string, q: string) => ["searchSuggest", accountId, q] as const,
   searchSuggestAll: ["searchSuggest"] as const,
   snoozePresets: ["snoozePresets"] as const,
+  settings: ["settings"] as const,
+  filters: (accountId: string) => ["filters", accountId] as const,
 };

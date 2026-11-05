@@ -3,8 +3,11 @@ import type {
   Address,
   ContactSuggestion,
   Draft,
+  Filter,
+  FilterBody,
   Label,
   Session,
+  Settings,
   SnoozePreset,
   Thread,
   ThreadDetail,
@@ -131,7 +134,30 @@ export function createMockMail() {
       { key: "this_weekend", label: "This weekend", until: "2026-11-07T07:00:00Z" },
       { key: "next_week", label: "Next week", until: "2026-11-09T07:00:00Z" },
     ] as SnoozePreset[],
+    /** User and folder labels (GET /labels after the system ones). */
+    extraLabels: [] as Label[],
+    /** sync-status keywordsSupported. */
+    keywordsSupported: true,
+    filters: [] as Filter[],
+    /** matchedEstimate of POST /filters/{id}/apply. */
+    applyEstimate: 12 as number | null,
+    /** Problem answered by the next POST /accounts/{id}/resync. */
+    resyncProblem: null as FakeProblem | null,
+    /** Fields of the next draft created with mode forward (attachments, warnings). */
+    forwardExtra: {} as Partial<Draft>,
+    /** Problem answered by PATCH /settings, per field. */
+    settingsProblem: {} as Record<string, FakeProblem>,
     calls: {
+      settings: [] as Record<string, unknown>[],
+      labelsCreate: [] as Record<string, unknown>[],
+      labelsPatch: [] as (Record<string, unknown> & { id: string })[],
+      labelsDelete: [] as string[],
+      filtersCreate: [] as FilterBody[],
+      filtersPut: [] as (FilterBody & { id: string })[],
+      filtersDelete: [] as string[],
+      filtersApply: [] as string[],
+      resync: [] as { id: string; mode: string }[],
+      uploadInline: [] as boolean[],
       createDraft: [] as { accountId?: string; replyToMessageId?: string; mode?: string }[],
       putDraft: [] as (DraftPut & { id: string })[],
       deleteDraft: [] as string[],
@@ -158,25 +184,59 @@ export function createMockMail() {
   const ops = new Map<string, Map<string, Before>>();
   let opSeq = 0;
 
-  const labels = (): Label[] =>
-    ["INBOX", "STARRED", "SNOOZED", "SENT", "SCHEDULED", "DRAFT", "SPAM", "TRASH"].map((id, i) => {
-      const inLabel = state.threads.filter((t) => t.labelIds?.includes(id));
-      return {
-        id,
-        accountId: "acc_1",
-        name: id,
-        type: "system",
-        colorBg: null,
-        colorText: null,
-        folderId: null,
-        keywordState: null,
-        parentId: null,
-        position: i,
-        showInList: "show",
-        threadsTotal: inLabel.length,
-        threadsUnread: inLabel.filter((t) => t.unreadCount > 0).length,
-      } satisfies Label;
-    });
+  const counted = (l: Label): Label => {
+    const inLabel = state.threads.filter((t) => t.labelIds?.includes(l.id));
+    return {
+      ...l,
+      threadsTotal: inLabel.length,
+      threadsUnread: inLabel.filter((t) => t.unreadCount > 0).length,
+    };
+  };
+
+  /** A user or folder label as GET /labels lists it. */
+  const makeLabel = (id: string, name: string, extra: Partial<Label> = {}): Label => ({
+    id,
+    accountId: "acc_1",
+    name,
+    type: "user",
+    colorBg: null,
+    colorText: null,
+    folderId: null,
+    keywordState: "mirrored",
+    localOnlyFolders: null,
+    parentId: null,
+    position: 0,
+    showInList: "show",
+    threadsTotal: 0,
+    threadsUnread: 0,
+    ...extra,
+  });
+  let labelSeq = 0;
+  let filterSeq = 0;
+
+  const labels = (): Label[] => [
+    ...["INBOX", "STARRED", "SNOOZED", "SENT", "SCHEDULED", "DRAFT", "SPAM", "TRASH"].map(
+      (id, i) => {
+        const inLabel = state.threads.filter((t) => t.labelIds?.includes(id));
+        return {
+          id,
+          accountId: "acc_1",
+          name: id,
+          type: "system",
+          colorBg: null,
+          colorText: null,
+          folderId: null,
+          keywordState: null,
+          parentId: null,
+          position: i,
+          showInList: "show",
+          threadsTotal: inLabel.length,
+          threadsUnread: inLabel.filter((t) => t.unreadCount > 0).length,
+        } satisfies Label;
+      },
+    ),
+    ...state.extraLabels.map(counted),
+  ];
 
   const detail = (t: Thread): ThreadDetail => ({
     id: t.id,
@@ -247,6 +307,36 @@ export function createMockMail() {
     };
   };
 
+  const filterActions = (body: FilterBody) => ({
+    archive: body.actions.archive ?? false,
+    markRead: body.actions.markRead ?? false,
+    star: body.actions.star ?? false,
+    important: body.actions.important ?? false,
+    trash: body.actions.trash ?? false,
+    addLabelIds: body.actions.addLabelIds ?? [],
+    forwardTo: body.actions.forwardTo || null,
+  });
+
+  /** The server's 422s of a filter: query syntax (as the search fake), no action, archive+trash. */
+  const filterProblem = (body: FilterBody) => {
+    if (/^[^(]*\)/.test(body.criteria)) return problem(422, "invalid_query");
+    const a = filterActions(body);
+    const any =
+      a.archive || a.markRead || a.star || a.important || a.trash || a.addLabelIds.length > 0;
+    if (!body.criteria.trim() || !(any || a.forwardTo) || (a.archive && a.trash)) {
+      return problem(422, "invalid_filter");
+    }
+    return null;
+  };
+
+  /** position (0-based) moves the filter and shifts the others, as the server does. */
+  const moveFilter = (f: Filter, position: number) => {
+    const rest = state.filters.filter((x) => x !== f).sort((a, b) => a.position - b.position);
+    rest.splice(Math.max(0, Math.min(position, rest.length)), 0, f);
+    rest.forEach((x, i) => (x.position = i));
+    state.filters = rest;
+  };
+
   let draftSeq = 0;
   let uploadSeq = 0;
   let outboundSeq = 0;
@@ -283,6 +373,8 @@ export function createMockMail() {
       d.to = forward ? [] : [{ name: "Nadawca 2", email: "osoba@firma.pl" }];
       d.cc = body.mode === "replyAll" ? [{ name: "Inna Osoba", email: "inna@firma.pl" }] : [];
       d.bodyHtml = "<p></p><blockquote><p>Cytowana treść</p></blockquote>";
+      if (forward) Object.assign(d, state.forwardExtra);
+      for (const a of d.attachments ?? []) state.uploads.set(a.id, a);
     }
     state.drafts.set(d.id, d);
     return d;
@@ -348,6 +440,127 @@ export function createMockMail() {
       return new HttpResponse(null, { status: 204 });
     }),
     http.get("*/api/v1/labels", () => HttpResponse.json({ labels: labels() })),
+    http.post("*/api/v1/labels", async ({ request }) => {
+      const body = (await request.json()) as {
+        name: string;
+        type: "user" | "folder";
+        colorBg?: string;
+        colorText?: string;
+        parentId?: string;
+      };
+      state.calls.labelsCreate.push(body);
+      if (state.extraLabels.some((l) => l.name === body.name && l.type === body.type)) {
+        return problem(409, "label_exists");
+      }
+      const l = makeLabel(`l_new${++labelSeq}`, body.name, {
+        type: body.type,
+        colorBg: body.colorBg ?? null,
+        colorText: body.colorText ?? null,
+        parentId: body.parentId ?? null,
+        keywordState:
+          body.type === "user" ? (state.keywordsSupported ? "mirrored" : "local_only") : null,
+      });
+      state.extraLabels.push(l);
+      return HttpResponse.json(l, { status: 201 });
+    }),
+    http.patch("*/api/v1/labels/:id", async ({ params, request }) => {
+      const id = String(params.id);
+      const body = (await request.json()) as Partial<Label>;
+      state.calls.labelsPatch.push({ ...body, id });
+      const l = state.extraLabels.find((x) => x.id === id);
+      if (!l) return problem(404, "not_found");
+      Object.assign(l, body);
+      return HttpResponse.json(counted(l));
+    }),
+    http.delete("*/api/v1/labels/:id", ({ params }) => {
+      const id = String(params.id);
+      state.calls.labelsDelete.push(id);
+      const l = state.extraLabels.find((x) => x.id === id);
+      if (!l) return problem(404, "not_found");
+      if (l.type === "folder" && state.threads.some((t) => t.labelIds?.includes(id))) {
+        return problem(409, "folder_not_empty");
+      }
+      state.extraLabels = state.extraLabels.filter((x) => x.id !== id);
+      return new HttpResponse(null, { status: 204 });
+    }),
+    http.get("*/api/v1/settings", () => HttpResponse.json(session.settings)),
+    http.patch("*/api/v1/settings", async ({ request }) => {
+      const body = (await request.json()) as Partial<Settings>;
+      state.calls.settings.push(body);
+      for (const key of Object.keys(body)) {
+        const p = state.settingsProblem[key];
+        if (p) return problem(p.status, p.code);
+      }
+      session.settings = { ...session.settings, ...body, updatedAt: new Date().toISOString() };
+      return HttpResponse.json(session.settings);
+    }),
+    http.get("*/api/v1/filters", () =>
+      HttpResponse.json({ filters: [...state.filters].sort((a, b) => a.position - b.position) }),
+    ),
+    http.post("*/api/v1/filters", async ({ request }) => {
+      const body = (await request.json()) as FilterBody;
+      state.calls.filtersCreate.push(body);
+      const bad = filterProblem(body);
+      if (bad) return bad;
+      const now = new Date().toISOString();
+      const f: Filter = {
+        id: `f_${++filterSeq}`,
+        accountId: body.accountId ?? "acc_1",
+        name: body.name ?? "",
+        criteria: body.criteria,
+        criteriaNormalized: body.criteria,
+        actions: filterActions(body),
+        enabled: body.enabled ?? true,
+        position: state.filters.length,
+        createdAt: now,
+        updatedAt: now,
+      };
+      state.filters.push(f);
+      if (body.position !== undefined) moveFilter(f, body.position);
+      return HttpResponse.json(f, { status: 201 });
+    }),
+    http.put("*/api/v1/filters/:id", async ({ params, request }) => {
+      const id = String(params.id);
+      const body = (await request.json()) as FilterBody;
+      state.calls.filtersPut.push({ ...body, id });
+      const f = state.filters.find((x) => x.id === id);
+      if (!f) return problem(404, "not_found");
+      const bad = filterProblem(body);
+      if (bad) return bad;
+      Object.assign(f, {
+        name: body.name ?? "",
+        criteria: body.criteria,
+        criteriaNormalized: body.criteria,
+        actions: filterActions(body),
+        enabled: body.enabled ?? true,
+        updatedAt: new Date().toISOString(),
+      });
+      if (body.position !== undefined) moveFilter(f, body.position);
+      return HttpResponse.json(f);
+    }),
+    http.delete("*/api/v1/filters/:id", ({ params }) => {
+      const id = String(params.id);
+      state.calls.filtersDelete.push(id);
+      state.filters = state.filters.filter((x) => x.id !== id);
+      state.filters.forEach((x, i) => (x.position = i));
+      return new HttpResponse(null, { status: 204 });
+    }),
+    http.post("*/api/v1/filters/:id/apply", ({ params }) => {
+      state.calls.filtersApply.push(String(params.id));
+      return HttpResponse.json(
+        { jobId: "j_1", matchedEstimate: state.applyEstimate },
+        { status: 202 },
+      );
+    }),
+    http.post("*/api/v1/accounts/:id/resync", async ({ params, request }) => {
+      const { mode } = (await request.json()) as { mode: string };
+      state.calls.resync.push({ id: String(params.id), mode });
+      if (state.resyncProblem) {
+        const { status, code } = state.resyncProblem;
+        return problem(status, code);
+      }
+      return new HttpResponse(null, { status: 202 });
+    }),
     http.get("*/api/v1/accounts/:id/sync-status", () =>
       HttpResponse.json({
         id: "acc_1",
@@ -368,7 +581,7 @@ export function createMockMail() {
         pendingOps: 0,
         deadOps: 0,
         capabilities: [],
-        keywordsSupported: true,
+        keywordsSupported: state.keywordsSupported,
         missingRoles: [],
         folders: [],
       }),
@@ -523,9 +736,14 @@ export function createMockMail() {
       return HttpResponse.json(state.drafts.get(ob.draftId));
     }),
     http.post("*/api/v1/uploads", async ({ request }) => {
-      // Request.formData() fails under jsdom (its File class); read the one part by hand.
+      // Request.formData() fails under jsdom (its File class); read the parts by hand.
       const boundary = /boundary=(.+)$/.exec(request.headers.get("content-type") ?? "")?.[1];
-      const part = (await request.text()).split(`--${boundary}`)[1] ?? "";
+      const parts = (await request.text()).split(`--${boundary}`).slice(1);
+      const inline =
+        new URL(request.url).searchParams.get("inline") === "true" ||
+        parts.some((p) => /name="inline"\r\n\r\ntrue/.test(p));
+      state.calls.uploadInline.push(inline);
+      const part = parts.find((p) => p.includes('name="file"')) ?? "";
       const head = part.slice(0, part.indexOf("\r\n\r\n"));
       const file = {
         name: /filename="([^"]*)"/.exec(head)?.[1] ?? "file",
@@ -536,14 +754,16 @@ export function createMockMail() {
       if (file.size > state.maxUploadBytes) {
         return problem(413, "upload_too_large", { limit: state.maxUploadBytes, size: file.size });
       }
+      if (inline && !file.type.startsWith("image/")) return problem(422, "inline_not_image");
+      const n = ++uploadSeq;
       const info: UploadInfo = {
-        id: `u_${++uploadSeq}`,
+        id: `u_${n}`,
         filename: file.name,
         size: file.size,
         contentType: file.type || "application/octet-stream",
-        cid: null,
-        inline: false,
-        thumbnail: false,
+        cid: inline ? `c${n}@silo` : null,
+        inline,
+        thumbnail: file.type.startsWith("image/"),
       };
       state.uploads.set(info.id, info);
       return HttpResponse.json(info, { status: 201 });
@@ -639,5 +859,5 @@ export function createMockMail() {
     }
   };
 
-  return { state, handlers, revert, saveElsewhere, addDraftThread };
+  return { state, session, handlers, revert, saveElsewhere, addDraftThread, makeLabel };
 }

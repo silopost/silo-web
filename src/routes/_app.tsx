@@ -1,11 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { isApiError } from "../api/errors";
 import { connectEvents } from "../api/events";
 import { sessionQuery } from "../api/queries/session";
+import { useSettings } from "../api/queries/settings";
 import { ComposeDock } from "../features/compose/ComposeDock";
 import { LeftNav } from "../features/nav/LeftNav";
+import { setNotificationNavigator } from "../features/notifications/desktop";
 import { Banners } from "../features/sync/Banners";
 import { Snackbar } from "../features/toasts/Snackbar";
 import { TopBar } from "../features/topbar/TopBar";
@@ -49,15 +51,35 @@ function AppError({ reset }: { reset: () => void }) {
 
 function useDensityAttribute() {
   const density = usePrefs((s) => s.density);
+  // The server's setting (another device, settings.updated) wins over the local copy.
+  const serverDensity = useSettings()?.density;
+  useEffect(() => {
+    if (serverDensity) usePrefs.getState().setDensity(serverDensity);
+  }, [serverDensity]);
   useEffect(() => {
     document.documentElement.dataset.density = density;
   }, [density]);
+}
+
+/** A click on a desktop notification opens its thread in this tab. */
+function useNotificationNavigator() {
+  const router = useRouter();
+  useEffect(() => {
+    setNotificationNavigator((position, threadId) => {
+      void router.navigate({
+        to: "/u/$account/$label/$threadId",
+        params: { account: String(position), label: "inbox", threadId },
+      });
+    });
+    return () => setNotificationNavigator(() => {});
+  }, [router]);
 }
 
 function AppLayout() {
   const qc = useQueryClient();
   useEffect(() => connectEvents(qc), [qc]);
   useDensityAttribute();
+  useNotificationNavigator();
   useGlobalShortcuts();
 
   return (
