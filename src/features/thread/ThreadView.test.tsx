@@ -70,10 +70,9 @@ it("retries a body that is not downloaded yet (503 + Retry-After)", async () => 
   expect(await screen.findByTitle("Treść wiadomości: Temat 3")).toBeInTheDocument();
 });
 
-it("archives from the thread and goes to the next thread", async () => {
+it("archives from the thread and goes back to the list", async () => {
   const { mail, user, router } = setup("/u/0/inbox/t_2");
   await screen.findByRole("heading", { name: "Temat 2" });
-  // The list was not loaded: no neighbour, so the view returns to the list.
   const toolbar = screen.getAllByRole("toolbar")[0]!;
   await user.click(within(toolbar).getByRole("button", { name: "Archiwizuj" }));
   await waitFor(() => expect(router.state.location.pathname).toBe("/u/0/inbox"));

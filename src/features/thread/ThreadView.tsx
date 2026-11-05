@@ -85,8 +85,10 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
   const older = neighbourInList(qc, ctx.accountId, ctx.filter, threadId, 1);
   const newer = neighbourInList(qc, ctx.accountId, ctx.filter, threadId, -1);
   const open = (id: string | undefined) => (id ? ctx.openThread(id) : undefined);
-  const leave = () =>
-    older ? ctx.openThread(older) : newer ? ctx.openThread(newer) : ctx.backToList();
+  // After archive / trash / spam the view returns to the list, as Gmail does by default
+  // ("auto-advance" off). Opening the next thread instead marked it read without the user
+  // seeing it, and the Inbox counter dropped by more than the archived thread (e2e, Faza 3).
+  const leave = ctx.backToList;
 
   const folderActions = actionsForLabels(labelIds);
   const act = (action: ThreadAction) => {
