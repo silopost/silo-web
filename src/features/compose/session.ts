@@ -12,6 +12,7 @@ import { isApiError } from "../../api/errors";
 import { metaQuery } from "../../api/queries/meta";
 import { keys } from "../../api/keys";
 import type { Address, Draft, SendResult, UploadInfo } from "../../api/types";
+import { formatSnoozeTime } from "../../lib/format";
 import { t } from "../../lib/i18n";
 import { useCompose } from "../../state/compose";
 import { toast, useToasts } from "../../state/toasts";
@@ -387,8 +388,11 @@ export class DraftSession {
     void this.qc.invalidateQueries({ queryKey: keys.threadsAll(this.state.accountId) });
   }
 
-  /** Send button / Ctrl+Enter: the last PUT, then POST /drafts/{id}/send (plan 3.9). */
-  async send() {
+  /**
+   * Send button / Ctrl+Enter: the last PUT, then POST /drafts/{id}/send (plan 3.9); with sendAt
+   * (RFC 3339, from the server's presets or the picked time) the send is scheduled.
+   */
+  async send(sendAt?: string) {
     if (this.state.sending) return;
     if (this.state.uploads.some((u) => !u.error)) {
       this.set({ error: t.uploadsPending });
@@ -402,7 +406,7 @@ export class DraftSession {
     }
     let res: SendResult;
     try {
-      res = await sendDraft(this.id);
+      res = await sendDraft(this.id, sendAt);
     } catch (err) {
       this.set({
         sending: false,
@@ -415,7 +419,7 @@ export class DraftSession {
     sessions.delete(this.id);
     this.qc.removeQueries({ queryKey: keys.draft(this.id) });
     void this.qc.invalidateQueries({ queryKey: keys.threadsAll(this.state.accountId) });
-    showSent(this.qc, res, this.state.accountId);
+    showSent(this.qc, res, this.state.accountId, sendAt);
   }
 }
 
@@ -463,27 +467,36 @@ export function resetSessions() {
   sessions.clear();
 }
 
-/** "Wiadomość wysłana · Cofnij" until undoUntil (plan 6.5). */
-function showSent(qc: QueryClient, res: SendResult, accountId: string) {
+/** "Wiadomość wysłana · Cofnij" (or "Wysyłka zaplanowana na …") until undoUntil (plan 6.5). */
+function showSent(qc: QueryClient, res: SendResult, accountId: string, sendAt?: string) {
   const toasts = useToasts.getState();
-  const undo = () => void undoSend(qc, res.outboundId, accountId);
+  const undo = () =>
+    void undoSend(qc, res.outboundId, accountId, sendAt ? t.sendCancelled : t.sendUndone);
   toasts.setLastUndo(undo);
   toasts.show({
-    message: t.messageSent,
+    message: sendAt ? t.sendScheduled(formatSnoozeTime(sendAt)) : t.messageSent,
     action: { label: t.undo, run: undo },
     hideAt: Date.parse(res.undoUntil),
   });
 }
 
-/** "Cofnij": POST /outbound/{id}/cancel; its draft opens again at once. */
-export async function undoSend(qc: QueryClient, outboundId: string, accountId: string) {
+/**
+ * "Cofnij" and "Anuluj wysyłkę" of a scheduled message: POST /outbound/{id}/cancel; its draft
+ * opens again at once.
+ */
+export async function undoSend(
+  qc: QueryClient,
+  outboundId: string,
+  accountId: string,
+  done: string = t.sendUndone,
+) {
   const toasts = useToasts.getState();
   toasts.dismiss();
   toasts.setLastUndo(null);
   try {
     const d = await cancelOutbound(outboundId);
     openLoaded(qc, d);
-    toast(t.sendUndone);
+    toast(done);
   } catch (err) {
     toast(isApiError(err, 409) ? t.tooLateToUndo : t.genericError);
   }

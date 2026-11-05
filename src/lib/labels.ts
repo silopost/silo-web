@@ -18,7 +18,7 @@ export type SystemView = {
 export const SYSTEM_VIEWS: SystemView[] = [
   { slug: "inbox", labelId: "INBOX", name: "Odebrane", icon: "inbox", count: "unread" },
   { slug: "starred", labelId: "STARRED", name: "Oznaczone gwiazdką", icon: "star" },
-  { slug: "snoozed", labelId: "SNOOZED", name: "Odłożone", icon: "schedule" },
+  { slug: "snoozed", labelId: "SNOOZED", name: "Odłożone", icon: "schedule", count: "total" },
   { slug: "important", labelId: "IMPORTANT", name: "Ważne", icon: "important" },
   { slug: "sent", labelId: "SENT", name: "Wysłane", icon: "send" },
   {

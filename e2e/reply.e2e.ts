@@ -26,7 +26,7 @@ test.afterAll(async () => {
 test("reads a seed thread", async ({ page }) => {
   await login(page, dev1);
   // seed/mail of silo: "Plan sprintu 47" (a thread of six messages).
-  await page.getByRole("searchbox").fill("Plan sprintu 47");
+  await page.getByRole("combobox", { name: "Szukaj w poczcie" }).fill("Plan sprintu 47");
   await page.keyboard.press("Enter");
   const row = page.getByRole("row", { name: /Plan sprintu 47/ }).first();
   await row.click();

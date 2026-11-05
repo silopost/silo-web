@@ -65,19 +65,20 @@ export type ThreadActionInput = {
   onUndo?: () => void;
 };
 
-const MUTATION_KEY = ["threads-op"] as const;
+/** Mutation key of every thread operation (actions, snooze, undo): SSE skips own events meanwhile. */
+export const MUTATION_KEY = ["threads-op"] as const;
 
 /** Operations of this tab, for operation.failed (plan 5.7): their pre-operation snapshot. */
 const recentOps = new Map<string, { accountId: string; snapshot: Snapshot }>();
 const MAX_RECENT = 50;
 
-function remember(operationId: string, accountId: string, snapshot: Snapshot): void {
+export function remember(operationId: string, accountId: string, snapshot: Snapshot): void {
   recentOps.set(operationId, { accountId, snapshot });
   if (recentOps.size > MAX_RECENT) recentOps.delete(recentOps.keys().next().value!);
 }
 
 /** Mutations are serialised per thread so that fast e → z → e does not interleave (plan 6.5). */
-function scopeOf(ids: string[]): string {
+export function scopeOf(ids: string[]): string {
   return ids.length === 1 ? `thread:${ids[0]}` : `threads:${[...ids].sort().join(",")}`;
 }
 
@@ -99,7 +100,7 @@ function request(spec: Spec, ids: string[], add: string[], remove: string[]) {
 }
 
 /** Refetches in the background once no other thread operation is in flight (plan 6.5 step 5). */
-function settle(qc: QueryClient, accountId: string, ids: string[]): void {
+export function settle(qc: QueryClient, accountId: string, ids: string[]): void {
   if (qc.isMutating({ mutationKey: MUTATION_KEY }) > 1) return;
   void qc.invalidateQueries({ queryKey: keys.threadsAll(accountId) });
   void qc.invalidateQueries({ queryKey: keys.labels(accountId) });

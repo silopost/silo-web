@@ -5,6 +5,7 @@ import type {
   Draft,
   Label,
   Session,
+  SnoozePreset,
   Thread,
   ThreadDetail,
   UploadInfo,
@@ -115,6 +116,21 @@ export function createMockMail() {
     metaMaxAttachmentBytes: null as number | null,
     /** Problem answered by the next POST /drafts/{id}/send. */
     sendProblem: null as FakeProblem | null,
+    /** Search history (GET /search/suggest kind history), newest first. */
+    searchHistory: ["faktura", "from:jan@firma.pl"],
+    /** Extra fields of a search answer (indexing, approximate, resultSizeEstimate). */
+    searchExtra: {} as {
+      indexing?: { done: number };
+      approximate?: boolean;
+      resultSizeEstimate?: number;
+    },
+    /** GET /snooze/presets. */
+    snoozePresets: [
+      { key: "later_today", label: "Later today", until: "2026-11-05T17:00:00Z" },
+      { key: "tomorrow", label: "Tomorrow", until: "2026-11-06T07:00:00Z" },
+      { key: "this_weekend", label: "This weekend", until: "2026-11-07T07:00:00Z" },
+      { key: "next_week", label: "Next week", until: "2026-11-09T07:00:00Z" },
+    ] as SnoozePreset[],
     calls: {
       createDraft: [] as { accountId?: string; replyToMessageId?: string; mode?: string }[],
       putDraft: [] as (DraftPut & { id: string })[],
@@ -128,14 +144,22 @@ export function createMockMail() {
       modify: [] as { ids: string[]; addLabelIds?: string[]; removeLabelIds?: string[] }[],
       undo: [] as string[],
       threadPages: [] as (string | null)[],
+      searches: [] as { q: string; labelId: string | null }[],
+      suggest: [] as string[],
+      deleteHistory: [] as (string | null)[],
+      snooze: [] as { id: string; until: string }[],
+      unsnooze: [] as string[],
+      sendAt: [] as (string | undefined)[],
       login: [] as { email: string; password: string }[],
     },
   };
-  const ops = new Map<string, Map<string, string[]>>();
+  /** Labels (and wake time, for snooze) of each thread before an operation, for its undo. */
+  type Before = string[] | { labelIds: string[]; snoozedUntil: string | null };
+  const ops = new Map<string, Map<string, Before>>();
   let opSeq = 0;
 
   const labels = (): Label[] =>
-    ["INBOX", "STARRED", "SENT", "DRAFT", "SPAM", "TRASH"].map((id, i) => {
+    ["INBOX", "STARRED", "SNOOZED", "SENT", "SCHEDULED", "DRAFT", "SPAM", "TRASH"].map((id, i) => {
       const inLabel = state.threads.filter((t) => t.labelIds?.includes(id));
       return {
         id,
@@ -353,14 +377,26 @@ export function createMockMail() {
       const url = new URL(request.url);
       const labelId = url.searchParams.get("labelId");
       const cursor = url.searchParams.get("cursor");
+      const q = url.searchParams.get("q");
       state.calls.threadPages.push(cursor);
-      const rows = state.threads.filter((t) => !labelId || t.labelIds?.includes(labelId));
+      let rows = state.threads.filter((t) => !labelId || t.labelIds?.includes(labelId));
+      if (q !== null) {
+        state.calls.searches.push({ q, labelId });
+        // A closing bracket without its opening one, as the real server refuses it.
+        if (/^[^(]*\)/.test(q)) return problem(422, "invalid_query");
+        // Plain words match the subject or snippet; operators are ignored by this fake.
+        const words = q.split(/\s+/).filter((w) => w && !w.includes(":"));
+        rows = rows.filter((t) =>
+          words.every((w) => `${t.subject} ${t.snippet}`.toLowerCase().includes(w.toLowerCase())),
+        );
+      }
       const start = cursor ? Number(cursor) : 0;
       const end = start + state.pageSize;
       return HttpResponse.json({
         threads: rows.slice(start, end),
         nextCursor: end < rows.length ? String(end) : null,
         resultSizeEstimate: rows.length,
+        ...(q !== null ? state.searchExtra : {}),
       });
     }),
     http.get("*/api/v1/threads/:id", ({ params }) => {
@@ -392,8 +428,10 @@ export function createMockMail() {
       if (!before) return HttpResponse.json({ status: 409, code: "undo_expired" }, { status: 409 });
       ops.delete(id);
       for (const t of state.threads) {
-        const labelIds = before.get(t.id);
-        if (!labelIds) continue;
+        const prev = before.get(t.id);
+        if (!prev) continue;
+        const labelIds = Array.isArray(prev) ? prev : prev.labelIds;
+        if (!Array.isArray(prev)) t.snoozedUntil = prev.snoozedUntil;
         t.labelIds = labelIds;
         t.unreadCount = labelIds.includes("UNREAD") ? 1 : 0;
       }
@@ -453,9 +491,11 @@ export function createMockMail() {
         ? new HttpResponse(null, { status: 204 })
         : problem(404, "not_found");
     }),
-    http.post("*/api/v1/drafts/:id/send", ({ params }) => {
+    http.post("*/api/v1/drafts/:id/send", async ({ params, request }) => {
       const id = String(params.id);
       state.calls.send.push(id);
+      const sendBody = (await request.json().catch(() => ({}))) as { sendAt?: string };
+      state.calls.sendAt.push(sendBody.sendAt);
       const d = state.drafts.get(id);
       if (!d) return problem(404, "not_found");
       if (state.sendProblem) {
@@ -519,6 +559,71 @@ export function createMockMail() {
           .some((w) => w.startsWith(q));
       return HttpResponse.json({ contacts: state.contacts.filter(matches) });
     }),
+    http.get("*/api/v1/search/suggest", ({ request }) => {
+      const q = new URL(request.url).searchParams.get("q") ?? "";
+      state.calls.suggest.push(q);
+      const history = state.searchHistory
+        .filter((h) => h.startsWith(q))
+        .slice(0, 5)
+        .map((h) => ({ kind: "history" as const, text: h, label: h }));
+      const last = q.split(" ").pop() ?? "";
+      const head = q.slice(0, q.length - last.length);
+      const contacts = last
+        ? state.contacts
+            .filter((c) => c.email.startsWith(last.replace(/^from:/, "")))
+            .map((c) => ({
+              kind: "contact" as const,
+              text: `${head}from:${c.email}`,
+              label: c.name ? `${c.name} <${c.email}>` : c.email,
+            }))
+        : [];
+      const operators = last
+        ? ["is:unread", "is:starred", "has:attachment", "in:inbox"]
+            .filter((o) => o.startsWith(last) && o !== last)
+            .map((o) => ({ kind: "operator" as const, text: `${head}${o}`, label: o }))
+        : [];
+      return HttpResponse.json({ suggestions: [...history, ...contacts, ...operators] });
+    }),
+    http.delete("*/api/v1/search/history", ({ request }) => {
+      const query = new URL(request.url).searchParams.get("query");
+      state.calls.deleteHistory.push(query);
+      state.searchHistory = query === null ? [] : state.searchHistory.filter((h) => h !== query);
+      return new HttpResponse(null, { status: 204 });
+    }),
+    http.get("*/api/v1/snooze/presets", () =>
+      HttpResponse.json({ timezone: "Europe/Warsaw", presets: state.snoozePresets }),
+    ),
+    http.post("*/api/v1/threads/:id/snooze", async ({ params, request }) => {
+      const id = String(params.id);
+      const { until } = (await request.json()) as { until: string };
+      state.calls.snooze.push({ id, until });
+      const t = state.threads.find((x) => x.id === id);
+      if (!t) return problem(404, "not_found");
+      const labelIds = t.labelIds ?? [];
+      if (!labelIds.includes("INBOX") && !labelIds.includes("SNOOZED")) {
+        return problem(409, "not_in_inbox");
+      }
+      const opId = `op_${++opSeq}`;
+      ops.set(opId, new Map([[id, { labelIds, snoozedUntil: t.snoozedUntil }]]));
+      t.labelIds = [...labelIds.filter((l) => l !== "INBOX" && l !== "SNOOZED"), "SNOOZED"];
+      t.snoozedUntil = until;
+      t.pendingSync = true;
+      return HttpResponse.json({
+        thread: t,
+        operationId: opId,
+        undoUntil: new Date(Date.now() + 10_000).toISOString(),
+      });
+    }),
+    http.delete("*/api/v1/threads/:id/snooze", ({ params }) => {
+      const id = String(params.id);
+      state.calls.unsnooze.push(id);
+      const t = state.threads.find((x) => x.id === id);
+      if (!t) return problem(404, "not_found");
+      if (!t.labelIds?.includes("SNOOZED")) return problem(409, "not_snoozed");
+      t.labelIds = ["INBOX", ...t.labelIds.filter((l) => l !== "SNOOZED")];
+      t.snoozedUntil = null;
+      return HttpResponse.json({ thread: t, operationId: null, undoUntil: null });
+    }),
     http.get(
       "*/api/v1/messages/:id/html",
       () => new HttpResponse(state.html, { headers: { "Content-Type": "text/html" } }),
@@ -529,8 +634,8 @@ export function createMockMail() {
   const revert = (operationId: string) => {
     const before = ops.get(operationId);
     for (const t of state.threads) {
-      const labelIds = before?.get(t.id);
-      if (labelIds) t.labelIds = labelIds;
+      const prev = before?.get(t.id);
+      if (prev) t.labelIds = Array.isArray(prev) ? prev : prev.labelIds;
     }
   };
 

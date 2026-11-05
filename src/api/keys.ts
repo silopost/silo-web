@@ -12,4 +12,7 @@ export const keys = {
   messageHtml: (id: string) => ["messageHtml", id] as const,
   draft: (id: string) => ["draft", id] as const,
   contacts: (q: string) => ["contacts", q] as const,
+  searchSuggest: (accountId: string, q: string) => ["searchSuggest", accountId, q] as const,
+  searchSuggestAll: ["searchSuggest"] as const,
+  snoozePresets: ["snoozePresets"] as const,
 };

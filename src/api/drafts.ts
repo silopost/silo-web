@@ -61,8 +61,9 @@ export const saveDraft = (
 export const deleteDraft = (id: string): Promise<unknown> =>
   call(api.DELETE("/drafts/{id}", { params: { path: { id } } }));
 
-export const sendDraft = (id: string): Promise<SendResult> =>
-  call(api.POST("/drafts/{id}/send", { params: { path: { id } }, body: {} }));
+/** POST /drafts/{id}/send; sendAt (RFC 3339) schedules the send (plan 3.9 step 3). */
+export const sendDraft = (id: string, sendAt?: string): Promise<SendResult> =>
+  call(api.POST("/drafts/{id}/send", { params: { path: { id } }, body: sendAt ? { sendAt } : {} }));
 
 export const cancelOutbound = (id: string): Promise<Draft> =>
   call(api.POST("/outbound/{id}/cancel", { params: { path: { id } } }));

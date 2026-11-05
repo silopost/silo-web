@@ -15,6 +15,28 @@ export function formatFullDate(iso: string): string {
   return format(new Date(iso), "d MMM yyyy, HH:mm", { locale: pl });
 }
 
+/** A wake or send time as in Gmail's menus: "pt., 08:00" (browser time zone). */
+export function formatPresetTime(iso: string): string {
+  return format(new Date(iso), "EEE, HH:mm", { locale: pl });
+}
+
+/** Snooze or send time in snackbars and rows: "6 lis, 08:00" (browser time zone). */
+export function formatSnoozeTime(iso: string): string {
+  return format(new Date(iso), "d MMM, HH:mm", { locale: pl });
+}
+
+/** Value of a datetime-local field for a time: "2026-11-05T09:30" (minutes). */
+export function dateTimeLocalValue(d: Date): string {
+  return format(d, "yyyy-MM-dd'T'HH:mm");
+}
+
+/** The value of a datetime-local field (local time) as RFC 3339; null when empty or invalid. */
+export function dateTimeLocalToIso(value: string): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 export function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;

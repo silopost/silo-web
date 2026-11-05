@@ -17,6 +17,9 @@ type Props = {
   onSelect: (kind: SelectKind) => void;
   onAction: (action: ThreadAction, ids: string[], add?: string[], remove?: string[]) => void;
   onRefresh: () => void;
+  snoozable: boolean;
+  /** Opens the snooze picker for the selected threads, anchored at the button. */
+  onSnooze: (ids: string[], anchor: HTMLElement) => void;
 };
 
 /** Selection, actions for the selected threads, refresh and range (plan 6.3). */
@@ -53,6 +56,13 @@ export function ListToolbar(p: Props) {
             label={anyUnread ? t.markRead : t.markUnread}
             onClick={() => p.onAction(anyUnread ? "read" : "unread", ids)}
           />
+          {p.snoozable && (
+            <IconButton
+              icon="schedule"
+              label={t.snooze}
+              onClick={(e) => p.onSnooze(ids, e.currentTarget)}
+            />
+          )}
           <LabelsPopover
             accountId={p.accountId}
             threads={selected.map((r) => ({ id: r.id, labelIds: r.labelIds ?? [] }))}

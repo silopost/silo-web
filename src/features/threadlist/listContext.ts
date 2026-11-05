@@ -22,8 +22,15 @@ export function actionsForLabels(labelIds: string[]): ThreadAction[] {
 export function actionsForView(filter: ListFilter): ThreadAction[] {
   if (filter.q !== undefined || filter.labelId === undefined) return ["archive", "trash", "spam"];
   if (filter.labelId === "ARCHIVE") return ["inbox", "trash", "spam"];
+  // Scheduled messages are not in a mailbox folder yet; their row offers "Anuluj wysyłkę".
+  if (filter.labelId === "SCHEDULED") return [];
   if (filter.labelId === "TRASH" || filter.labelId === "SPAM") {
     return actionsForLabels([filter.labelId]);
   }
   return ["archive", "trash", "spam"];
+}
+
+/** Views whose rows can be snoozed (Gmail: not Trash, Spam, Drafts or Scheduled). */
+export function canSnoozeView(filter: ListFilter): boolean {
+  return !["TRASH", "SPAM", "DRAFT", "SCHEDULED"].includes(filter.labelId ?? "");
 }

@@ -3,7 +3,12 @@ import type { ThreadAction } from "../../api/mutations/threads";
 import type { Label, Thread } from "../../api/types";
 import { Icon } from "../../components/Icon";
 import { IconButton } from "../../components/IconButton";
-import { formatFullDate, formatListDate, participantNames } from "../../lib/format";
+import {
+  formatFullDate,
+  formatListDate,
+  formatSnoozeTime,
+  participantNames,
+} from "../../lib/format";
 import { t } from "../../lib/i18n";
 import { isSystemLabelId } from "../../lib/labels";
 import { PendingIcon } from "../sync/PendingIcon";
@@ -20,16 +25,29 @@ type Props = {
   /** Label of the view; its chip is not repeated in the rows. */
   viewLabelId: string | undefined;
   hoverActions: ThreadAction[];
+  /** Whether the view offers snooze (Inbox, labels, search...; not Trash, Spam, Scheduled). */
+  snoozable: boolean;
   onOpen: (id: string) => void;
   onToggleSelect: (id: string) => void;
   onFocus: (id: string) => void;
   onAction: (action: ThreadAction, id: string) => void;
   onHoverIntent: (id: string) => void;
   onHoverEnd: () => void;
+  /** Opens the snooze picker for the row, anchored at the button. */
+  onSnooze: (id: string, anchor: HTMLElement) => void;
+  /** "Wybudź teraz" of a snoozed thread. */
+  onWake: (id: string) => void;
+  /** "Anuluj wysyłkę" of a scheduled message (outboundId of the row). */
+  onCancelSend: (thread: Thread) => void;
 };
 
 function rowLabel(th: Thread, unread: boolean, names: string, date: string): string {
-  const parts = [unread ? t.unread : null, names, th.subject || t.noSubject, date];
+  const when = th.snoozedUntil
+    ? t.snoozedUntil(formatSnoozeTime(th.snoozedUntil))
+    : th.scheduledAt
+      ? t.scheduledFor(formatSnoozeTime(th.scheduledAt))
+      : date;
+  const parts = [unread ? t.unread : null, names, th.subject || t.noSubject, when];
   if (th.hasAttachments) parts.push(t.hasAttachment);
   if (th.labelIds?.includes("SCHEDULED")) parts.push(t.scheduledLabel);
   if (th.pendingSync) parts.push(t.pendingSync);
@@ -50,6 +68,8 @@ export const ThreadRow = memo(function ThreadRow(p: Props) {
     .map((id) => p.labels.find((l) => l.id === id))
     .filter((l): l is Label => !!l);
   const readAction: ThreadAction = unread ? "read" : "unread";
+  const snoozed = !!th.snoozedUntil && labelIds.includes("SNOOZED");
+  const scheduled = !!th.scheduledAt && !!th.outboundId;
 
   return (
     <div
@@ -128,12 +148,29 @@ export const ThreadRow = memo(function ThreadRow(p: Props) {
             <Icon name="attach" size={16} />
           </span>
         )}
-        <span
-          title={formatFullDate(th.lastMessageAt)}
-          className={`w-16 text-right text-xs group-hover:hidden ${unread ? "font-bold" : "text-ink-muted"}`}
-        >
-          {date}
-        </span>
+        {snoozed ? (
+          // Gmail shows the wake time of a snoozed thread in orange instead of its date.
+          <span
+            title={t.snoozedUntil(formatFullDate(th.snoozedUntil!))}
+            className="text-right text-xs font-medium text-snooze group-hover:hidden"
+          >
+            {formatSnoozeTime(th.snoozedUntil!)}
+          </span>
+        ) : scheduled ? (
+          <span
+            title={t.scheduledFor(formatFullDate(th.scheduledAt!))}
+            className="text-right text-xs font-medium text-error-ink group-hover:hidden"
+          >
+            {formatSnoozeTime(th.scheduledAt!)}
+          </span>
+        ) : (
+          <span
+            title={formatFullDate(th.lastMessageAt)}
+            className={`w-16 text-right text-xs group-hover:hidden ${unread ? "font-bold" : "text-ink-muted"}`}
+          >
+            {date}
+          </span>
+        )}
         <div
           className="hidden items-center group-hover:flex group-focus-within:flex"
           onClick={(e) => e.stopPropagation()}
@@ -151,7 +188,33 @@ export const ThreadRow = memo(function ThreadRow(p: Props) {
               />
             );
           })}
-          <IconButton icon="schedule" label={t.snooze} disabled tabIndex={-1} className="size-8" />
+          {scheduled && (
+            <IconButton
+              icon="cancelSchedule"
+              label={t.cancelSend}
+              tabIndex={-1}
+              className="size-8"
+              onClick={() => p.onCancelSend(th)}
+            />
+          )}
+          {snoozed && (
+            <IconButton
+              icon="moveToInbox"
+              label={t.wakeNow}
+              tabIndex={-1}
+              className="size-8"
+              onClick={() => p.onWake(th.id)}
+            />
+          )}
+          {p.snoozable && (
+            <IconButton
+              icon="schedule"
+              label={snoozed ? t.changeSnooze : t.snooze}
+              tabIndex={-1}
+              className="size-8"
+              onClick={(e) => p.onSnooze(th.id, e.currentTarget)}
+            />
+          )}
         </div>
       </div>
     </div>

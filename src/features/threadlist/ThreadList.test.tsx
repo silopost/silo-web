@@ -147,8 +147,8 @@ it("moves with j/k, archives with e and undoes with z", async () => {
 it("ignores shortcuts while typing in the search box", async () => {
   const { mail, user } = setup();
   await row("Temat 5");
-  await user.click(screen.getByRole("searchbox"));
+  await user.click(screen.getByRole("combobox", { name: "Szukaj w poczcie" }));
   await user.keyboard("je");
   expect(mail.state.calls.modify).toEqual([]);
-  expect(screen.getByRole("searchbox")).toHaveValue("je");
+  expect(screen.getByRole("combobox", { name: "Szukaj w poczcie" })).toHaveValue("je");
 });

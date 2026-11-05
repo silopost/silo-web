@@ -2,12 +2,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import type { DraftMode } from "../../api/drafts";
 import { neighbourInList, type ThreadLists } from "../../api/mutations/cache";
+import { snoozeThreads, wakeThread } from "../../api/mutations/snooze";
 import type { ThreadAction } from "../../api/mutations/threads";
 import { keys } from "../../api/keys";
 import { useLabels } from "../../api/queries/labels";
 import { threadQuery } from "../../api/queries/threads";
 import type { Message, ThreadDetail } from "../../api/types";
 import { IconButton } from "../../components/IconButton";
+import { formatFullDate } from "../../lib/format";
 import { t } from "../../lib/i18n";
 import { isSystemLabelId } from "../../lib/labels";
 import { useShortcutHandlers } from "../../shortcuts/useShortcuts";
@@ -15,9 +17,10 @@ import { useActiveAccount } from "../account";
 import { openReply } from "../compose/actions";
 import { openDraft } from "../compose/session";
 import { LabelsPopover } from "../labels/LabelsPopover";
+import { SnoozeMenu } from "../snooze/PresetTimeMenu";
 import { PendingIcon } from "../sync/PendingIcon";
 import { ACTION_META } from "../threadlist/actionMeta";
-import { actionsForLabels, type ListContext } from "../threadlist/listContext";
+import { actionsForLabels, canSnoozeView, type ListContext } from "../threadlist/listContext";
 import { useThreadCommands } from "../threadlist/useThreadCommands";
 import { MessageCard } from "./MessageCard";
 import { ReplyBar } from "./ReplyBar";
@@ -68,6 +71,7 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
 
   const [expandedState, setExpanded] = useState<{ id: string; set: Set<string> } | null>(null);
   const [unfolded, setUnfolded] = useState(false);
+  const [snoozeOpen, setSnoozeOpen] = useState(false);
   const expanded = expandedState?.id === threadId ? expandedState.set : initiallyExpanded(messages);
   const toggle = (id: string) => {
     const next = new Set(expanded);
@@ -94,6 +98,18 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
   const leave = ctx.backToList;
 
   const folderActions = actionsForLabels(labelIds);
+  const snoozedUntil = detail?.snoozedUntil ?? null;
+  const snoozable =
+    canSnoozeView(ctx.filter) && !labelIds.includes("TRASH") && !labelIds.includes("SPAM");
+  const snooze = (until: string) => {
+    void snoozeThreads(qc, {
+      accountId: ctx.accountId,
+      ids: [threadId],
+      until,
+      onUndo: () => ctx.openThread(threadId),
+    });
+    leave();
+  };
   const act = (action: ThreadAction) => {
     if (action === "unread") {
       run(action, [threadId], { after: ctx.backToList });
@@ -131,6 +147,7 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
     star: () => act(labelIds.includes("STARRED") ? "unstar" : "star"),
     markRead: () => act("read"),
     markUnread: () => act("unread"),
+    snooze: () => snoozable && setSnoozeOpen(true),
   });
 
   const chips = labelIds
@@ -156,6 +173,20 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
           return <IconButton key={a} icon={meta.icon} label={meta.label} onClick={() => act(a)} />;
         })}
         <IconButton icon="markUnread" label={t.markUnread} onClick={() => act("unread")} />
+        {snoozable && (
+          <SnoozeMenu open={snoozeOpen} onOpenChange={setSnoozeOpen} onPick={snooze}>
+            <IconButton icon="schedule" label={snoozedUntil ? t.changeSnooze : t.snooze} />
+          </SnoozeMenu>
+        )}
+        {snoozedUntil && (
+          <IconButton
+            icon="moveToInbox"
+            label={t.wakeNow}
+            onClick={() => {
+              void wakeThread(qc, ctx.accountId, threadId);
+            }}
+          />
+        )}
         <LabelsPopover
           accountId={ctx.accountId}
           threads={[{ id: threadId, labelIds }]}
@@ -200,6 +231,14 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
               ))}
               <PendingIcon pending={messages.some((m) => m.pendingSync)} />
             </header>
+            {snoozedUntil && (
+              <p
+                role="status"
+                className="mx-4 mb-2 ml-[72px] rounded bg-warn-bg px-3 py-1.5 text-sm text-warn-ink"
+              >
+                {t.snoozedUntil(formatFullDate(snoozedUntil))}
+              </p>
+            )}
             {thread.isPlaceholderData && (
               <p role="status" className="px-4 text-ink-muted">
                 {t.loading}

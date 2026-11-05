@@ -15,6 +15,7 @@ export type ShortcutId =
   | "spam"
   | "markRead"
   | "markUnread"
+  | "snooze"
   | "reply"
   | "replyAll"
   | "forward"
@@ -72,6 +73,7 @@ export const KEYMAP: Shortcut[] = [
     label: "Oznacz jako nieprzeczytane (Shift+U)",
     scope: "list, thread",
   },
+  { id: "snooze", keys: ["b"], label: "Odłóż", scope: "list, thread" },
   { id: "reply", keys: ["r"], label: "Odpowiedz", scope: "thread" },
   { id: "replyAll", keys: ["a"], label: "Odpowiedz wszystkim", scope: "thread" },
   { id: "forward", keys: ["f"], label: "Przekaż", scope: "thread" },

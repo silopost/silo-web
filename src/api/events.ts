@@ -56,6 +56,8 @@ export function applyEvent(qc: QueryClient, type: string, data: Data): void {
       if (typeof data.messageCount === "number") patch.messageCount = data.messageCount;
       if (str(data.lastMessageAt)) patch.lastMessageAt = str(data.lastMessageAt)!;
       if (typeof data.snippet === "string") patch.snippet = data.snippet;
+      // Snooze (plan 3.10): the wake time, or null once the thread is back in Inbox.
+      if ("snoozedUntil" in data) patch.snoozedUntil = str(data.snoozedUntil) ?? null;
       let seen = false;
       let moved = false;
       updateLists(qc, accountId, (row) => {
@@ -64,7 +66,15 @@ export function applyEvent(qc: QueryClient, type: string, data: Data): void {
         moved ||= patch.lastMessageAt !== undefined && patch.lastMessageAt !== row.lastMessageAt;
         return { ...row, ...patch };
       });
-      qc.setQueryData<ThreadDetail>(keys.thread(id), (d) => (d ? { ...d, labelIds } : d));
+      qc.setQueryData<ThreadDetail>(keys.thread(id), (d) =>
+        d
+          ? {
+              ...d,
+              labelIds,
+              snoozedUntil: patch.snoozedUntil !== undefined ? patch.snoozedUntil : d.snoozedUntil,
+            }
+          : d,
+      );
       // A thread new to a list (or moved within it) needs the server's row and order.
       if (!seen || moved) {
         void qc.invalidateQueries({ queryKey: keys.threadsAll(accountId) });

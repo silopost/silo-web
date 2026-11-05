@@ -8,12 +8,15 @@ import {
   type KeyboardEvent,
 } from "react";
 import { metaQuery } from "../../api/queries/meta";
+import type { SnoozePreset } from "../../api/types";
+import { Icon } from "../../components/Icon";
 import { IconButton } from "../../components/IconButton";
 import { t } from "../../lib/i18n";
 import { useCompose, type WindowMode } from "../../state/compose";
 import { useSession } from "../account";
 import { AttachmentList } from "./AttachmentList";
 import { Editor } from "./Editor";
+import { PresetTimeMenu } from "../snooze/PresetTimeMenu";
 import { RecipientInput } from "./RecipientInput";
 import { getSession } from "./session";
 
@@ -41,6 +44,12 @@ function Bar({
     </div>
   );
 }
+
+/**
+ * Schedule send times: the server has no presets of its own for sending yet, so the snooze
+ * presets "tomorrow" (08:00) and "next_week" (Monday 08:00) are used; no date is computed here.
+ */
+const sendPresetLabel = (preset: SnoozePreset) => t.sendPresets[preset.key];
 
 /** Esc in the editor closes the window too (ProseMirror marks the key as handled). */
 const isEditor = (target: EventTarget) => target instanceof HTMLElement && target.isContentEditable;
@@ -70,6 +79,7 @@ export function ComposeWindow({ draftId, mode }: { draftId: string; mode: Window
   const [ccOpen, setCcOpen] = useState(false);
   const [bccOpen, setBccOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -104,6 +114,8 @@ export function ComposeWindow({ draftId, mode }: { draftId: string; mode: Window
 
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     if (e.nativeEvent.isComposing) return;
+    // Keys of the schedule send menu and dialog (portals) bubble here through React.
+    if (!sectionRef.current?.contains(e.target as Node)) return;
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       e.preventDefault();
       void session.send();
@@ -310,14 +322,34 @@ export function ComposeWindow({ draftId, mode }: { draftId: string; mode: Window
                   onRemoveUpload={(key) => session.removeUpload(key)}
                 />
                 <footer className="flex shrink-0 items-center gap-2 px-3 py-2">
-                  <button
-                    type="button"
-                    disabled={state.sending}
-                    onClick={() => void session.send()}
-                    className="rounded-full bg-primary px-6 py-2 font-medium text-white hover:shadow disabled:opacity-60"
-                  >
-                    {state.sending ? t.sending : t.send}
-                  </button>
+                  <div className="flex shrink-0 items-stretch">
+                    <button
+                      type="button"
+                      disabled={state.sending}
+                      onClick={() => void session.send()}
+                      className="rounded-l-full bg-primary py-2 pr-4 pl-6 font-medium text-white hover:shadow disabled:opacity-60"
+                    >
+                      {state.sending ? t.sending : t.send}
+                    </button>
+                    <PresetTimeMenu
+                      open={scheduleOpen}
+                      onOpenChange={setScheduleOpen}
+                      title={t.scheduleSend}
+                      labelOf={sendPresetLabel}
+                      onPick={(sendAt) => void session.send(sendAt)}
+                      side="top"
+                    >
+                      <button
+                        type="button"
+                        aria-label={t.sendOptions}
+                        title={t.sendOptions}
+                        disabled={state.sending}
+                        className="flex items-center rounded-r-full border-l border-white/40 bg-primary pr-2 pl-1 text-white hover:shadow disabled:opacity-60"
+                      >
+                        <Icon name="arrowDropDown" size={20} />
+                      </button>
+                    </PresetTimeMenu>
+                  </div>
                   <IconButton
                     icon="attach"
                     label={t.attachFiles}
