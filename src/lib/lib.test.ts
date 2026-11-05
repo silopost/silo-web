@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { patchLabelIds } from "../api/mutations/cache";
+import { isValidEmail, parseAddresses } from "./addresses";
 import { formatListDate, formatSize } from "./format";
 import { t } from "./i18n";
 import { sanitize } from "./messageHtml";
+import { sanitizePastedHtml } from "./pasteHtml";
 import { plural } from "./plural";
 
 describe("plural", () => {
@@ -55,5 +57,37 @@ describe("sanitize", () => {
     expect(out).not.toMatch(/script|onerror|javascript:|<form|<input/);
     expect(out).toContain('target="_blank"');
     expect(out).toContain('rel="noopener noreferrer"');
+  });
+});
+
+describe("addresses", () => {
+  it("parses typed and pasted lists", () => {
+    expect(
+      parseAddresses('"Kowalski, Jan" <jan@firma.pl>; Ola <ola@x.pl>, ewa@y.pl\nadam@z.pl b@c.pl'),
+    ).toEqual([
+      { name: "Kowalski, Jan", email: "jan@firma.pl" },
+      { name: "Ola", email: "ola@x.pl" },
+      { name: "", email: "ewa@y.pl" },
+      { name: "", email: "adam@z.pl" },
+      { name: "", email: "b@c.pl" },
+    ]);
+    expect(parseAddresses(" , ")).toEqual([]);
+  });
+
+  it("flags addresses that cannot be right", () => {
+    expect(isValidEmail("dev2@silo.test")).toBe(true);
+    expect(isValidEmail("root@localhost")).toBe(true);
+    expect(isValidEmail("zly-adres")).toBe(false);
+    expect(isValidEmail("a b@c.pl")).toBe(false);
+  });
+});
+
+describe("pasted HTML", () => {
+  it("keeps the formats of the editor only", () => {
+    const html = sanitizePastedHtml(
+      '<div style="color:red"><b onclick="x()">B</b><script>1</script><a href="javascript:x">l</a>' +
+        '<table><tr><td>t</td></tr></table><img src="https://x.pl/a.png" onerror="y()"></div>',
+    );
+    expect(html).toBe('<div><b>B</b><a>l</a>t<img src="https://x.pl/a.png"></div>');
   });
 });

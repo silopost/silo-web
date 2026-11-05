@@ -1,7 +1,9 @@
 import { createMemoryHistory } from "@tanstack/react-router";
 import { render } from "@testing-library/react";
 import { App } from "../App";
+import { resetSessions } from "../features/compose/session";
 import { createApp } from "../router";
+import { useCompose } from "../state/compose";
 import { useConnection } from "../state/connection";
 import { useToasts } from "../state/toasts";
 import { useUi } from "../state/ui";
@@ -11,10 +13,11 @@ export function renderApp(url: string) {
   useUi.setState({
     selection: new Set(),
     focusedThreadId: null,
-    composeOpen: false,
     shortcutsHelpOpen: false,
     pendingPrefix: null,
   });
+  useCompose.setState({ windows: [], failures: {}, remoteVersions: {} });
+  resetSessions();
   useToasts.setState({ current: null, lastUndo: null });
   useConnection.setState({ state: "connecting" });
   const app = createApp(createMemoryHistory({ initialEntries: [url] }));

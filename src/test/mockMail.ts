@@ -1,7 +1,27 @@
 import { http, HttpResponse } from "msw";
-import type { Label, Session, Thread, ThreadDetail } from "../api/types";
+import type {
+  Address,
+  ContactSuggestion,
+  Draft,
+  Label,
+  Session,
+  Thread,
+  ThreadDetail,
+  UploadInfo,
+} from "../api/types";
 
-/** A small stateful silo-server for msw: threads with labels, modify, undo. */
+type DraftPut = {
+  version: number;
+  to: Address[] | null;
+  cc?: Address[] | null;
+  bcc?: Address[] | null;
+  subject: string;
+  bodyHtml: string;
+  bodyJson?: unknown;
+  attachmentIds?: string[] | null;
+};
+
+/** A small stateful silo-server for msw: threads with labels, modify, undo, drafts, sending. */
 export function createMockMail() {
   const session: Session = {
     csrfToken: "csrf-1",
@@ -64,7 +84,26 @@ export function createMockMail() {
     ],
     failModify: false,
     html: "<p>Treść wiadomości</p>",
+    drafts: new Map<string, Draft>(),
+    uploads: new Map<string, UploadInfo>(),
+    outbound: new Map<string, { draftId: string; status: "queued" | "sending" | "cancelled" }>(),
+    contacts: [
+      { name: "Jan Kowalski", email: "jan@firma.pl" },
+      { name: "Janina Nowak", email: "janina@firma.pl" },
+      { name: "", email: "jacek@example.com" },
+    ] as ContactSuggestion[],
+    /** Uploads larger than this are 413 upload_too_large. */
+    maxUploadBytes: 1000,
+    /** Problem answered by the next POST /drafts/{id}/send. */
+    sendProblem: null as { status: number; code: string } | null,
     calls: {
+      createDraft: [] as { accountId?: string; replyToMessageId?: string; mode?: string }[],
+      putDraft: [] as (DraftPut & { id: string })[],
+      deleteDraft: [] as string[],
+      send: [] as string[],
+      cancel: [] as string[],
+      uploads: [] as string[],
+      contacts: [] as string[],
       modify: [] as { ids: string[]; addLabelIds?: string[]; removeLabelIds?: string[] }[],
       undo: [] as string[],
       threadPages: [] as (string | null)[],
@@ -109,7 +148,12 @@ export function createMockMail() {
       date: t.lastMessageAt,
       subject: t.subject,
       snippet: `Fragment wiadomości ${m}`,
-      labelIds: m === 2 && t.unreadCount > 0 ? ["INBOX", "UNREAD"] : ["INBOX"],
+      labelIds:
+        m === 2 && t.labelIds?.includes("DRAFT")
+          ? ["DRAFT"]
+          : m === 2 && t.unreadCount > 0
+            ? ["INBOX", "UNREAD"]
+            : ["INBOX"],
       folder: { id: "f_1", name: "INBOX", role: "inbox" },
       bodyState: "full",
       hasHtml: true,
@@ -151,6 +195,62 @@ export function createMockMail() {
       undoUntil: new Date(Date.now() + 10_000).toISOString(),
       threads: state.threads.filter((t) => ids.includes(t.id)),
     };
+  };
+
+  let draftSeq = 0;
+  let uploadSeq = 0;
+  let outboundSeq = 0;
+  const problem = (status: number, code: string) =>
+    HttpResponse.json({ status, code, title: "Error", detail: code }, { status });
+
+  /** A draft as POST /drafts answers it; replies are prefilled as the server does. */
+  const newDraft = (body: { accountId?: string; replyToMessageId?: string; mode?: string }) => {
+    const n = ++draftSeq;
+    const d: Draft = {
+      id: `d_${n}`,
+      messageId: `m_${n}`,
+      accountId: "acc_1",
+      threadId: `t_d${n}`,
+      to: [],
+      cc: [],
+      bcc: [],
+      subject: "",
+      bodyHtml: "",
+      bodyJson: null,
+      attachments: [],
+      inReplyToMessageId: body.replyToMessageId ?? null,
+      serverChanged: false,
+      syncedVersion: 0,
+      updatedAt: new Date().toISOString(),
+      version: 1,
+    };
+    if (body.replyToMessageId) {
+      const th = state.threads.find((x) => body.replyToMessageId!.startsWith(`m_${x.id}_`));
+      const forward = body.mode === "forward";
+      d.threadId = forward ? d.threadId : (th?.id ?? d.threadId);
+      d.subject = `${forward ? "Fwd" : "Re"}: ${th?.subject ?? ""}`;
+      d.to = forward ? [] : [{ name: "Nadawca 2", email: "osoba@firma.pl" }];
+      d.cc = body.mode === "replyAll" ? [{ name: "Inna Osoba", email: "inna@firma.pl" }] : [];
+      d.bodyHtml = "<p></p><blockquote><p>Cytowana treść</p></blockquote>";
+    }
+    state.drafts.set(d.id, d);
+    return d;
+  };
+
+  /** Another tab or program saves the draft: its version grows. */
+  const saveElsewhere = (id: string) => {
+    const d = state.drafts.get(id)!;
+    state.drafts.set(id, { ...d, version: d.version + 1, subject: "Zmieniony gdzie indziej" });
+  };
+
+  /** A thread in Drafts whose second message is a draft (d_ id = m_ id). */
+  const addDraftThread = (n: number) => {
+    state.threads.push(thread(n, { labelIds: ["DRAFT"], subject: `Szkic ${n}` }));
+    const d = newDraft({});
+    state.drafts.delete(d.id);
+    const id = `d_t_${n}_2`;
+    state.drafts.set(id, { ...d, id, messageId: `m_t_${n}_2`, subject: `Szkic ${n}` });
+    return id;
   };
 
   const unauthorized = () =>
@@ -268,6 +368,104 @@ export function createMockMail() {
         threads: state.threads.filter((t) => before.has(t.id)),
       });
     }),
+    http.post("*/api/v1/drafts", async ({ request }) => {
+      const body = (await request.json()) as Parameters<typeof newDraft>[0];
+      state.calls.createDraft.push(body);
+      return HttpResponse.json(newDraft(body), { status: 201 });
+    }),
+    http.get("*/api/v1/drafts/:id", ({ params }) => {
+      const d = state.drafts.get(String(params.id));
+      return d ? HttpResponse.json(d) : problem(404, "not_found");
+    }),
+    http.put("*/api/v1/drafts/:id", async ({ params, request }) => {
+      const id = String(params.id);
+      const body = (await request.json()) as DraftPut;
+      state.calls.putDraft.push({ ...body, id });
+      const d = state.drafts.get(id);
+      if (!d) return problem(404, "not_found");
+      if (body.version !== d.version) return problem(409, "draft_version_conflict");
+      const addrs = (list: Address[] | null | undefined) =>
+        (list ?? []).map((a) => ({ name: a.name ?? "", email: a.email }));
+      const next: Draft = {
+        ...d,
+        to: addrs(body.to),
+        cc: addrs(body.cc),
+        bcc: addrs(body.bcc),
+        subject: body.subject,
+        bodyHtml: body.bodyHtml,
+        bodyJson: body.bodyJson ?? null,
+        attachments: (body.attachmentIds ?? []).map((u) => state.uploads.get(u)!),
+        version: d.version + 1,
+        updatedAt: new Date().toISOString(),
+      };
+      state.drafts.set(id, next);
+      return HttpResponse.json(next);
+    }),
+    http.delete("*/api/v1/drafts/:id", ({ params }) => {
+      const id = String(params.id);
+      state.calls.deleteDraft.push(id);
+      return state.drafts.delete(id)
+        ? new HttpResponse(null, { status: 204 })
+        : problem(404, "not_found");
+    }),
+    http.post("*/api/v1/drafts/:id/send", ({ params }) => {
+      const id = String(params.id);
+      state.calls.send.push(id);
+      const d = state.drafts.get(id);
+      if (!d) return problem(404, "not_found");
+      if (state.sendProblem) return problem(state.sendProblem.status, state.sendProblem.code);
+      if ([...(d.to ?? []), ...(d.cc ?? []), ...(d.bcc ?? [])].length === 0) {
+        return problem(422, "no_recipients");
+      }
+      const ob = `ob_${++outboundSeq}`;
+      state.outbound.set(ob, { draftId: id, status: "queued" });
+      return HttpResponse.json({
+        messageId: d.messageId,
+        outboundId: ob,
+        undoUntil: new Date(Date.now() + 5000).toISOString(),
+      });
+    }),
+    http.post("*/api/v1/outbound/:id/cancel", ({ params }) => {
+      const id = String(params.id);
+      state.calls.cancel.push(id);
+      const ob = state.outbound.get(id);
+      if (!ob) return problem(404, "not_found");
+      if (ob.status === "sending") return problem(409, "send_in_progress");
+      ob.status = "cancelled";
+      return HttpResponse.json(state.drafts.get(ob.draftId));
+    }),
+    http.post("*/api/v1/uploads", async ({ request }) => {
+      // Request.formData() fails under jsdom (its File class); read the one part by hand.
+      const boundary = /boundary=(.+)$/.exec(request.headers.get("content-type") ?? "")?.[1];
+      const part = (await request.text()).split(`--${boundary}`)[1] ?? "";
+      const head = part.slice(0, part.indexOf("\r\n\r\n"));
+      const file = {
+        name: /filename="([^"]*)"/.exec(head)?.[1] ?? "file",
+        type: /Content-Type: (.+)/i.exec(head)?.[1]?.trim() ?? "",
+        size: part.length - head.length - 6,
+      };
+      state.calls.uploads.push(file.name);
+      if (file.size > state.maxUploadBytes) return problem(413, "upload_too_large");
+      const info: UploadInfo = {
+        id: `u_${++uploadSeq}`,
+        filename: file.name,
+        size: file.size,
+        contentType: file.type || "application/octet-stream",
+      };
+      state.uploads.set(info.id, info);
+      return HttpResponse.json(info, { status: 201 });
+    }),
+    http.get("*/api/v1/contacts/autocomplete", ({ request }) => {
+      const q = (new URL(request.url).searchParams.get("q") ?? "").toLowerCase();
+      state.calls.contacts.push(q);
+      const matches = (c: ContactSuggestion) =>
+        c.email.startsWith(q) ||
+        c.name
+          .toLowerCase()
+          .split(/\s+/)
+          .some((w) => w.startsWith(q));
+      return HttpResponse.json({ contacts: state.contacts.filter(matches) });
+    }),
     http.get(
       "*/api/v1/messages/:id/html",
       () => new HttpResponse(state.html, { headers: { "Content-Type": "text/html" } }),
@@ -283,5 +481,5 @@ export function createMockMail() {
     }
   };
 
-  return { state, handlers, revert };
+  return { state, handlers, revert, saveElsewhere, addDraftThread };
 }

@@ -33,15 +33,29 @@ The layout follows section 6.2 of the plan (`ARCHITECTURE_AND_PLAN.md` in `silo`
 | `src/api/`                    | `client.ts` (openapi-fetch, CSRF, `X-Silo-Client` per tab), `queries/`, `mutations/` (optimistic thread actions and undo), `events.ts` (SSE with polling fallback) |
 | `src/state/`                  | zustand: UI state, preferences in localStorage, snackbar, connection                                                                                               |
 | `src/shortcuts/`              | `keymap.ts`, `useShortcuts.ts`, `ShortcutsHelpDialog.tsx`                                                                                                          |
-| `src/features/`               | `nav`, `topbar`, `sync`, `threadlist`, `thread`, `labels`, `compose` (placeholder), `toasts`                                                                       |
+| `src/features/`               | `nav`, `topbar`, `sync`, `threadlist`, `thread`, `labels`, `compose`, `toasts`                                                                                     |
 | `src/components/`, `src/lib/` | icons, buttons, avatar; dates, Polish strings (`i18n.ts`), message HTML sanitising                                                                                 |
 
 URLs are Gmail-like: `/u/<account index>/<label>` with system slugs (`inbox`, `starred`,
 `snoozed`, `important`, `sent`, `scheduled`, `drafts`, `archive`, `all`, `spam`, `trash`) or a
 label id (`l_…`), `/u/<n>/<label>/<threadId>` and `/u/<n>/search?q=`.
 
-Tests (`npm test`) render the whole app with msw handlers (`src/test/mockMail.ts`) and a fake
-`EventSource` (`src/test/fakeEventSource.ts`).
+Tests (`npm test`) render the whole app with msw handlers (`src/test/mockMail.ts`, a stateful
+fake server with threads, drafts, uploads, sending and contacts), a fake `EventSource`
+(`src/test/fakeEventSource.ts`) and a fake upload `XMLHttpRequest` (`src/test/fakeUploadXhr.ts`).
+
+## Compose
+
+`src/features/compose` (plan 6.3): `ComposeDock` with Gmail-like windows (`state/compose.ts`:
+open drafts and their mode – normal, minimised, full screen; at most three expanded),
+`ComposeWindow`, `RecipientInput` (chips, `GET /contacts/autocomplete`), `Editor` (TipTap; pasted
+HTML is reduced to its formats with DOMPurify) and `AttachmentList`. `session.ts` keeps the
+editing state of an open draft outside React: `PUT /drafts/{id}` with `version` after 2 s of idle
+time, on blur and on close; 409 shows "Wczytaj / Nadpisz". Uploads use `XMLHttpRequest` for
+progress, three at a time. Sending is `POST /drafts/{id}/send` after the last save; "Cofnij" is
+`POST /outbound/{id}/cancel`, whose `Draft` reopens the window. The server owns autosave,
+deduplication and the send queue (plan 2.6); the browser keeps no copy of drafts and only warns
+on leaving the page with unsaved edits.
 
 ## API contract
 
