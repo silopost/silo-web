@@ -1,7 +1,7 @@
 {
   "name": "silo-web",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "license": "AGPL-3.0-only",
   "engines": {
@@ -80,6 +80,6 @@
     }
   },
   "silo": {
-    "serverRef": "v0.2.0"
+    "serverRef": "v0.3.0"
   }
 }
