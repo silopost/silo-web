@@ -1,6 +1,7 @@
 /** Keyboard shortcuts (plan 6.6); the single source for the dispatcher and the `?` dialog. */
 export type ShortcutId =
   | "compose"
+  | "composeMaximized"
   | "search"
   | "help"
   | "next"
@@ -40,6 +41,12 @@ export type Shortcut = {
 
 export const KEYMAP: Shortcut[] = [
   { id: "compose", keys: ["c"], label: "Nowa wiadomość", scope: "global" },
+  {
+    id: "composeMaximized",
+    keys: ["C"],
+    label: "Nowa wiadomość na pełnym ekranie (Shift+C)",
+    scope: "global",
+  },
   { id: "search", keys: ["/"], label: "Szukaj", scope: "global" },
   { id: "help", keys: ["?"], label: "Lista skrótów", scope: "global" },
   { id: "undo", keys: ["z"], label: "Cofnij ostatnią akcję", scope: "global" },

@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import { useLabels } from "../../api/queries/labels";
@@ -6,8 +7,9 @@ import { Icon, type IconName } from "../../components/Icon";
 import { formatCount } from "../../lib/format";
 import { t } from "../../lib/i18n";
 import { SYSTEM_VIEWS, type SystemView } from "../../lib/labels";
-import { usePrefs, useUi } from "../../state/ui";
+import { usePrefs } from "../../state/ui";
 import { useAccountIndex, useActiveAccount } from "../account";
+import { openNewCompose } from "../compose/actions";
 
 type ItemProps = {
   slug: string;
@@ -60,7 +62,7 @@ function systemCount(view: SystemView, labels: Label[]): number {
 /** LeftNav (plan 6.3): compose, system labels with counters, user labels, server folders. */
 export function LeftNav() {
   const collapsed = usePrefs((s) => s.navCollapsed);
-  const openCompose = useUi((s) => s.setComposeOpen);
+  const qc = useQueryClient();
   const account = useActiveAccount();
   const labels = useLabels(account?.id);
   const [more, setMore] = useState(false);
@@ -79,7 +81,7 @@ export function LeftNav() {
       <div className="px-2 py-2">
         <button
           type="button"
-          onClick={() => openCompose(true)}
+          onClick={() => void openNewCompose(qc, account?.id)}
           aria-label={collapsed ? t.compose : undefined}
           className="flex h-14 items-center gap-3 rounded-2xl bg-compose px-4 font-medium shadow-sm hover:shadow"
         >

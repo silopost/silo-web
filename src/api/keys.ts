@@ -10,4 +10,6 @@ export const keys = {
   thread: (id: string) => ["thread", id] as const,
   syncStatus: (accountId: string) => ["syncStatus", accountId] as const,
   messageHtml: (id: string) => ["messageHtml", id] as const,
+  draft: (id: string) => ["draft", id] as const,
+  contacts: (q: string) => ["contacts", q] as const,
 };

@@ -31,12 +31,10 @@ type Ui = {
   selection: ReadonlySet<string>;
   /** Keyboard cursor of the list (j/k). */
   focusedThreadId: string | null;
-  composeOpen: boolean;
   shortcutsHelpOpen: boolean;
   setSelection: (ids: Iterable<string>) => void;
   toggleSelected: (id: string) => void;
   setFocused: (id: string | null) => void;
-  setComposeOpen: (open: boolean) => void;
   setShortcutsHelpOpen: (open: boolean) => void;
   /** First key of a sequence (`g`, `*`) waiting for the second one. */
   pendingPrefix: string | null;
@@ -46,7 +44,6 @@ type Ui = {
 export const useUi = create<Ui>()((set) => ({
   selection: new Set(),
   focusedThreadId: null,
-  composeOpen: false,
   shortcutsHelpOpen: false,
   setSelection: (ids) => set({ selection: new Set(ids) }),
   toggleSelected: (id) =>
@@ -56,7 +53,6 @@ export const useUi = create<Ui>()((set) => ({
       return { selection: next };
     }),
   setFocused: (focusedThreadId) => set({ focusedThreadId }),
-  setComposeOpen: (composeOpen) => set({ composeOpen }),
   setShortcutsHelpOpen: (shortcutsHelpOpen) => set({ shortcutsHelpOpen }),
   pendingPrefix: null,
   setPendingPrefix: (pendingPrefix) => set({ pendingPrefix }),

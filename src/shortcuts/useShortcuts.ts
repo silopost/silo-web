@@ -1,9 +1,10 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import { useAccountIndex } from "../features/account";
-import { t } from "../lib/i18n";
-import { toast, useToasts } from "../state/toasts";
+import { useAccountIndex, useActiveAccount } from "../features/account";
+import { openNewCompose } from "../features/compose/actions";
+import { useToasts } from "../state/toasts";
 import { useUi } from "../state/ui";
 import { SEQUENCES, SINGLES, type ShortcutId } from "./keymap";
 
@@ -65,13 +66,16 @@ export function isIgnored(e: KeyboardEvent): boolean {
 export function useGlobalShortcuts(): void {
   const navigate = useNavigate();
   const account = useAccountIndex();
+  const accountId = useActiveAccount()?.id;
+  const qc = useQueryClient();
   const setPrefix = useUi((s) => s.setPendingPrefix);
 
   const go = (label: string) => () =>
     void navigate({ to: "/u/$account/$label", params: { account, label } });
 
   useShortcutHandlers({
-    compose: () => useUi.getState().setComposeOpen(true),
+    compose: () => void openNewCompose(qc, accountId),
+    composeMaximized: () => void openNewCompose(qc, accountId, true),
     search: () => document.getElementById("search-input")?.focus(),
     help: () => useUi.getState().setShortcutsHelpOpen(true),
     undo: () => useToasts.getState().lastUndo?.(),
@@ -80,9 +84,6 @@ export function useGlobalShortcuts(): void {
     goSent: go("sent"),
     goDrafts: go("drafts"),
     goAll: go("all"),
-    reply: () => toast(t.comingSoon),
-    replyAll: () => toast(t.comingSoon),
-    forward: () => toast(t.comingSoon),
   });
 
   useEffect(() => {
