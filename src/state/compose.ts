@@ -2,7 +2,11 @@ import { create } from "zustand";
 
 export type WindowMode = "normal" | "minimized" | "maximized";
 
-export type ComposeWindowState = { draftId: string; mode: WindowMode };
+/**
+ * draftId changes when the draft moves to another account ("Od", PUT /drafts/{id} accountId);
+ * key stays, so that the window is not mounted again.
+ */
+export type ComposeWindowState = { draftId: string; key: string; mode: WindowMode };
 
 /** A failed send reported by outbound.status (plan 3.9 step 6), shown in the window's bar. */
 export type SendFailure = { error?: string; failedRecipients?: string[] };
@@ -18,6 +22,14 @@ type Compose = {
   setMode: (draftId: string, mode: WindowMode) => void;
   setFailure: (draftId: string, failure: SendFailure | null) => void;
   setRemoteVersion: (draftId: string, version: number) => void;
+  /** The draft got new ids (moved to another account): the window and its state follow. */
+  rename: (from: string, to: string) => void;
+};
+
+const rekey = <T>(map: Record<string, T>, from: string, to: string): Record<string, T> => {
+  if (!(from in map)) return map;
+  const { [from]: value, ...rest } = map;
+  return { ...rest, [to]: value as T };
 };
 
 /** At most three windows are expanded (plan 6.3); older ones are minimised. */
@@ -30,11 +42,12 @@ export const useCompose = create<Compose>()((set) => ({
   open: (draftId, mode = "normal") =>
     set((s) => {
       const others = s.windows.filter((w) => w.draftId !== draftId);
+      const key = s.windows.find((w) => w.draftId === draftId)?.key ?? draftId;
       const windows = [
         ...others.map((w) =>
           mode === "maximized" && w.mode === "maximized" ? { ...w, mode: "normal" as const } : w,
         ),
-        { draftId, mode },
+        { draftId, key, mode },
       ];
       let expanded = windows.filter((w) => w.mode !== "minimized").length;
       return {
@@ -67,4 +80,10 @@ export const useCompose = create<Compose>()((set) => ({
     }),
   setRemoteVersion: (draftId, version) =>
     set((s) => ({ remoteVersions: { ...s.remoteVersions, [draftId]: version } })),
+  rename: (from, to) =>
+    set((s) => ({
+      windows: s.windows.map((w) => (w.draftId === from ? { ...w, draftId: to } : w)),
+      failures: rekey(s.failures, from, to),
+      remoteVersions: rekey(s.remoteVersions, from, to),
+    })),
 }));

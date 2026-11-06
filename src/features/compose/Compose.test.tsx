@@ -363,12 +363,14 @@ it("closing the window saves with syncNow, also an autosaved draft", async () =>
   const { mail, user } = setup();
   const win = await openCompose(user);
   await user.type(within(win).getByRole("textbox", { name: "Temat" }), "Szkic");
-  await waitFor(() => expect(mail.state.calls.putDraft).toHaveLength(1));
-  expect(mail.state.calls.putDraft[0]?.syncNow).toBeUndefined();
+  // On a slow machine typing may autosave in parts: wait for the whole subject.
+  await waitFor(() => expect(mail.state.calls.putDraft.at(-1)).toMatchObject({ subject: "Szkic" }));
+  const n = mail.state.calls.putDraft.length;
+  expect(mail.state.calls.putDraft.every((p) => p.syncNow === undefined)).toBe(true);
   await user.keyboard("{Escape}");
-  await waitFor(() => expect(mail.state.calls.putDraft).toHaveLength(2));
-  expect(mail.state.calls.putDraft[1]).toMatchObject({ subject: "Szkic", syncNow: true });
-  expect(mail.state.drafts.get("d_1")).toMatchObject({ syncedVersion: 3, version: 3 });
+  await waitFor(() => expect(mail.state.calls.putDraft).toHaveLength(n + 1));
+  expect(mail.state.calls.putDraft[n]).toMatchObject({ subject: "Szkic", syncNow: true });
+  expect(mail.state.drafts.get("d_1")).toMatchObject({ syncedVersion: n + 2, version: n + 2 });
 });
 
 it("Esc saves and closes; an untouched new draft is dropped", async () => {

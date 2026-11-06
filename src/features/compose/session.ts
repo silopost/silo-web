@@ -61,6 +61,8 @@ export type SessionState = {
   error: string | null;
   /** The recipient refused by the server (400/422 with address and field): its chip is red. */
   invalid: { address: string; field: "to" | "cc" | "bcc" } | null;
+  /** A reply or forward: it is sent from the account of the original ("Od" is fixed). */
+  locked: boolean;
 };
 
 const emptyForm: Form = {
@@ -105,6 +107,7 @@ export class DraftSession {
     sending: false,
     error: null,
     invalid: null,
+    locked: false,
   };
   private listeners = new Set<() => void>();
   private dirty = false;
@@ -121,7 +124,8 @@ export class DraftSession {
   closed = false;
 
   constructor(
-    readonly id: string,
+    /** The draft's id; it changes when the draft moves to another account (changeAccount). */
+    public id: string,
     private readonly qc: QueryClient,
   ) {}
 
@@ -167,6 +171,7 @@ export class DraftSession {
       save: "idle",
       error: null,
       invalid: null,
+      locked: d.inReplyToMessageId !== null,
     });
   }
 
@@ -247,20 +252,7 @@ export class DraftSession {
     this.set({ save: "saving" });
     const run = (async () => {
       try {
-        const d = await saveDraft(
-          this.id,
-          this.state.version,
-          {
-            to: f.to,
-            cc: f.cc,
-            bcc: f.bcc,
-            subject: f.subject,
-            bodyHtml: toServerHtml(f.bodyHtml),
-            bodyJson: f.bodyJson,
-            attachmentIds: f.attachments.map((a) => a.id),
-          },
-          syncNow,
-        );
+        const d = await saveDraft(this.id, this.state.version, fieldsOf(f), syncNow);
         this.saved = true;
         this.syncedVersion = d.syncedVersion;
         this.qc.setQueryData(keys.draft(this.id), d);
@@ -285,6 +277,76 @@ export class DraftSession {
     this.saving = null;
     if (ok && this.dirty) this.schedule();
     return ok && !this.dirty;
+  }
+
+  /**
+   * "Od" (plan 5.2): PUT /drafts/{id} with accountId and the current content. The server moves
+   * the new message to the other account under new ids (id, messageId, threadId) and removes
+   * the old copy; the window keeps its content and follows the new id without reloading.
+   * 409 draft_account_locked (a reply or forward) keeps the account; resolves whether it moved.
+   */
+  async changeAccount(accountId: string): Promise<boolean> {
+    if (accountId === this.state.accountId || this.state.conflict) return false;
+    clearTimeout(this.timer);
+    while (this.saving) await this.saving;
+    if (this.state.conflict) return false;
+    const from = this.state.accountId;
+    const wasDirty = this.dirty;
+    this.dirty = false;
+    // The select shows the choice at once; a refusal puts the old account back.
+    this.set({ accountId, save: "saving" });
+    const run = (async () => {
+      try {
+        const d = await saveDraft(
+          this.id,
+          this.state.version,
+          fieldsOf(this.state.form),
+          false,
+          accountId,
+        );
+        const oldId = this.id;
+        renameSession(this, d.id);
+        this.syncedVersion = d.syncedVersion;
+        this.qc.removeQueries({ queryKey: keys.draft(oldId) });
+        this.qc.setQueryData(keys.draft(d.id), d);
+        this.set({
+          accountId: d.accountId,
+          version: d.version,
+          save: this.dirty ? "idle" : "saved",
+          serverChanged: false,
+        });
+        // The Drafts lists of both accounts changed.
+        for (const a of new Set([from, d.accountId])) {
+          void this.qc.invalidateQueries({ queryKey: keys.threadsAll(a) });
+          void this.qc.invalidateQueries({ queryKey: keys.labels(a) });
+        }
+        return true;
+      } catch (err) {
+        this.dirty ||= wasDirty;
+        if (isApiError(err, 409) && err.code === "draft_account_locked") {
+          this.set({ accountId: from, save: "idle", locked: true });
+          toast(t.fromLocked);
+        } else if (isApiError(err, 409)) {
+          this.conflictCurrent = err.problem?.current ?? null;
+          this.set({ accountId: from, save: "idle", conflict: true });
+        } else {
+          this.set({ accountId: from, save: "idle" });
+          toast(t.fromChangeFailed);
+        }
+        return false;
+      }
+    })();
+    this.saving = run;
+    const ok = await run;
+    this.saving = null;
+    if (this.dirty) this.schedule();
+    return ok;
+  }
+
+  /** Another tab moved the draft to another account while this one has unsaved edits. */
+  movedElsewhere() {
+    this.conflictCurrent = null;
+    this.set({ conflict: true });
   }
 
   /** Saves until nothing is left (edits made during a save are saved too). */
@@ -480,6 +542,19 @@ export class DraftSession {
   }
 }
 
+/** The body of PUT /drafts/{id}: the form with cid: pictures (lib/inlineImages). */
+function fieldsOf(f: Form) {
+  return {
+    to: f.to,
+    cc: f.cc,
+    bcc: f.bcc,
+    subject: f.subject,
+    bodyHtml: toServerHtml(f.bodyHtml),
+    bodyJson: f.bodyJson,
+    attachmentIds: f.attachments.map((a) => a.id),
+  };
+}
+
 /** The refused recipient of invalid_address / validation_failed (Problem.address, field). */
 function invalidOf(err: unknown): SessionState["invalid"] {
   if (!isApiError(err)) return null;
@@ -513,6 +588,29 @@ export function getSession(qc: QueryClient, id: string): DraftSession {
   }
   s.closed = false;
   return s;
+}
+
+/** The draft of a session got new ids: the session, its window and its state follow. */
+function renameSession(s: DraftSession, id: string) {
+  if (s.id === id) return;
+  sessions.delete(s.id);
+  useCompose.getState().rename(s.id, id);
+  s.id = id;
+  sessions.set(id, s);
+}
+
+/**
+ * draft.updated with previousDraftId from another tab or program: the draft moved to another
+ * account under a new id. An open window follows it; without local edits it loads the moved
+ * draft, with them it offers "Wczytaj / Nadpisz".
+ */
+export function draftMoved(qc: QueryClient, previousId: string, id: string) {
+  const s = sessions.get(previousId);
+  if (!s) return;
+  renameSession(s, id);
+  qc.removeQueries({ queryKey: keys.draft(previousId) });
+  if (s.isDirty) s.movedElsewhere();
+  else void s.reload();
 }
 
 /** Whether any open draft has unsaved edits (beforeunload warning). */

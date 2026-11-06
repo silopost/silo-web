@@ -13,7 +13,7 @@ import { Icon } from "../../components/Icon";
 import { IconButton } from "../../components/IconButton";
 import { t } from "../../lib/i18n";
 import { useCompose, type WindowMode } from "../../state/compose";
-import { useSession } from "../account";
+import { useAccounts } from "../account";
 import { AttachmentList } from "./AttachmentList";
 import { Editor } from "./Editor";
 import { PresetTimeMenu } from "../snooze/PresetTimeMenu";
@@ -71,7 +71,10 @@ export function ComposeWindow({ draftId, mode }: { draftId: string; mode: Window
   const setMode = useCompose((s) => s.setMode);
   const failure = useCompose((s) => s.failures[draftId]);
   const remoteVersion = useCompose((s) => s.remoteVersions[draftId] ?? 0);
-  const account = useSession()?.accounts?.find((a) => a.id === state.accountId);
+  const accounts = useAccounts();
+  const account = accounts.find((a) => a.id === state.accountId);
+  // Element ids stay when the draft gets new ids (moved to another account).
+  const [uid] = useState(draftId);
   // maxAttachmentBytes for the check before an upload (DraftSession.addFiles).
   useQuery(metaQuery);
   const invalidIn = (field: "to" | "cc" | "bcc") =>
@@ -85,12 +88,14 @@ export function ComposeWindow({ draftId, mode }: { draftId: string; mode: Window
 
   const { form, loaded } = state;
   const ids = {
-    to: `${draftId}-to`,
-    cc: `${draftId}-cc`,
-    bcc: `${draftId}-bcc`,
-    subject: `${draftId}-subject`,
-    body: `${draftId}-body`,
+    to: `${uid}-to`,
+    cc: `${uid}-cc`,
+    bcc: `${uid}-bcc`,
+    subject: `${uid}-subject`,
+    body: `${uid}-body`,
   };
+  const addressOf = (a: { email: string; displayName: string }) =>
+    a.displayName ? `${a.displayName} <${a.email}>` : a.email;
   const showCc = ccOpen || form.cc.length > 0;
   const showBcc = bccOpen || form.bcc.length > 0;
   const conflict = state.conflict || remoteVersion > state.version;
@@ -242,15 +247,34 @@ export function ComposeWindow({ draftId, mode }: { draftId: string; mode: Window
               )
             ) : (
               <>
-                {account && (
+                {accounts.length > 1 && !state.locked ? (
+                  // "Od" (plan 6.3): a new message can move to another account of the user.
                   <div className="flex items-center gap-2 border-b border-line px-3 py-2">
-                    <span className="text-ink-muted">{t.from}</span>
-                    <span>
-                      {account.displayName
-                        ? `${account.displayName} <${account.email}>`
-                        : account.email}
-                    </span>
+                    <label htmlFor={`${uid}-from`} className="text-ink-muted">
+                      {t.from}
+                    </label>
+                    <select
+                      id={`${uid}-from`}
+                      title={t.fromAccount}
+                      value={state.accountId}
+                      disabled={state.sending}
+                      onChange={(e) => void session.changeAccount(e.target.value)}
+                      className="min-w-0 flex-1 bg-transparent outline-none"
+                    >
+                      {accounts.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {addressOf(a)}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                ) : (
+                  account && (
+                    <div className="flex items-center gap-2 border-b border-line px-3 py-2">
+                      <span className="text-ink-muted">{t.from}</span>
+                      <span>{addressOf(account)}</span>
+                    </div>
+                  )
                 )}
                 <RecipientInput
                   id={ids.to}

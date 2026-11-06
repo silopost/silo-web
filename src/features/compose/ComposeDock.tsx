@@ -26,7 +26,7 @@ export function ComposeDock() {
   return (
     <div className="pointer-events-none fixed right-4 bottom-0 z-30 flex flex-row-reverse items-end gap-4">
       {windows.map((w) => (
-        <div key={w.draftId} className="pointer-events-auto">
+        <div key={w.key} className="pointer-events-auto">
           <ComposeWindow draftId={w.draftId} mode={w.mode} />
         </div>
       ))}

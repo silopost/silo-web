@@ -26,6 +26,7 @@ type DraftPut = {
   bodyJson?: unknown;
   attachmentIds?: string[] | null;
   syncNow?: boolean;
+  accountId?: string;
 };
 
 /** A problem answered by the fake server, with the extension fields of plan 5.3. */
@@ -371,7 +372,7 @@ export function createMockMail() {
     const d: Draft = {
       id: `d_${n}`,
       messageId: `m_${n}`,
-      accountId: "acc_1",
+      accountId: (!body.replyToMessageId && body.accountId) || "acc_1",
       threadId: `t_d${n}`,
       to: [],
       cc: [],
@@ -711,8 +712,22 @@ export function createMockMail() {
       if (bad) return problem(400, "validation_failed", bad);
       const addrs = (list: Address[] | null | undefined) =>
         (list ?? []).map((a) => ({ name: a.name ?? "", email: a.email }));
+      // "Od": a new message moves to another account under new ids; replies are locked.
+      let moved: Partial<Draft> = {};
+      if (body.accountId && body.accountId !== d.accountId) {
+        if (d.inReplyToMessageId) return problem(409, "draft_account_locked");
+        const n = ++draftSeq;
+        moved = {
+          id: `d_${n}`,
+          messageId: `m_${n}`,
+          threadId: `t_d${n}`,
+          accountId: body.accountId,
+        };
+        state.drafts.delete(id);
+      }
       const next: Draft = {
         ...d,
+        ...moved,
         to: addrs(body.to),
         cc: addrs(body.cc),
         bcc: addrs(body.bcc),
@@ -724,7 +739,7 @@ export function createMockMail() {
         syncedVersion: body.syncNow ? d.version + 1 : d.syncedVersion,
         updatedAt: new Date().toISOString(),
       };
-      state.drafts.set(id, next);
+      state.drafts.set(next.id, next);
       return HttpResponse.json(next);
     }),
     http.delete("*/api/v1/drafts/:id", ({ params }) => {

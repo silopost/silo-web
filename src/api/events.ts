@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { openDraft } from "../features/compose/session";
+import { draftMoved, openDraft } from "../features/compose/session";
 import { notifyNewMessage } from "../features/notifications/desktop";
 import { t } from "../lib/i18n";
 import { useCompose } from "../state/compose";
@@ -149,6 +149,12 @@ export function applyEvent(qc: QueryClient, type: string, data: Data): void {
     case "draft.updated": {
       // Saved by another tab or program: the open window offers "Wczytaj / Nadpisz".
       const draftId = str(data.draftId);
+      // Moved to another account ("Od") elsewhere: the window of the old id follows the new one.
+      const previousId = str(data.previousDraftId);
+      if (draftId && previousId && previousId !== draftId) {
+        if (!own) draftMoved(qc, previousId, draftId);
+        return;
+      }
       if (draftId && !own && typeof data.version === "number") {
         useCompose.getState().setRemoteVersion(draftId, data.version);
       }

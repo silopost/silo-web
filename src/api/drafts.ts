@@ -34,12 +34,17 @@ export type DraftFields = {
 const recipients = (list: Address[]) =>
   list.map((a) => (a.name ? { email: a.email, name: a.name } : { email: a.email }));
 
-/** syncNow: the copy in the server's Drafts folder is written at once (window closed, plan 3.8). */
+/**
+ * syncNow: the copy in the server's Drafts folder is written at once (window closed, plan 3.8).
+ * accountId moves a new message to another account of the user ("Od"): the answer carries the
+ * draft's new ids.
+ */
 export const saveDraft = (
   id: string,
   version: number,
   f: DraftFields,
   syncNow = false,
+  accountId?: string,
 ): Promise<Draft> =>
   call(
     api.PUT("/drafts/{id}", {
@@ -54,6 +59,7 @@ export const saveDraft = (
         bodyJson: f.bodyJson ?? undefined,
         attachmentIds: f.attachmentIds,
         ...(syncNow ? { syncNow: true } : {}),
+        ...(accountId ? { accountId } : {}),
       },
     }),
   );

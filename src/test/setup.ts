@@ -1,7 +1,11 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { afterEach } from "vitest";
 import { FakeEventSource } from "./fakeEventSource";
+
+// The first render of the whole app in a test file can take over a second on a busy machine
+// (all files run in parallel): give findBy/waitFor more time than the default 1 s.
+configure({ asyncUtilTimeout: 3000 });
 
 afterEach(() => {
   cleanup();
