@@ -180,3 +180,17 @@ it("mode local: 429 on the code step shows Retry-After", async () => {
   await user.click(screen.getByRole("button", { name: "Potwierdź" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("Spróbuj ponownie za 12 s.");
 });
+
+it("mode local: a user without mail accounts is offered Dodaj konto", async () => {
+  const { mail } = localMode(false);
+  mail.session.accounts = [];
+  const user = userEvent.setup();
+  const { router } = renderApp("/login");
+  await typePassword(user);
+  expect(
+    await screen.findByRole("heading", { name: "Nie masz jeszcze konta pocztowego w Silo" }),
+  ).toBeInTheDocument();
+  await user.click(screen.getByRole("link", { name: "Dodaj konto" }));
+  expect(await screen.findByRole("dialog", { name: "Dodaj konto" })).toBeInTheDocument();
+  expect(router.state.location.pathname).toBe("/u/0/settings/accounts");
+});

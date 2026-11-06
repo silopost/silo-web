@@ -97,6 +97,8 @@ export const t = {
   signOut: "Wyloguj",
   shortcuts: "Skróty klawiszowe",
   noAccount: "To konto nie istnieje.",
+  noAccountsYet: "Nie masz jeszcze konta pocztowego w Silo",
+  noAccountsHint: "Dodaj skrzynkę, aby zobaczyć tu swoją pocztę.",
   unknownLabel: "Nie znaleziono etykiety.",
 
   // sync
