@@ -427,7 +427,7 @@ export interface paths {
         };
         /**
          * Server-Sent Events stream
-         * @description Pushes changes of the mailbox as they are committed. After a reconnect with Last-Event-ID the missed events (24 h retained) are replayed first; an id older than the retention yields a resync event. A ': ping' comment is sent every 25 s; with it the session is checked, and a stream whose session ended gets session.expired and is closed. A client that cannot keep up is disconnected and replays on reconnect. At most 8 streams per user are open at once; more answer 429 rate_limited (use /events/poll).
+         * @description Pushes changes of the mailbox as they are committed. After a reconnect with Last-Event-ID the missed events (24 h retained) are replayed first; an id older than the retention yields a resync event. A ': ping' comment is sent every 25 s; with it the session is checked, and a stream whose session ended gets session.expired and is closed. A client that cannot keep up is disconnected and replays on reconnect. At most 8 streams per user are open at once; a stream over the limit answers 200 with a single stream.limit event ({retryAfter: 30}, seconds; a retry: 30000 field slows down an EventSource that is not closed) and ends: close the EventSource and use /events/poll.
          */
         get: operations["streamEvents"];
         put?: never;
@@ -825,7 +825,11 @@ export interface paths {
         get: operations["listSessions"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Sign out everywhere else
+         * @description Revokes every session of the user except the current one (their open event streams get session.expired). others=true is required.
+         */
+        delete: operations["revokeOtherSessions"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1187,6 +1191,11 @@ export interface components {
             name: string;
         };
         AdminAccount: {
+            /**
+             * @description How Silo signs in to the servers (see Account.authType).
+             * @enum {string}
+             */
+            authType: "password" | "xoauth2";
             /** Format: date-time */
             createdAt: string;
             /**
@@ -4198,7 +4207,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description A Server-Sent Events stream. Each event has id (sequence number), event (type) and data (JSON); types: message.new, thread.updated, thread.deleted, thread.merged, label.counts, label.changed, operation.failed, filter.applied ({filterId, accountId, messages, threads}: POST /filters/{id}/apply is done), settings.updated ({updatedAt}: reload GET /settings), account.status, account.sync_progress, account.error, resync, session.expired (the session was signed out, revoked, expired or its user disabled: the stream ends; sign in again). Events caused by a request that carried X-Silo-Client have origin set to that id. */
+            /** @description A Server-Sent Events stream. Each event has id (sequence number), event (type) and data (JSON); types: message.new, thread.updated, thread.deleted, thread.merged, label.counts, label.changed, operation.failed, filter.applied ({filterId, accountId, messages, threads}: POST /filters/{id}/apply is done), settings.updated ({updatedAt}: reload GET /settings), account.status, account.sync_progress, account.error, resync, session.expired (the session was signed out, revoked, expired or its user disabled: the stream ends; sign in again), stream.limit ({retryAfter}: too many open streams of the user, the stream ends; fall back to /events/poll). Events caused by a request that carried X-Silo-Client have origin set to that id. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4218,15 +4227,6 @@ export interface operations {
             };
             /** @description Unprocessable Entity */
             422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description Too Many Requests */
-            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6012,6 +6012,72 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    revokeOtherSessions: {
+        parameters: {
+            query: {
+                /** @description Must be true: revoke every session but the current one. */
+                others: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
