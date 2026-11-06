@@ -76,6 +76,20 @@ describe("AccountSwitcher", () => {
     await waitFor(() => expect(document.title).toBe("Odebrane (3) – dev1@silo.test – Silo"));
   });
 
+  it("fetches an account's counts again when its sync state changes (end of initial sync)", async () => {
+    const { mail } = setup();
+    await waitFor(() => expect(screen.getByTestId("switcher-badge")).toHaveTextContent("4"));
+    mail.state.accountCounts.acc_2 = { INBOX: { unread: 6, total: 9 } };
+    act(() =>
+      FakeEventSource.latest().emit("account.status", {
+        accountId: "acc_2",
+        state: "live",
+        lastSyncAt: "2026-11-06T10:00:00Z",
+      }),
+    );
+    await waitFor(() => expect(screen.getByTestId("switcher-badge")).toHaveTextContent("6"));
+  });
+
   it("switches to the chosen account keeping a system view and remembers it in the settings", async () => {
     const { mail, user, router } = setup("/u/0/starred");
     const menu = await openMenu(user);
