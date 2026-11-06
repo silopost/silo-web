@@ -62,6 +62,7 @@ export function createLocalMock(mail: MockMail) {
       totpDisable: [] as { password: string; code: string }[],
       backupCodes: [] as { password: string; code: string }[],
       revoke: [] as string[],
+      revokeOthers: 0,
     },
   };
 
@@ -129,6 +130,13 @@ export function createLocalMock(mail: MockMail) {
       return HttpResponse.json({ backupCodes: state.backupCodes });
     }),
     http.get("*/api/v1/sessions", () => HttpResponse.json({ sessions: state.sessions })),
+    http.delete("*/api/v1/sessions", ({ request }) => {
+      if (new URL(request.url).searchParams.get("others") !== "true")
+        return problem(400, "invalid_request");
+      state.calls.revokeOthers += 1;
+      state.sessions = state.sessions.filter((s) => s.current);
+      return new HttpResponse(null, { status: 204 });
+    }),
     http.delete("*/api/v1/sessions/:id", ({ params }) => {
       state.calls.revoke.push(String(params.id));
       state.sessions = state.sessions.filter((s) => s.id !== params.id);

@@ -160,7 +160,9 @@ describe("sessions", () => {
     await waitFor(() => expect(local.state.calls.revoke).toEqual(["s_3"]));
     await waitFor(() => expect(within(table).queryByText("Pixel 8")).not.toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: "Wyloguj wszędzie indziej" }));
-    await waitFor(() => expect(local.state.calls.revoke).toEqual(["s_3", "s_2"]));
+    await waitFor(() => expect(local.state.calls.revokeOthers).toBe(1));
+    // One DELETE /sessions?others=true, no per-session DELETE.
+    expect(local.state.calls.revoke).toEqual(["s_3"]);
     expect(await screen.findByText("Brak innych sesji.")).toBeInTheDocument();
   });
 });

@@ -409,16 +409,23 @@ function SessionsSection() {
     queryFn: ({ signal }) => call(api.GET("/sessions", { signal })),
     select: (d) => d.sessions ?? [],
   });
-  const revoke = useMutation({
-    mutationFn: async (ids: string[]) => {
-      // No bulk endpoint: one DELETE /sessions/{id} per other session.
-      for (const id of ids) await call(api.DELETE("/sessions/{id}", { params: { path: { id } } }));
-      return ids.length;
+  const revokeOne = useMutation({
+    mutationFn: (id: string) => call(api.DELETE("/sessions/{id}", { params: { path: { id } } })),
+    onSuccess: () => toast(t.security.revoked),
+    onError: () => toast(t.genericError),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.sessions }),
+  });
+  const revokeOthers = useMutation({
+    // One request revokes every session of the user except the current one.
+    mutationFn: async (count: number) => {
+      await call(api.DELETE("/sessions", { params: { query: { others: true } } }));
+      return count;
     },
     onSuccess: (n) => toast(n === 1 ? t.security.revoked : t.security.revokedOthers(n)),
     onError: () => toast(t.genericError),
     onSettled: () => qc.invalidateQueries({ queryKey: keys.sessions }),
   });
+  const pending = revokeOne.isPending || revokeOthers.isPending;
   const list = sessions.data ?? [];
   const others = list.filter((s) => !s.current).map((s) => s.id);
 
@@ -462,9 +469,9 @@ function SessionsSection() {
                   {!s.current && (
                     <button
                       type="button"
-                      disabled={revoke.isPending}
+                      disabled={pending}
                       aria-label={t.security.revokeOf(deviceName(s))}
-                      onClick={() => revoke.mutate([s.id])}
+                      onClick={() => revokeOne.mutate(s.id)}
                       className="font-medium text-primary hover:underline disabled:opacity-60"
                     >
                       {t.security.revoke}
@@ -480,8 +487,8 @@ function SessionsSection() {
         (others.length > 0 ? (
           <button
             type="button"
-            disabled={revoke.isPending}
-            onClick={() => revoke.mutate(others)}
+            disabled={pending}
+            onClick={() => revokeOthers.mutate(others.length)}
             className={`${outline} self-start`}
           >
             {t.security.revokeOthers}
