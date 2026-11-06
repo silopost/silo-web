@@ -34,6 +34,7 @@ const EVENT_TYPES = [
   "account.error",
   "resync",
   "session.expired",
+  "stream.limit",
 ] as const;
 
 const str = (v: unknown) => (typeof v === "string" ? v : undefined);
@@ -228,28 +229,6 @@ export const eventsConfig = {
   sseRetryMs: 60_000,
   createEventSource: (url: string): EventSourceLike | null =>
     typeof EventSource === "undefined" ? null : new EventSource(url, { withCredentials: true }),
-  /**
-   * EventSource does not tell why it failed. Asks the stream once: the seconds of Retry-After
-   * when it answers 429 (too many streams of the user), else undefined; the probe's own stream
-   * is closed at once.
-   */
-  probeStream: async (url: string): Promise<number | undefined> => {
-    const ctrl = new AbortController();
-    try {
-      const res = await fetch(new URL(url, window.location.origin), {
-        credentials: "same-origin",
-        headers: { Accept: "text/event-stream" },
-        signal: ctrl.signal,
-      });
-      if (res.status !== 429) return undefined;
-      const header = res.headers.get("Retry-After");
-      return header && /^\d+$/.test(header) ? Number(header) : 30;
-    } catch {
-      return undefined;
-    } finally {
-      ctrl.abort();
-    }
-  },
 };
 
 /**
@@ -289,6 +268,7 @@ export function connectEvents(qc: QueryClient): () => void {
     for (const type of EVENT_TYPES) {
       es.addEventListener(type, (ev) => {
         const me = ev as MessageEvent;
+        if (type === "stream.limit") return onStreamLimit(me.data);
         handle(type, me.lastEventId, me.data);
       });
     }
@@ -309,7 +289,7 @@ export function connectEvents(qc: QueryClient): () => void {
       if (es.readyState === 2 || failures >= eventsConfig.maxSseFailures) {
         es.close();
         source = null;
-        void fallBack();
+        startPolling();
       } else {
         void probe();
       }
@@ -350,18 +330,23 @@ export function connectEvents(qc: QueryClient): () => void {
   };
 
   /**
-   * SSE gave up. 429 (more than 8 streams of the user, plan 5.4): no reconnect loop – poll and
-   * try SSE again only after Retry-After, with a banner asking to close tabs.
+   * More than 8 streams of the user (plan 5.4): the server answers 200 with `stream.limit` and
+   * closes the stream. Close it here too, so that EventSource does not reconnect after its retry
+   * hint; poll and try SSE again after `retryAfter` seconds, with a banner asking to close tabs.
    */
-  const fallBack = async () => {
-    const retryAfter = await eventsConfig.probeStream(eventsConfig.url);
+  const onStreamLimit = (raw: unknown) => {
+    let retryAfter = 30;
+    try {
+      const d = JSON.parse(String(raw)) as { retryAfter?: unknown };
+      if (typeof d.retryAfter === "number" && d.retryAfter > 0) retryAfter = d.retryAfter;
+    } catch {
+      // keep the default
+    }
+    source?.close();
+    source = null;
     if (stopped) return;
-    setTooManyStreams(retryAfter !== undefined);
-    startPolling(
-      retryAfter !== undefined
-        ? Math.max(retryAfter * 1000, eventsConfig.sseRetryMs)
-        : eventsConfig.sseRetryMs,
-    );
+    setTooManyStreams(true);
+    startPolling(retryAfter * 1000);
   };
 
   const startPolling = (sseRetryMs = eventsConfig.sseRetryMs) => {

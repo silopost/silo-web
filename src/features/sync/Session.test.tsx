@@ -12,7 +12,7 @@ import { createMockMail } from "../../test/mockMail";
 import { renderApp } from "../../test/renderApp";
 import { versionConfig } from "./version";
 
-/** Version banner (plan 2.4), SSE session.expired and 429 (limits of silo-server). */
+/** Version banner (plan 2.4), SSE session.expired, stream.limit and 429 (limits of silo-server). */
 
 const server = setupServer();
 beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
@@ -91,53 +91,29 @@ describe("session.expired", () => {
   });
 });
 
-/** An EventSource refused by the server (EventSource closes on a non-200 answer). */
-class RefusedEventSource {
-  readyState = 0;
-  onopen: ((ev: Event) => unknown) | null = null;
-  onerror: ((ev: Event) => unknown) | null = null;
-  constructor() {
-    queueMicrotask(() => {
-      this.readyState = 2;
-      this.onerror?.(new Event("error"));
-    });
-  }
-  addEventListener() {}
-  close() {
-    this.readyState = 2;
-  }
-}
-
-describe("429", () => {
-  it("does not reconnect in a loop when /events refuses more streams: banner and polling", async () => {
-    let streams = 0;
+describe("stream.limit", () => {
+  it("does not reconnect in a loop when the user has too many streams: banner and polling", async () => {
     let polls = 0;
-    eventsConfig.createEventSource = () => {
-      streams += 1;
-      return new RefusedEventSource();
-    };
     eventsConfig.pollIntervalMs = 20;
     setup("/u/0/inbox", () => {
       server.use(
-        http.get("*/api/v1/events", () =>
-          HttpResponse.json(
-            { status: 429, code: "rate_limited", title: "Too Many Requests" },
-            { status: 429, headers: { "Retry-After": "30" } },
-          ),
-        ),
         http.get("*/api/v1/events/poll", () => {
           polls += 1;
           return HttpResponse.json({ events: [], nextAfter: 1 });
         }),
       );
     });
+    await screen.findByRole("grid");
+    const es = FakeEventSource.latest();
+    act(() => es.emit("stream.limit", { retryAfter: 30 }));
+    expect(es.readyState).toBe(2);
     expect(await screen.findByText(/Zbyt wiele otwartych kart Silo/)).toBeInTheDocument();
     await waitFor(() => expect(polls).toBeGreaterThan(2));
     expect(useConnection.getState()).toMatchObject({ state: "polling", tooManyStreams: true });
-    // No new EventSource before Retry-After (30 s).
-    expect(streams).toBe(1);
   });
+});
 
+describe("429", () => {
   it("shows Retry-After of rate_limited instead of the generic error", async () => {
     const { user } = setup();
     // After the fake's handlers, so that it wins.

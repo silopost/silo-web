@@ -78,9 +78,9 @@ What phase 5 of the plan adds to the web client (silo-server `faza-5` contract):
   `serverVersion` after an SSE reconnect or the 15-minute `/meta` check → "Serwer został
   zaktualizowany · Odśwież". The app keeps working until the reload.
 - **Session and limits**: SSE `session.expired` is handled like a 401 (session dropped,
-  `/login?redirect=<page>`). `GET /events` refused with 429 (more than 8 streams per user) is
-  detected with a one-off probe (EventSource hides the status): the tab polls `/events/poll`,
-  shows "Zbyt wiele otwartych kart" and retries SSE only after `Retry-After`. Any other
+  `/login?redirect=<page>`). `GET /events` with more than 8 streams per user answers 200 and a `stream.limit` event
+  (`retryAfter` seconds) and closes: the tab closes its EventSource, polls `/events/poll`, shows
+  "Zbyt wiele otwartych kart" and retries SSE after `retryAfter`. Any other
   `429 rate_limited` shows one snackbar with the `Retry-After` time (client middleware).
 - **Mode `local` sign-in** (`src/routes/login.tsx`, `GET /meta authMode`): "Zaloguj się do Silo"
   without the mailbox hint. A user with TOTP gets `401 totp_required` after the right password;

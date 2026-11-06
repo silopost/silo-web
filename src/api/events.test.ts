@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
-import { afterAll, afterEach, beforeAll, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, expect, it, vi } from "vitest";
 import { waitFor } from "@testing-library/react";
 import { useConnection } from "../state/connection";
 import { connectEvents, eventsConfig } from "./events";
@@ -57,6 +57,46 @@ it("falls back to /events/poll when SSE is unavailable and applies the events", 
     expect(useConnection.getState().state).toBe("polling");
   } finally {
     stop();
+    Object.assign(eventsConfig, original);
+  }
+});
+
+it("closes the stream on stream.limit, polls, shows the banner and retries SSE after retryAfter", async () => {
+  const original = { ...eventsConfig };
+  const listeners = new Map<string, (ev: MessageEvent) => void>();
+  const close = vi.fn();
+  let created = 0;
+  eventsConfig.createEventSource = () => {
+    created += 1;
+    return {
+      addEventListener: (t: string, l: (ev: MessageEvent) => void) => listeners.set(t, l),
+      close,
+      onopen: null,
+      onerror: null,
+      readyState: 1,
+    } as never;
+  };
+  eventsConfig.pollIntervalMs = 1_000_000;
+  server.use(
+    http.get("*/api/v1/events/poll", () => HttpResponse.json({ events: [], nextAfter: 1 })),
+  );
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  const stop = connectEvents(new QueryClient());
+  try {
+    expect(created).toBe(1);
+    listeners.get("stream.limit")?.(
+      new MessageEvent("stream.limit", { data: '{"retryAfter":30}' }),
+    );
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(useConnection.getState().tooManyStreams).toBe(true);
+    await vi.advanceTimersByTimeAsync(29_000);
+    expect(created).toBe(1);
+    expect(useConnection.getState().state).toBe("polling");
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect(created).toBe(2);
+  } finally {
+    stop();
+    vi.useRealTimers();
     Object.assign(eventsConfig, original);
   }
 });
