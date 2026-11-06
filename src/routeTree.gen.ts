@@ -13,9 +13,14 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppUAccountLabelRouteImport } from './routes/_app.u.$account.$label'
+import { Route as AppUAccountAdminRouteImport } from './routes/_app.u.$account.admin'
 import { Route as AppUAccountSearchRouteImport } from './routes/_app.u.$account.search'
 import { Route as AppUAccountSettingsRouteImport } from './routes/_app.u.$account.settings'
 import { Route as AppUAccountLabelThreadIdRouteImport } from './routes/_app.u.$account.$label.$threadId'
+import { Route as AppUAccountAdminIndexRouteImport } from './routes/_app.u.$account.admin.index'
+import { Route as AppUAccountAdminAccountsRouteImport } from './routes/_app.u.$account.admin.accounts'
+import { Route as AppUAccountAdminJobsRouteImport } from './routes/_app.u.$account.admin.jobs'
+import { Route as AppUAccountAdminUsersRouteImport } from './routes/_app.u.$account.admin.users'
 import { Route as AppUAccountSearchThreadIdRouteImport } from './routes/_app.u.$account.search.$threadId'
 import { Route as AppUAccountSettingsIndexRouteImport } from './routes/_app.u.$account.settings.index'
 import { Route as AppUAccountSettingsAccountsRouteImport } from './routes/_app.u.$account.settings.accounts'
@@ -43,6 +48,11 @@ const AppUAccountLabelRoute = AppUAccountLabelRouteImport.update({
   path: '/u/$account/$label',
   getParentRoute: () => AppRoute,
 } as any)
+const AppUAccountAdminRoute = AppUAccountAdminRouteImport.update({
+  id: '/u/$account/admin',
+  path: '/u/$account/admin',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppUAccountSearchRoute = AppUAccountSearchRouteImport.update({
   id: '/u/$account/search',
   path: '/u/$account/search',
@@ -59,6 +69,27 @@ const AppUAccountLabelThreadIdRoute =
     path: '/$threadId',
     getParentRoute: () => AppUAccountLabelRoute,
   } as any)
+const AppUAccountAdminIndexRoute = AppUAccountAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppUAccountAdminRoute,
+} as any)
+const AppUAccountAdminAccountsRoute =
+  AppUAccountAdminAccountsRouteImport.update({
+    id: '/accounts',
+    path: '/accounts',
+    getParentRoute: () => AppUAccountAdminRoute,
+  } as any)
+const AppUAccountAdminJobsRoute = AppUAccountAdminJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => AppUAccountAdminRoute,
+} as any)
+const AppUAccountAdminUsersRoute = AppUAccountAdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AppUAccountAdminRoute,
+} as any)
 const AppUAccountSearchThreadIdRoute =
   AppUAccountSearchThreadIdRouteImport.update({
     id: '/$threadId',
@@ -106,15 +137,20 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/u/$account/$label': typeof AppUAccountLabelRouteWithChildren
+  '/u/$account/admin': typeof AppUAccountAdminRouteWithChildren
   '/u/$account/search': typeof AppUAccountSearchRouteWithChildren
   '/u/$account/settings': typeof AppUAccountSettingsRouteWithChildren
   '/u/$account/$label/$threadId': typeof AppUAccountLabelThreadIdRoute
+  '/u/$account/admin/accounts': typeof AppUAccountAdminAccountsRoute
+  '/u/$account/admin/jobs': typeof AppUAccountAdminJobsRoute
+  '/u/$account/admin/users': typeof AppUAccountAdminUsersRoute
   '/u/$account/search/$threadId': typeof AppUAccountSearchThreadIdRoute
   '/u/$account/settings/accounts': typeof AppUAccountSettingsAccountsRoute
   '/u/$account/settings/filters': typeof AppUAccountSettingsFiltersRoute
   '/u/$account/settings/general': typeof AppUAccountSettingsGeneralRoute
   '/u/$account/settings/labels': typeof AppUAccountSettingsLabelsRoute
   '/u/$account/settings/security': typeof AppUAccountSettingsSecurityRoute
+  '/u/$account/admin/': typeof AppUAccountAdminIndexRoute
   '/u/$account/settings/': typeof AppUAccountSettingsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -123,12 +159,16 @@ export interface FileRoutesByTo {
   '/u/$account/$label': typeof AppUAccountLabelRouteWithChildren
   '/u/$account/search': typeof AppUAccountSearchRouteWithChildren
   '/u/$account/$label/$threadId': typeof AppUAccountLabelThreadIdRoute
+  '/u/$account/admin/accounts': typeof AppUAccountAdminAccountsRoute
+  '/u/$account/admin/jobs': typeof AppUAccountAdminJobsRoute
+  '/u/$account/admin/users': typeof AppUAccountAdminUsersRoute
   '/u/$account/search/$threadId': typeof AppUAccountSearchThreadIdRoute
   '/u/$account/settings/accounts': typeof AppUAccountSettingsAccountsRoute
   '/u/$account/settings/filters': typeof AppUAccountSettingsFiltersRoute
   '/u/$account/settings/general': typeof AppUAccountSettingsGeneralRoute
   '/u/$account/settings/labels': typeof AppUAccountSettingsLabelsRoute
   '/u/$account/settings/security': typeof AppUAccountSettingsSecurityRoute
+  '/u/$account/admin': typeof AppUAccountAdminIndexRoute
   '/u/$account/settings': typeof AppUAccountSettingsIndexRoute
 }
 export interface FileRoutesById {
@@ -137,15 +177,20 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/u/$account/$label': typeof AppUAccountLabelRouteWithChildren
+  '/_app/u/$account/admin': typeof AppUAccountAdminRouteWithChildren
   '/_app/u/$account/search': typeof AppUAccountSearchRouteWithChildren
   '/_app/u/$account/settings': typeof AppUAccountSettingsRouteWithChildren
   '/_app/u/$account/$label/$threadId': typeof AppUAccountLabelThreadIdRoute
+  '/_app/u/$account/admin/accounts': typeof AppUAccountAdminAccountsRoute
+  '/_app/u/$account/admin/jobs': typeof AppUAccountAdminJobsRoute
+  '/_app/u/$account/admin/users': typeof AppUAccountAdminUsersRoute
   '/_app/u/$account/search/$threadId': typeof AppUAccountSearchThreadIdRoute
   '/_app/u/$account/settings/accounts': typeof AppUAccountSettingsAccountsRoute
   '/_app/u/$account/settings/filters': typeof AppUAccountSettingsFiltersRoute
   '/_app/u/$account/settings/general': typeof AppUAccountSettingsGeneralRoute
   '/_app/u/$account/settings/labels': typeof AppUAccountSettingsLabelsRoute
   '/_app/u/$account/settings/security': typeof AppUAccountSettingsSecurityRoute
+  '/_app/u/$account/admin/': typeof AppUAccountAdminIndexRoute
   '/_app/u/$account/settings/': typeof AppUAccountSettingsIndexRoute
 }
 export interface FileRouteTypes {
@@ -154,15 +199,20 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/u/$account/$label'
+    | '/u/$account/admin'
     | '/u/$account/search'
     | '/u/$account/settings'
     | '/u/$account/$label/$threadId'
+    | '/u/$account/admin/accounts'
+    | '/u/$account/admin/jobs'
+    | '/u/$account/admin/users'
     | '/u/$account/search/$threadId'
     | '/u/$account/settings/accounts'
     | '/u/$account/settings/filters'
     | '/u/$account/settings/general'
     | '/u/$account/settings/labels'
     | '/u/$account/settings/security'
+    | '/u/$account/admin/'
     | '/u/$account/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -171,12 +221,16 @@ export interface FileRouteTypes {
     | '/u/$account/$label'
     | '/u/$account/search'
     | '/u/$account/$label/$threadId'
+    | '/u/$account/admin/accounts'
+    | '/u/$account/admin/jobs'
+    | '/u/$account/admin/users'
     | '/u/$account/search/$threadId'
     | '/u/$account/settings/accounts'
     | '/u/$account/settings/filters'
     | '/u/$account/settings/general'
     | '/u/$account/settings/labels'
     | '/u/$account/settings/security'
+    | '/u/$account/admin'
     | '/u/$account/settings'
   id:
     | '__root__'
@@ -184,15 +238,20 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/_app/u/$account/$label'
+    | '/_app/u/$account/admin'
     | '/_app/u/$account/search'
     | '/_app/u/$account/settings'
     | '/_app/u/$account/$label/$threadId'
+    | '/_app/u/$account/admin/accounts'
+    | '/_app/u/$account/admin/jobs'
+    | '/_app/u/$account/admin/users'
     | '/_app/u/$account/search/$threadId'
     | '/_app/u/$account/settings/accounts'
     | '/_app/u/$account/settings/filters'
     | '/_app/u/$account/settings/general'
     | '/_app/u/$account/settings/labels'
     | '/_app/u/$account/settings/security'
+    | '/_app/u/$account/admin/'
     | '/_app/u/$account/settings/'
   fileRoutesById: FileRoutesById
 }
@@ -232,6 +291,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUAccountLabelRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/u/$account/admin': {
+      id: '/_app/u/$account/admin'
+      path: '/u/$account/admin'
+      fullPath: '/u/$account/admin'
+      preLoaderRoute: typeof AppUAccountAdminRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/u/$account/search': {
       id: '/_app/u/$account/search'
       path: '/u/$account/search'
@@ -252,6 +318,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/u/$account/$label/$threadId'
       preLoaderRoute: typeof AppUAccountLabelThreadIdRouteImport
       parentRoute: typeof AppUAccountLabelRoute
+    }
+    '/_app/u/$account/admin/': {
+      id: '/_app/u/$account/admin/'
+      path: '/'
+      fullPath: '/u/$account/admin/'
+      preLoaderRoute: typeof AppUAccountAdminIndexRouteImport
+      parentRoute: typeof AppUAccountAdminRoute
+    }
+    '/_app/u/$account/admin/accounts': {
+      id: '/_app/u/$account/admin/accounts'
+      path: '/accounts'
+      fullPath: '/u/$account/admin/accounts'
+      preLoaderRoute: typeof AppUAccountAdminAccountsRouteImport
+      parentRoute: typeof AppUAccountAdminRoute
+    }
+    '/_app/u/$account/admin/jobs': {
+      id: '/_app/u/$account/admin/jobs'
+      path: '/jobs'
+      fullPath: '/u/$account/admin/jobs'
+      preLoaderRoute: typeof AppUAccountAdminJobsRouteImport
+      parentRoute: typeof AppUAccountAdminRoute
+    }
+    '/_app/u/$account/admin/users': {
+      id: '/_app/u/$account/admin/users'
+      path: '/users'
+      fullPath: '/u/$account/admin/users'
+      preLoaderRoute: typeof AppUAccountAdminUsersRouteImport
+      parentRoute: typeof AppUAccountAdminRoute
     }
     '/_app/u/$account/search/$threadId': {
       id: '/_app/u/$account/search/$threadId'
@@ -316,6 +410,23 @@ const AppUAccountLabelRouteChildren: AppUAccountLabelRouteChildren = {
 const AppUAccountLabelRouteWithChildren =
   AppUAccountLabelRoute._addFileChildren(AppUAccountLabelRouteChildren)
 
+interface AppUAccountAdminRouteChildren {
+  AppUAccountAdminAccountsRoute: typeof AppUAccountAdminAccountsRoute
+  AppUAccountAdminJobsRoute: typeof AppUAccountAdminJobsRoute
+  AppUAccountAdminUsersRoute: typeof AppUAccountAdminUsersRoute
+  AppUAccountAdminIndexRoute: typeof AppUAccountAdminIndexRoute
+}
+
+const AppUAccountAdminRouteChildren: AppUAccountAdminRouteChildren = {
+  AppUAccountAdminAccountsRoute: AppUAccountAdminAccountsRoute,
+  AppUAccountAdminJobsRoute: AppUAccountAdminJobsRoute,
+  AppUAccountAdminUsersRoute: AppUAccountAdminUsersRoute,
+  AppUAccountAdminIndexRoute: AppUAccountAdminIndexRoute,
+}
+
+const AppUAccountAdminRouteWithChildren =
+  AppUAccountAdminRoute._addFileChildren(AppUAccountAdminRouteChildren)
+
 interface AppUAccountSearchRouteChildren {
   AppUAccountSearchThreadIdRoute: typeof AppUAccountSearchThreadIdRoute
 }
@@ -350,12 +461,14 @@ const AppUAccountSettingsRouteWithChildren =
 
 interface AppRouteChildren {
   AppUAccountLabelRoute: typeof AppUAccountLabelRouteWithChildren
+  AppUAccountAdminRoute: typeof AppUAccountAdminRouteWithChildren
   AppUAccountSearchRoute: typeof AppUAccountSearchRouteWithChildren
   AppUAccountSettingsRoute: typeof AppUAccountSettingsRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppUAccountLabelRoute: AppUAccountLabelRouteWithChildren,
+  AppUAccountAdminRoute: AppUAccountAdminRouteWithChildren,
   AppUAccountSearchRoute: AppUAccountSearchRouteWithChildren,
   AppUAccountSettingsRoute: AppUAccountSettingsRouteWithChildren,
 }

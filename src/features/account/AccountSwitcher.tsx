@@ -30,9 +30,9 @@ function stateProblem(a: Account): string | null {
 
 /**
  * AccountSwitcher (plan 6.3): the avatar opens a menu with the user's accounts, the unread
- * count of each account's INBOX, its sync problem, "Dodaj konto", "Zarządzaj kontami" and
- * "Wyloguj". The avatar's badge sums the unread threads of the other accounts. Radix gives the
- * menu role="menu", arrow keys and Esc.
+ * count of each account's INBOX, its sync problem, "Dodaj konto", "Zarządzaj kontami",
+ * "Administracja" (admins only) and "Wyloguj". The avatar's badge sums the unread threads
+ * of the other accounts. Radix gives the menu role="menu", arrow keys and Esc.
  */
 export function AccountSwitcher() {
   const session = useSession();
@@ -163,6 +163,19 @@ export function AccountSwitcher() {
             </span>
             {t.switcher.manage}
           </DropdownMenu.Item>
+          {user.isAdmin && (
+            <DropdownMenu.Item
+              className={menuItem}
+              onSelect={() =>
+                void navigate({ to: "/u/$account/admin/users", params: { account: index } })
+              }
+            >
+              <span className="w-7 text-center">
+                <Icon name="tune" size={18} />
+              </span>
+              {t.switcher.admin}
+            </DropdownMenu.Item>
+          )}
           <DropdownMenu.Separator className="my-1 h-px bg-line" />
           <DropdownMenu.Item className={menuItem} onSelect={() => logout.mutate()}>
             {t.signOut}
