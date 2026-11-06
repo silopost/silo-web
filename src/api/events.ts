@@ -195,13 +195,7 @@ export function applyEvent(qc: QueryClient, type: string, data: Data): void {
       return;
     case "account.status":
     case "account.error":
-      if (accountId) {
-        void qc.invalidateQueries({ queryKey: keys.syncStatus(accountId) });
-        // The initial sync of a new account sends no label.counts: its counters (LeftNav,
-        // AccountSwitcher) are fetched again when its state changes, e.g. to live.
-        if (type === "account.status")
-          void qc.invalidateQueries({ queryKey: keys.labels(accountId) });
-      }
+      if (accountId) void qc.invalidateQueries({ queryKey: keys.syncStatus(accountId) });
       void qc.invalidateQueries({ queryKey: keys.session });
       return;
     case "resync":
