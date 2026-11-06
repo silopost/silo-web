@@ -22,6 +22,7 @@ import { Route as AppUAccountSettingsAccountsRouteImport } from './routes/_app.u
 import { Route as AppUAccountSettingsFiltersRouteImport } from './routes/_app.u.$account.settings.filters'
 import { Route as AppUAccountSettingsGeneralRouteImport } from './routes/_app.u.$account.settings.general'
 import { Route as AppUAccountSettingsLabelsRouteImport } from './routes/_app.u.$account.settings.labels'
+import { Route as AppUAccountSettingsSecurityRouteImport } from './routes/_app.u.$account.settings.security'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -94,6 +95,12 @@ const AppUAccountSettingsLabelsRoute =
     path: '/labels',
     getParentRoute: () => AppUAccountSettingsRoute,
   } as any)
+const AppUAccountSettingsSecurityRoute =
+  AppUAccountSettingsSecurityRouteImport.update({
+    id: '/security',
+    path: '/security',
+    getParentRoute: () => AppUAccountSettingsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/u/$account/settings/filters': typeof AppUAccountSettingsFiltersRoute
   '/u/$account/settings/general': typeof AppUAccountSettingsGeneralRoute
   '/u/$account/settings/labels': typeof AppUAccountSettingsLabelsRoute
+  '/u/$account/settings/security': typeof AppUAccountSettingsSecurityRoute
   '/u/$account/settings/': typeof AppUAccountSettingsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -120,6 +128,7 @@ export interface FileRoutesByTo {
   '/u/$account/settings/filters': typeof AppUAccountSettingsFiltersRoute
   '/u/$account/settings/general': typeof AppUAccountSettingsGeneralRoute
   '/u/$account/settings/labels': typeof AppUAccountSettingsLabelsRoute
+  '/u/$account/settings/security': typeof AppUAccountSettingsSecurityRoute
   '/u/$account/settings': typeof AppUAccountSettingsIndexRoute
 }
 export interface FileRoutesById {
@@ -136,6 +145,7 @@ export interface FileRoutesById {
   '/_app/u/$account/settings/filters': typeof AppUAccountSettingsFiltersRoute
   '/_app/u/$account/settings/general': typeof AppUAccountSettingsGeneralRoute
   '/_app/u/$account/settings/labels': typeof AppUAccountSettingsLabelsRoute
+  '/_app/u/$account/settings/security': typeof AppUAccountSettingsSecurityRoute
   '/_app/u/$account/settings/': typeof AppUAccountSettingsIndexRoute
 }
 export interface FileRouteTypes {
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/u/$account/settings/filters'
     | '/u/$account/settings/general'
     | '/u/$account/settings/labels'
+    | '/u/$account/settings/security'
     | '/u/$account/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/u/$account/settings/filters'
     | '/u/$account/settings/general'
     | '/u/$account/settings/labels'
+    | '/u/$account/settings/security'
     | '/u/$account/settings'
   id:
     | '__root__'
@@ -180,6 +192,7 @@ export interface FileRouteTypes {
     | '/_app/u/$account/settings/filters'
     | '/_app/u/$account/settings/general'
     | '/_app/u/$account/settings/labels'
+    | '/_app/u/$account/settings/security'
     | '/_app/u/$account/settings/'
   fileRoutesById: FileRoutesById
 }
@@ -282,6 +295,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUAccountSettingsLabelsRouteImport
       parentRoute: typeof AppUAccountSettingsRoute
     }
+    '/_app/u/$account/settings/security': {
+      id: '/_app/u/$account/settings/security'
+      path: '/security'
+      fullPath: '/u/$account/settings/security'
+      preLoaderRoute: typeof AppUAccountSettingsSecurityRouteImport
+      parentRoute: typeof AppUAccountSettingsRoute
+    }
   }
 }
 
@@ -312,6 +332,7 @@ interface AppUAccountSettingsRouteChildren {
   AppUAccountSettingsFiltersRoute: typeof AppUAccountSettingsFiltersRoute
   AppUAccountSettingsGeneralRoute: typeof AppUAccountSettingsGeneralRoute
   AppUAccountSettingsLabelsRoute: typeof AppUAccountSettingsLabelsRoute
+  AppUAccountSettingsSecurityRoute: typeof AppUAccountSettingsSecurityRoute
   AppUAccountSettingsIndexRoute: typeof AppUAccountSettingsIndexRoute
 }
 
@@ -320,6 +341,7 @@ const AppUAccountSettingsRouteChildren: AppUAccountSettingsRouteChildren = {
   AppUAccountSettingsFiltersRoute: AppUAccountSettingsFiltersRoute,
   AppUAccountSettingsGeneralRoute: AppUAccountSettingsGeneralRoute,
   AppUAccountSettingsLabelsRoute: AppUAccountSettingsLabelsRoute,
+  AppUAccountSettingsSecurityRoute: AppUAccountSettingsSecurityRoute,
   AppUAccountSettingsIndexRoute: AppUAccountSettingsIndexRoute,
 }
 

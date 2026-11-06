@@ -31,3 +31,7 @@ export type Thread = Schemas["Thread"];
 export type ThreadDetail = Schemas["ThreadDetail"];
 export type ThreadPage = Schemas["ThreadList"];
 export type UploadInfo = Schemas["UploadInfo"];
+export type SessionInfo = Schemas["SessionInfo"];
+export type AdminUser = Schemas["AdminUser"];
+export type AdminAccount = Schemas["AdminAccount"];
+export type AdminJob = Schemas["AdminJob"];

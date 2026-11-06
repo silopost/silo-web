@@ -1,8 +1,10 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link, Outlet } from "@tanstack/react-router";
+import { metaQuery } from "../../api/queries/meta";
 import { t } from "../../lib/i18n";
 import { useAccountIndex } from "../account";
 
-const TABS = ["general", "labels", "filters", "accounts"] as const;
+const TABS = ["general", "labels", "filters", "accounts", "security"] as const;
 export type SettingsTab = (typeof TABS)[number];
 
 const PATHS = {
@@ -10,11 +12,15 @@ const PATHS = {
   labels: "/u/$account/settings/labels",
   filters: "/u/$account/settings/filters",
   accounts: "/u/$account/settings/accounts",
+  security: "/u/$account/settings/security",
 } as const;
 
 /** Settings (plan 6.3): Gmail-like tabs over the panels, each tab its own URL. */
 export function SettingsLayout() {
   const account = useAccountIndex();
+  // Bezpieczeństwo (Silo password, TOTP) exists only in mode local.
+  const local = useQuery(metaQuery).data?.authMode === "local";
+  const tabs = TABS.filter((tab) => tab !== "security" || local);
   return (
     <section aria-labelledby="settings-title" className="flex min-h-0 flex-1 flex-col">
       <h1 id="settings-title" className="px-6 pt-4 pb-2 text-2xl">
@@ -22,7 +28,7 @@ export function SettingsLayout() {
       </h1>
       <nav aria-label={t.settingsTitle} className="border-b border-line px-4">
         <ul className="flex gap-1">
-          {TABS.map((tab) => (
+          {tabs.map((tab) => (
             <li key={tab}>
               <Link
                 to={PATHS[tab]}

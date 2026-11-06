@@ -17,4 +17,5 @@ export const keys = {
   snoozePresets: ["snoozePresets"] as const,
   settings: ["settings"] as const,
   filters: (accountId: string) => ["filters", accountId] as const,
+  sessions: ["sessions"] as const,
 };
