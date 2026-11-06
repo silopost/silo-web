@@ -1,4 +1,5 @@
 /// <reference lib="webworker" />
+import { clientsClaim } from "workbox-core";
 import { ExpirationPlugin } from "workbox-expiration";
 import {
   cleanupOutdatedCaches,
@@ -27,6 +28,8 @@ declare const self: ServiceWorkerGlobalScope;
 // Build assets and index.html, injected by vite-plugin-pwa (injectManifest).
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
+// The first install controls the open page at once (an update still waits for "Odśwież").
+clientsClaim();
 
 // Every SPA route opens index.html from the precache (offline too); /api/* is never a page.
 registerRoute(

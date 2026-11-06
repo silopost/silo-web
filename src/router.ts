@@ -29,6 +29,9 @@ export function createQueryClient(onUnauthorized: () => void): QueryClient {
         staleTime: 30_000,
         retry: (count, err) => (isApiError(err) ? err.status >= 500 && count < 2 : count < 2),
         refetchOnWindowFocus: false,
+        // Run the request even when the browser says offline: the service worker may answer
+        // from its cache (PWA, plan 7 Faza 5). Retries still wait for the network.
+        networkMode: "offlineFirst",
       },
     },
   });
