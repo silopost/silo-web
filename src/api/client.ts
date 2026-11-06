@@ -1,5 +1,6 @@
 import createClient, { type Middleware } from "openapi-fetch";
 import { version } from "../../package.json";
+import { showRateLimited } from "../state/toasts";
 import { getCsrfToken } from "./csrf";
 import type { paths } from "./schema";
 
@@ -36,6 +37,20 @@ const headers: Middleware = {
   },
 };
 
+/**
+ * One handler for 429 rate_limited (limits per IP, discovery per user): a snackbar with the
+ * time from Retry-After. Sign-in shows its own message, the event stream falls back to polling.
+ */
+const rateLimit: Middleware = {
+  onResponse({ request, response }) {
+    if (response.status !== 429) return;
+    const path = new URL(request.url).pathname;
+    if (path.endsWith("/api/v1/session") || path.includes("/api/v1/events")) return;
+    const header = response.headers.get("Retry-After");
+    showRateLimited(header && /^\d+$/.test(header) ? Number(header) : undefined);
+  },
+};
+
 export const api = createClient<paths>({
   baseUrl: "/api/v1",
   credentials: "same-origin",
@@ -43,4 +58,4 @@ export const api = createClient<paths>({
   fetch: (request) => globalThis.fetch(request),
 });
 
-api.use(headers);
+api.use(headers, rateLimit);

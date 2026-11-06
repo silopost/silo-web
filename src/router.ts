@@ -1,6 +1,8 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { createRouter, type RouterHistory } from "@tanstack/react-router";
+import { setCsrfToken } from "./api/csrf";
 import { isApiError } from "./api/errors";
+import { setSessionLostHandler } from "./api/sessionLost";
 import { keys } from "./api/keys";
 import { routeTree } from "./routeTree.gen";
 
@@ -49,15 +51,22 @@ declare module "@tanstack/react-router" {
   }
 }
 
-/** Builds the query client and router of the app, wired so that a 401 leads to /login. */
+/**
+ * Builds the query client and router of the app, wired so that a lost session (a 401, SSE
+ * session.expired) leads to /login?redirect=<the page>, back there after signing in.
+ */
 export function createApp(history?: RouterHistory) {
   let router: AppRouter | undefined = undefined;
-  const queryClient = createQueryClient(() => {
+  const onSessionLost = () => {
     queryClient.removeQueries({ queryKey: keys.session });
+    setCsrfToken(null);
     if (router && router.state.location.pathname !== "/login") {
-      void router.navigate({ to: "/login" });
+      const redirect = router.state.location.href;
+      void router.navigate({ to: "/login", search: { redirect } });
     }
-  });
+  };
+  const queryClient = createQueryClient(onSessionLost);
+  setSessionLostHandler(onSessionLost);
   router = createAppRouter(queryClient, history);
   return { queryClient, router };
 }

@@ -2,8 +2,11 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { version } from "./package.json";
 
 export default defineConfig({
+  // The app compares its version with GET /meta minWebVersion (plan 2.4).
+  define: { __APP_VERSION__: JSON.stringify(version) },
   // The router plugin generates src/routeTree.gen.ts from src/routes and must run before react().
   plugins: [tanstackRouter({ target: "react", autoCodeSplitting: true }), react(), tailwindcss()],
   server: {

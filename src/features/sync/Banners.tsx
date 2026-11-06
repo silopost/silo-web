@@ -16,6 +16,13 @@ function OfflineBanner() {
   return <div className="bg-warn-bg px-4 py-2 text-warn-ink">{t.siloOffline}</div>;
 }
 
+/** GET /events answered 429: too many streams (tabs) of the user; this tab polls instead. */
+function TooManyTabsBanner() {
+  const tooMany = useConnection((s) => s.tooManyStreams);
+  if (!tooMany) return null;
+  return <div className="bg-warn-bg px-4 py-2 text-warn-ink">{t.tooManyTabs}</div>;
+}
+
 /** Mail server offline or password rejected (plan 5.7); reading and actions keep working. */
 function AccountErrorBanner() {
   const status = useSyncStatus();
@@ -110,6 +117,7 @@ export function Banners() {
   return (
     <div aria-live="polite">
       <OfflineBanner />
+      <TooManyTabsBanner />
       <AccountErrorBanner />
       <InitialSyncBanner />
     </div>

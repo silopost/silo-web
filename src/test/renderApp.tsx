@@ -20,7 +20,7 @@ export function renderApp(url: string) {
   useCompose.setState({ windows: [], failures: {}, remoteVersions: {} });
   resetSessions();
   useToasts.setState({ current: null, lastUndo: null });
-  useConnection.setState({ state: "connecting" });
+  useConnection.setState({ state: "connecting", tooManyStreams: false });
   const app = createApp(createMemoryHistory({ initialEntries: [url] }));
   const result = render(<App {...app} />);
   return { ...result, ...app };

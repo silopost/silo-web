@@ -3,11 +3,13 @@ import { draftMoved, openDraft } from "../features/compose/session";
 import { notifyNewMessage } from "../features/notifications/desktop";
 import { t } from "../lib/i18n";
 import { useCompose } from "../state/compose";
-import { setConnection } from "../state/connection";
+import { setConnection, setTooManyStreams } from "../state/connection";
 import { useToasts } from "../state/toasts";
 import { api, clientId } from "./client";
 import { call } from "./errors";
 import { keys } from "./keys";
+import { metaQuery } from "./queries/meta";
+import { sessionLost } from "./sessionLost";
 import { updateLists, type LabelsData } from "./mutations/cache";
 import { appliedHere } from "./queries/filters";
 import { handleOperationFailed, isThreadOpRunning } from "./mutations/threads";
@@ -31,6 +33,7 @@ const EVENT_TYPES = [
   "account.sync_progress",
   "account.error",
   "resync",
+  "session.expired",
 ] as const;
 
 const str = (v: unknown) => (typeof v === "string" ? v : undefined);
@@ -197,6 +200,10 @@ export function applyEvent(qc: QueryClient, type: string, data: Data): void {
     case "resync":
       void qc.invalidateQueries();
       return;
+    case "session.expired":
+      // Signed out elsewhere, revoked or disabled (the server closes the stream): as a 401.
+      sessionLost();
+      return;
   }
 }
 
@@ -215,6 +222,28 @@ export const eventsConfig = {
   sseRetryMs: 60_000,
   createEventSource: (url: string): EventSourceLike | null =>
     typeof EventSource === "undefined" ? null : new EventSource(url, { withCredentials: true }),
+  /**
+   * EventSource does not tell why it failed. Asks the stream once: the seconds of Retry-After
+   * when it answers 429 (too many streams of the user), else undefined; the probe's own stream
+   * is closed at once.
+   */
+  probeStream: async (url: string): Promise<number | undefined> => {
+    const ctrl = new AbortController();
+    try {
+      const res = await fetch(new URL(url, window.location.origin), {
+        credentials: "same-origin",
+        headers: { Accept: "text/event-stream" },
+        signal: ctrl.signal,
+      });
+      if (res.status !== 429) return undefined;
+      const header = res.headers.get("Retry-After");
+      return header && /^\d+$/.test(header) ? Number(header) : 30;
+    } catch {
+      return undefined;
+    } finally {
+      ctrl.abort();
+    }
+  },
 };
 
 /**
@@ -230,6 +259,7 @@ export function connectEvents(qc: QueryClient): () => void {
   let polling = false;
   let pollTimer: ReturnType<typeof setTimeout> | undefined;
   let sseRetryTimer: ReturnType<typeof setTimeout> | undefined;
+  let opened = false;
 
   const handle = (type: string, id: string | number | undefined, raw: unknown) => {
     const n = Number(id);
@@ -262,6 +292,10 @@ export function connectEvents(qc: QueryClient): () => void {
       clearTimeout(pollTimer);
       clearTimeout(sseRetryTimer);
       setConnection("live");
+      setTooManyStreams(false);
+      // A reconnect may follow an upgrade of the server: GET /meta again (version banner).
+      if (opened) void qc.invalidateQueries({ queryKey: metaQuery.queryKey });
+      opened = true;
     };
     es.onerror = () => {
       failures += 1;
@@ -269,7 +303,7 @@ export function connectEvents(qc: QueryClient): () => void {
       if (es.readyState === 2 || failures >= eventsConfig.maxSseFailures) {
         es.close();
         source = null;
-        startPolling();
+        void fallBack();
       } else {
         void probe();
       }
@@ -309,7 +343,22 @@ export function connectEvents(qc: QueryClient): () => void {
     if (!stopped) pollTimer = setTimeout(poll, eventsConfig.pollIntervalMs);
   };
 
-  const startPolling = () => {
+  /**
+   * SSE gave up. 429 (more than 8 streams of the user, plan 5.4): no reconnect loop – poll and
+   * try SSE again only after Retry-After, with a banner asking to close tabs.
+   */
+  const fallBack = async () => {
+    const retryAfter = await eventsConfig.probeStream(eventsConfig.url);
+    if (stopped) return;
+    setTooManyStreams(retryAfter !== undefined);
+    startPolling(
+      retryAfter !== undefined
+        ? Math.max(retryAfter * 1000, eventsConfig.sseRetryMs)
+        : eventsConfig.sseRetryMs,
+    );
+  };
+
+  const startPolling = (sseRetryMs = eventsConfig.sseRetryMs) => {
     if (stopped || polling) return;
     polling = true;
     void poll();
@@ -318,7 +367,7 @@ export function connectEvents(qc: QueryClient): () => void {
       if (stopped) return;
       failures = 0;
       openSse();
-    }, eventsConfig.sseRetryMs);
+    }, sseRetryMs);
   };
 
   openSse();

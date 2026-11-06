@@ -607,8 +607,8 @@ export const t = {
     serverUpdated: "Serwer został zaktualizowany",
     reload: "Odśwież",
   },
-  tooManyTabs: (seconds: number) =>
-    `Zbyt wiele otwartych kart Silo – ta karta sprawdza nowości co ${seconds} s. Zamknij nieużywane karty.`,
+  tooManyTabs:
+    "Zbyt wiele otwartych kart Silo – ta karta pobiera zmiany co kilka sekund zamiast na żywo. Zamknij nieużywane karty.",
   rateLimitedToast: (seconds?: number) =>
     seconds
       ? `Zbyt wiele żądań. Spróbuj ponownie za ${seconds} s.`

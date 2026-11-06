@@ -11,6 +11,7 @@ import { ComposeDock } from "../features/compose/ComposeDock";
 import { LeftNav } from "../features/nav/LeftNav";
 import { setNotificationNavigator } from "../features/notifications/desktop";
 import { Banners } from "../features/sync/Banners";
+import { VersionBanner } from "../features/sync/VersionBanner";
 import { Snackbar } from "../features/toasts/Snackbar";
 import { TopBar } from "../features/topbar/TopBar";
 import { t } from "../lib/i18n";
@@ -98,6 +99,7 @@ function AppLayout() {
 
   return (
     <div className="flex h-full flex-col bg-surface">
+      <VersionBanner />
       <TopBar />
       <div className="flex min-h-0 flex-1">
         <LeftNav />
