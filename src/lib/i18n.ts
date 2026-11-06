@@ -652,6 +652,14 @@ export const t = {
     rebuildBlocked:
       "Nie można teraz odbudować cache: wiadomości czekają na wysłanie albo zmiany na zapis na serwerze. Spróbuj ponownie za chwilę.",
     pendingOps: (n: number) => `Oczekujące zmiany: ${n}`,
+    deadOps: (n: number) => `Nieudane operacje: ${n} (nie zostały zapisane na serwerze poczty)`,
+    deadOpsAdmin: "Zobacz w administracji",
+    backupTitle: "Kopia zapasowa",
+    backupText:
+      "Dane Silo – etykiety, odłożenia, filtry, wersje robocze i ustawienia – trafiają do kopii metadanych. Same wiadomości są na serwerze IMAP i Silo pobierze je ponownie po odtworzeniu.",
+    backupAdmin:
+      "Kopie wykonuje administrator Silo poleceniami scripts/backup.sh metadata (metadane) lub scripts/backup.sh full (cała baza).",
+    backupLink: "Instrukcja kopii zapasowej (docs/admin/backup.md)",
     add: "Dodaj konto",
     oauth: "OAuth",
     oauthTitle: "Logowanie przez dostawcę (OAuth2)",

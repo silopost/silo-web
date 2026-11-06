@@ -287,3 +287,36 @@ describe("account list", () => {
     expect(link).toHaveAttribute("href", "/u/0/settings/accounts");
   });
 });
+
+describe("backup and dead operations", () => {
+  it("explains backups without calling the server", async () => {
+    setup();
+    const section = await screen.findByRole("region", { name: "Kopia zapasowa" });
+    expect(section).toHaveTextContent("scripts/backup.sh metadata");
+    expect(within(section).getByRole("link")).toHaveAttribute(
+      "href",
+      "https://github.com/silopost/silo/blob/main/docs/admin/backup.md",
+    );
+  });
+
+  it("shows dead operations, with a link to the jobs for an admin", async () => {
+    const { router, user } = setup("/u/0/settings/accounts", (m) => {
+      m.state.deadOps = 2;
+      m.session.user.isAdmin = true;
+    });
+    const row = await screen.findByRole("listitem", { name: "dev1@silo.test" });
+    expect(await within(row).findByText(/Nieudane operacje: 2/)).toBeInTheDocument();
+    await user.click(within(row).getByRole("link", { name: "Zobacz w administracji" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/u/0/admin/jobs"));
+    expect(router.state.location.search).toEqual({ status: "dead", accountId: "acc_1" });
+  });
+
+  it("hides the admin link from other users", async () => {
+    setup("/u/0/settings/accounts", (m) => {
+      m.state.deadOps = 1;
+    });
+    const row = await screen.findByRole("listitem", { name: "dev1@silo.test" });
+    expect(await within(row).findByText(/Nieudane operacje: 1/)).toBeInTheDocument();
+    expect(within(row).queryByRole("link")).not.toBeInTheDocument();
+  });
+});

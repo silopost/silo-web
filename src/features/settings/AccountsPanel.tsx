@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocation, useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api } from "../../api/client";
 import { call, isApiError } from "../../api/errors";
@@ -9,7 +9,7 @@ import type { Account } from "../../api/types";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { t } from "../../lib/i18n";
 import { toast } from "../../state/toasts";
-import { useAccountIndex, useAccounts } from "../account";
+import { useAccountIndex, useAccounts, useSession } from "../account";
 import { providerOf, startOAuth } from "../account/oauth";
 import { AddAccountDialog } from "./AddAccountDialog";
 
@@ -98,8 +98,32 @@ export function AccountsPanel() {
           <AccountRow key={a.id} account={a} />
         ))}
       </ul>
+      <BackupInfo />
       <AddAccountDialog open={open} onClose={close} />
     </div>
+  );
+}
+
+const BACKUP_DOC = "https://github.com/silopost/silo/blob/main/docs/admin/backup.md";
+
+/** Static note on backups (plan 3.13): what the metadata backup holds and who runs it. */
+function BackupInfo() {
+  return (
+    <section aria-labelledby="backup-title" className="mt-8 max-w-2xl">
+      <h2 id="backup-title" className="mb-1 text-lg">
+        {t.accountsPanel.backupTitle}
+      </h2>
+      <p className="text-sm">{t.accountsPanel.backupText}</p>
+      <p className="mt-1 text-sm text-ink-muted">{t.accountsPanel.backupAdmin}</p>
+      <a
+        href={BACKUP_DOC}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-1 inline-block text-sm text-primary underline"
+      >
+        {t.accountsPanel.backupLink}
+      </a>
+    </section>
   );
 }
 
@@ -108,6 +132,7 @@ function AccountRow({ account }: { account: Account }) {
   const navigate = useNavigate();
   const returnTo = useLocation().pathname;
   const index = useAccountIndex();
+  const isAdmin = useSession()?.user.isAdmin ?? false;
   const status = useQuery(syncStatusQuery(account.id)).data;
   const [confirm, setConfirm] = useState<"rebuild" | "remove" | null>(null);
   const [blocked, setBlocked] = useState(false);
@@ -212,6 +237,24 @@ function AccountRow({ account }: { account: Account }) {
         {status && status.pendingOps > 0 && (
           <div className="text-sm text-ink-muted">
             {t.accountsPanel.pendingOps(status.pendingOps)}
+          </div>
+        )}
+        {status && status.deadOps > 0 && (
+          <div className="text-sm text-error-ink">
+            {t.accountsPanel.deadOps(status.deadOps)}
+            {isAdmin && (
+              <>
+                {" · "}
+                <Link
+                  to="/u/$account/admin/jobs"
+                  params={{ account: index }}
+                  search={{ status: "dead", accountId: account.id }}
+                  className="font-medium underline"
+                >
+                  {t.accountsPanel.deadOpsAdmin}
+                </Link>
+              </>
+            )}
           </div>
         )}
         {blocked && (

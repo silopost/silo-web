@@ -149,6 +149,8 @@ export function createMockMail() {
     ] as SnoozePreset[],
     /** User and folder labels (GET /labels after the system ones). */
     extraLabels: [] as Label[],
+    /** sync-status deadOps of every account. */
+    deadOps: 0,
     /** sync-status keywordsSupported. */
     keywordsSupported: true,
     filters: [] as Filter[],
@@ -713,7 +715,7 @@ export function createMockMail() {
         },
         initialSyncDoneAt: "2026-11-05T08:00:00Z",
         pendingOps: 0,
-        deadOps: 0,
+        deadOps: state.deadOps,
         capabilities: [],
         keywordsSupported: state.keywordsSupported,
         missingRoles: [],
