@@ -12,13 +12,21 @@ export async function withApi<T>(
 ): Promise<T> {
   const env = e2eEnv();
   const login = await request.newContext({ baseURL: env.apiUrl });
-  const res = await login.post("/api/v1/session", {
-    data: {
-      email: account.email,
-      password: account.password,
-      client: { kind: "bearer", name: "e2e cleanup" },
-    },
-  });
+  const signIn = () =>
+    login.post("/api/v1/session", {
+      data: {
+        email: account.email,
+        password: account.password,
+        client: { kind: "bearer", name: "e2e cleanup" },
+      },
+    });
+  let res = await signIn();
+  // The per-login throttle of silo-server (429 with Retry-After): wait and try again.
+  for (let attempt = 0; res.status() === 429 && attempt < 3; attempt++) {
+    const secs = Number(res.headers()["retry-after"] ?? 15);
+    await new Promise((r) => setTimeout(r, (secs + 1) * 1000));
+    res = await signIn();
+  }
   if (!res.ok()) throw new Error(`e2e api: sign-in ${res.status()}`);
   const { token } = (await res.json()) as { token: string };
   await login.dispose();

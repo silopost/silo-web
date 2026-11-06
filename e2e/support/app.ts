@@ -7,7 +7,25 @@ export async function login(page: Page, account: DevAccount): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Adres e-mail").fill(account.email);
   await page.getByLabel("Hasło").fill(account.password);
-  await page.getByRole("button", { name: "Zaloguj", exact: true }).click();
+  // The suite signs in often: the per-login throttle of silo-server (burst 8, one more every
+  // 15 s) may answer 429; wait as the page says and try again.
+  const throttled = page.getByRole("alert").filter({ hasText: /Zbyt wiele prób logowania/ });
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await page.getByRole("button", { name: "Zaloguj", exact: true }).click();
+    const outcome = await Promise.race([
+      page.waitForURL(/\/u\/0\/inbox/, { timeout: 15_000 }).then(
+        () => "in",
+        () => "timeout",
+      ),
+      throttled.waitFor({ timeout: 15_000 }).then(
+        () => "throttled",
+        () => "timeout",
+      ),
+    ]);
+    if (outcome !== "throttled") break;
+    const secs = Number(/za (\d+) s/.exec((await throttled.textContent()) ?? "")?.[1] ?? 15);
+    await page.waitForTimeout((secs + 1) * 1000);
+  }
   await expect(page).toHaveURL(/\/u\/0\/inbox/);
   await expect(page.getByRole("grid")).toBeVisible();
 }
