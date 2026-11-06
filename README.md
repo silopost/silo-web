@@ -33,7 +33,7 @@ The layout follows section 6.2 of the plan (`ARCHITECTURE_AND_PLAN.md` in `silo`
 | `src/api/`                    | `client.ts` (openapi-fetch, CSRF, `X-Silo-Client` per tab), `queries/`, `mutations/` (optimistic thread actions and undo), `events.ts` (SSE with polling fallback)                                               |
 | `src/state/`                  | zustand: UI state, preferences in localStorage, snackbar, connection                                                                                                                                             |
 | `src/shortcuts/`              | `keymap.ts`, `useShortcuts.ts`, `ShortcutsHelpDialog.tsx`                                                                                                                                                        |
-| `src/features/`               | `nav`, `topbar`, `search`, `snooze`, `settings`, `labels`, `notifications`, `sync`, `threadlist`, `thread`, `compose`, `toasts`                                                                                  |
+| `src/features/`               | `account`, `nav`, `topbar`, `search`, `snooze`, `settings`, `labels`, `notifications`, `sync`, `threadlist`, `thread`, `compose`, `toasts`                                                                       |
 | `src/components/`, `src/lib/` | icons, buttons, avatar; dates, Polish strings (`i18n.ts`), message HTML sanitising                                                                                                                               |
 
 URLs are Gmail-like: `/u/<account index>/<label>` with system slugs (`inbox`, `starred`,
@@ -41,8 +41,50 @@ URLs are Gmail-like: `/u/<account index>/<label>` with system slugs (`inbox`, `s
 label id (`l_…`), `/u/<n>/<label>/<threadId>` and `/u/<n>/search?q=`.
 
 Tests (`npm test`) render the whole app with msw handlers (`src/test/mockMail.ts`, a stateful
-fake server with threads, drafts, uploads, sending, contacts, search and snooze), a fake `EventSource`
+fake server with threads, drafts, uploads, sending, contacts, search, snooze and several accounts), a fake `EventSource`
 (`src/test/fakeEventSource.ts`) and a fake upload `XMLHttpRequest` (`src/test/fakeUploadXhr.ts`).
+
+## Features (Faza 5)
+
+What phase 5 of the plan adds to the web client (silo-server `faza-5` contract):
+
+- **AccountSwitcher** (`src/features/account/AccountSwitcher.tsx`, the avatar in the top bar):
+  every account of the user with its INBOX unread count (one `GET /labels?accountId=` per
+  account under `['labels', accountId]`, kept current by `label.counts` of any account and
+  refetched on `account.status`), its sync problem (`auth_failed`, `backoff`) as an icon with a
+  tooltip, "Dodaj konto", "Zarządzaj kontami", "Wyloguj"; the badge on the avatar sums the other
+  accounts' unread threads. Choosing an account opens `/u/<position>/<view>` (system views are
+  kept, a user label falls back to `inbox`) and stores `PATCH /settings {activeAccountId}`;
+  `g 1`…`g 9` do the same for the n-th account by `position`. `document.title` follows the tab's
+  account ("Odebrane (3) – dev1@silo.test – Silo").
+- **Od in compose** (more than one account, new messages only): the draft is created in the
+  account of `/u/<n>`; another choice is `PUT /drafts/{id} {accountId}`, whose answer carries new
+  `id`/`messageId`/`threadId` – the window follows the new id without remounting, the Drafts
+  lists of both accounts refresh; `409 draft_account_locked` restores the choice.
+  `draft.updated` with `previousDraftId` moves an open window in another tab.
+- **Dodaj konto** (Ustawienia → Konta, `AddAccountDialog.tsx`, also `?add`): address and
+  password → `POST /accounts/discover` (source shown: ISPDB / autoconfig / SRV / zgadnięte /
+  serwer domyślny; "Zaawansowane" with host/port/TLS opens when nothing was found; read-only and
+  not sent when `allowCustomServers=false`) → "Sprawdź połączenie" (`POST /accounts/test`, steps
+  with ✓/✗) → "Dodaj" (`POST /accounts`; `422 account_test_failed` shows the steps, other codes
+  a message) → the new account's inbox. "Zaloguj przez Google / Microsoft" for
+  `meta.oauthProviders` (`POST /oauth/{provider}/start {returnTo}`, then the provider); back on
+  `?oauth=ok|error&…` a snackbar or the Polish text of the code, and the URL is cleaned. The list
+  shows OAuth accounts, "Zaloguj ponownie" for OAuth accounts in `auth_failed` (also in the
+  account banner), "Zmień hasło" (`PATCH /accounts/{id}`) and "Usuń konto" (`DELETE`, confirmed).
+- **Version banner** (`VersionBanner.tsx`): `__APP_VERSION__` (from `package.json`, Vite
+  `define`) older than `meta.minWebVersion` → "Dostępna nowa wersja · Odśwież"; a different
+  `serverVersion` after an SSE reconnect or the 15-minute `/meta` check → "Serwer został
+  zaktualizowany · Odśwież". The app keeps working until the reload.
+- **Session and limits**: SSE `session.expired` is handled like a 401 (session dropped,
+  `/login?redirect=<page>`). `GET /events` refused with 429 (more than 8 streams per user) is
+  detected with a one-off probe (EventSource hides the status): the tab polls `/events/poll`,
+  shows "Zbyt wiele otwartych kart" and retries SSE only after `Retry-After`. Any other
+  `429 rate_limited` shows one snackbar with the `Retry-After` time (client middleware).
+- e2e `multi-account.e2e.ts`: [End-to-end tests](#end-to-end-tests).
+
+Not yet: folder mapping (`PUT /accounts/{id}/folders`), the admin panel, TOTP and the `local`
+mode screens, PWA.
 
 ## Features (Faza 4)
 
@@ -59,8 +101,8 @@ What phase 4 of the plan added; details in the sections linked.
 - The full shortcut table of plan 6.6: [Shortcuts](#shortcuts).
 - Playwright scenarios of the Faza 4 Definition of done: [End-to-end tests](#end-to-end-tests).
 
-Not in this version: an "add account" UI and folder mapping (accounts are created at sign-in),
-a PDF viewer (a PDF opens in a new tab through `?inline=1`; the server sends PDFs as
+Not in this version: an "add account" UI and folder mapping (added in Faza 5, see above), a PDF
+viewer (a PDF opens in a new tab through `?inline=1`; the server sends PDFs as
 `attachment`, so the browser downloads them) and PDF thumbnails (not generated by the server).
 
 ## Compose
@@ -149,7 +191,8 @@ presets of the server ("Jutro rano", "W poniedziałek rano") and a picked date a
 - **Filtry** (`FiltersPanel`, `FilterEditor`): see Filters.
 - **Konta** (`AccountsPanel`): the accounts in `position` order with their state and errors;
   "Odbuduj cache" is `POST /accounts/{id}/resync {mode: rebuild}` (`409 rebuild_blocked` while
-  a send or a write-back waits).
+  a send or a write-back waits). Faza 5: "Dodaj konto", OAuth, password change and removal (see
+  [Features (Faza 5)](#features-faza-5)).
 
 ## Labels
 
@@ -235,6 +278,24 @@ Faza 4 (plan, section 7) adds:
 | `schedule-send.e2e.ts`   | a message scheduled about 2 minutes ahead is in no folder of the sender nor in the recipient's INBOX before its time and arrives within ±30 s (@slow); Zaplanowane and "Anuluj wysyłkę"                                         |
 | `labels-keywords.e2e.ts` | a label from Silo is a keyword on the server; a keyword stored by another client is a label on the row within 5 s                                                                                                               |
 | `settings.e2e.ts`        | density, undo-send period, time zone and signature survive a reload; shortcuts off stop `e`                                                                                                                                     |
+
+Faza 5 adds `multi-account.e2e.ts`: dev1 adds `dev2@silo.test` in Ustawienia → Konta
+(discovery answers the default server, connection test ✓, axe on the dialog), the AccountSwitcher
+shows both accounts with unread counts, `g 1`/`g 2` switch inboxes, and a message from dev2's tab
+(Od moved away and back) reaches `dev3@` with `From: dev2@`, with its copy in dev2's Sent and not
+in dev1's; dev2 is removed through the API before and after. It runs on the `silo-bt` stack of
+`silo` as well as on the dev stack:
+
+```sh
+# in silo
+docker compose -p silo-bt -f docker-compose.backup-test.yml up -d --build
+SILO_COMPOSE_FILE=docker-compose.backup-test.yml scripts/seed-mail.sh
+SILO_COMPOSE_FILE=docker-compose.backup-test.yml scripts/seed-mail.sh --to dev2@silo.test
+# in silo-web
+SILO_E2E_API=http://localhost:18080 SILO_DEV_IMAP_PORT=11143 SILO_E2E_WEB_PORT=15180   SILO_UNDO_WINDOW=1s npm run e2e -- multi-account
+# in silo, afterwards
+docker compose -p silo-bt -f docker-compose.backup-test.yml down -v
+```
 
 The tests tagged `@slow` wait for real time (snooze and schedule send, 2–4 minutes each); skip
 them with `npm run e2e -- --grep-invert @slow`. Labels, filters and settings changed by a test are
