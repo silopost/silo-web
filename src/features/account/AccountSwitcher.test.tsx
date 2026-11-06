@@ -141,5 +141,6 @@ describe("AccountSwitcher", () => {
     const menu = await openMenu(user);
     await user.click(within(menu).getByRole("menuitem", { name: /Dodaj konto/ }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/u/0/settings/accounts"));
+    expect(await screen.findByRole("dialog", { name: "Dodaj konto" })).toBeInTheDocument();
   });
 });

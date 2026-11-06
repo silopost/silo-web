@@ -100,7 +100,6 @@ export const t = {
     `Synchronizowanie skrzynki: ${done} z ${total} wiadomości · Wyszukiwanie może być niepełne`,
   initialSyncLabel: "Postęp synchronizacji skrzynki",
   mailServerOffline: (host: string) => `Brak połączenia z serwerem poczty (${host}).`,
-  authFailedBanner: "Hasło do skrzynki przestało działać · Zaktualizuj hasło w ustawieniach konta",
   siloOffline: "Brak połączenia z Silo. Ponawiam…",
   retryNow: "Ponów teraz",
   pendingSync: "Oczekuje na synchronizację z serwerem",

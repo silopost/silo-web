@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useLocation, useNavigate, useSearch } from "@tanstack/react-router";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api } from "../../api/client";
 import { call, isApiError } from "../../api/errors";
 import { keys } from "../../api/keys";
@@ -8,31 +9,112 @@ import type { Account } from "../../api/types";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { t } from "../../lib/i18n";
 import { toast } from "../../state/toasts";
-import { useSession } from "../account";
+import { useAccountIndex, useAccounts } from "../account";
+import { providerOf, startOAuth } from "../account/oauth";
+import { AddAccountDialog } from "./AddAccountDialog";
+
+const outline =
+  "rounded-full border border-line px-4 py-1.5 font-medium text-primary hover:bg-hover disabled:opacity-60";
 
 /**
- * "Konta" (minimal): the accounts with their sync state, whether the server keeps IMAP keywords
- * (plan 3.7) and "Odbuduj cache" = POST /accounts/{id}/resync {mode: rebuild}.
+ * After the OAuth callback the server sends the browser back here with ?oauth=ok&accountId= or
+ * ?oauth=error&code= (plan 5.1): a snackbar or an alert, fresh session and accounts, and the
+ * parameters are removed from the URL. Returns the error to show.
+ */
+function useOAuthReturn(): [string | null, () => void] {
+  const search = useSearch({ from: "/_app/u/$account/settings/accounts" });
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+  const key = search.oauth ? `${search.oauth}:${search.accountId ?? search.code ?? ""}` : null;
+  // The error is derived from the URL during render (it outlives the cleaned URL).
+  const [seen, setSeen] = useState<string | null>(null);
+  if (key !== null && key !== seen) {
+    setSeen(key);
+    if (search.oauth === "error")
+      setError((search.code && t.oauthResult.errors[search.code]) || t.oauthResult.unknown);
+  }
+  const handled = useRef<string | null>(null);
+  useEffect(() => {
+    if (key === null || handled.current === key) return;
+    handled.current = key;
+    if (search.oauth === "ok") {
+      toast(t.oauthResult.ok);
+      void qc.invalidateQueries({ queryKey: keys.session });
+      if (search.accountId)
+        void qc.invalidateQueries({ queryKey: keys.syncStatus(search.accountId) });
+    }
+    void navigate({
+      to: ".",
+      search: ({ add }: { add?: boolean }) => (add ? { add } : {}),
+      replace: true,
+    });
+  }, [key, search.oauth, search.accountId, navigate, qc]);
+  return [error, () => setError(null)];
+}
+
+/**
+ * Ustawienia → Konta: the accounts with their sync state, "Dodaj konto" (discovery, test,
+ * OAuth), re-authorization of OAuth accounts, password change, removal and "Odbuduj cache"
+ * (POST /accounts/{id}/resync {mode: rebuild}).
  */
 export function AccountsPanel() {
-  const accounts = useSession()?.accounts ?? [];
+  const accounts = useAccounts();
+  const search = useSearch({ from: "/_app/u/$account/settings/accounts" });
+  const navigate = useNavigate();
+  const [oauthError, clearOAuthError] = useOAuthReturn();
+  const [adding, setAdding] = useState(false);
+  const open = adding || search.add === true;
+  const close = () => {
+    setAdding(false);
+    if (search.add) void navigate({ to: ".", search: {}, replace: true });
+  };
+
   return (
     <div className="max-w-4xl">
-      <h2 className="mb-2 text-lg">{t.accountsPanel.title}</h2>
+      <div className="mb-2 flex items-center gap-4">
+        <h2 className="flex-1 text-lg">{t.accountsPanel.title}</h2>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="rounded-full bg-primary px-4 py-1.5 font-medium text-white"
+        >
+          {t.accountsPanel.add}
+        </button>
+      </div>
+      {oauthError && (
+        <div
+          role="alert"
+          className="mb-2 flex items-start gap-2 bg-error-bg px-4 py-2 text-error-ink"
+        >
+          <span className="flex-1">{oauthError}</span>
+          <button type="button" onClick={clearOAuthError} className="font-medium underline">
+            {t.close}
+          </button>
+        </div>
+      )}
       <ul className="divide-y divide-line border-y border-line">
         {accounts.map((a) => (
           <AccountRow key={a.id} account={a} />
         ))}
       </ul>
+      <AddAccountDialog open={open} onClose={close} />
     </div>
   );
 }
 
 function AccountRow({ account }: { account: Account }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const returnTo = useLocation().pathname;
+  const index = useAccountIndex();
   const status = useQuery(syncStatusQuery(account.id)).data;
-  const [confirm, setConfirm] = useState(false);
+  const [confirm, setConfirm] = useState<"rebuild" | "remove" | null>(null);
   const [blocked, setBlocked] = useState(false);
+  const [editingPassword, setEditingPassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const oauthProvider = account.authType === "xoauth2" ? providerOf(account.provider) : null;
+
   const rebuild = useMutation({
     mutationFn: () =>
       call(
@@ -50,14 +132,75 @@ function AccountRow({ account }: { account: Account }) {
       if (isApiError(err, 409) && err.code === "rebuild_blocked") setBlocked(true);
       else toast(t.genericError);
     },
-    onSettled: () => setConfirm(false),
+    onSettled: () => setConfirm(null),
   });
+
+  const changePassword = useMutation({
+    mutationFn: () =>
+      call(
+        api.PATCH("/accounts/{id}", { params: { path: { id: account.id } }, body: { password } }),
+      ),
+    onSuccess: () => {
+      toast(t.accountsPanel.passwordSaved);
+      setEditingPassword(false);
+      setPassword("");
+      void qc.invalidateQueries({ queryKey: keys.session });
+      void qc.invalidateQueries({ queryKey: keys.syncStatus(account.id) });
+    },
+    onError: () => toast(t.genericError),
+  });
+
+  const remove = useMutation({
+    mutationFn: () => call(api.DELETE("/accounts/{id}", { params: { path: { id: account.id } } })),
+    onSuccess: async () => {
+      toast(t.accountsPanel.removed(account.email));
+      qc.removeQueries({ queryKey: keys.labels(account.id) });
+      qc.removeQueries({ queryKey: keys.threadsAll(account.id) });
+      qc.removeQueries({ queryKey: keys.syncStatus(account.id) });
+      await qc.refetchQueries({ queryKey: keys.session });
+      // The page was of the removed account: go to the first one left.
+      if (String(account.position) === index) {
+        const first = qc
+          .getQueryData<{ accounts?: Account[] | null }>(keys.session)
+          ?.accounts?.reduce<Account | undefined>(
+            (min, a) => (!min || a.position < min.position ? a : min),
+            undefined,
+          );
+        await navigate({
+          to: "/u/$account/settings/accounts",
+          params: { account: String(first?.position ?? 0) },
+        });
+      }
+    },
+    onError: () => toast(t.genericError),
+    onSettled: () => setConfirm(null),
+  });
+
+  const reauth = useMutation({
+    mutationFn: () => startOAuth(oauthProvider!, { returnTo, account }),
+    onError: () => toast(t.genericError),
+  });
+
   const state = status?.state ?? account.state;
+  const submitPassword = (e: FormEvent) => {
+    e.preventDefault();
+    if (password) changePassword.mutate();
+  };
 
   return (
     <li className="flex flex-wrap items-center gap-x-6 gap-y-2 py-4" aria-label={account.email}>
       <div className="min-w-64 flex-1">
-        <div className="font-medium">{account.displayName || account.email}</div>
+        <div className="flex items-center gap-2 font-medium">
+          {account.displayName || account.email}
+          {account.authType === "xoauth2" && (
+            <span
+              title={t.accountsPanel.oauthTitle}
+              className="rounded border border-line px-1.5 text-xs font-normal text-ink-muted"
+            >
+              {t.accountsPanel.oauth}
+            </span>
+          )}
+        </div>
         <div className="text-sm text-ink-muted">{account.email}</div>
         <div className="text-sm">{t.accountsPanel.states[state] ?? state}</div>
         {status && (
@@ -76,22 +219,75 @@ function AccountRow({ account }: { account: Account }) {
             {t.accountsPanel.rebuildBlocked}
           </p>
         )}
+        {editingPassword && (
+          <form onSubmit={submitPassword} className="mt-2 flex flex-wrap items-center gap-2">
+            <input
+              type="password"
+              autoFocus
+              required
+              autoComplete="new-password"
+              aria-label={t.accountsPanel.newPassword(account.email)}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="rounded border border-line px-2 py-1"
+            />
+            <button
+              type="submit"
+              disabled={!password || changePassword.isPending}
+              className="rounded-full bg-primary px-4 py-1.5 font-medium text-white disabled:opacity-60"
+            >
+              {t.accountsPanel.savePassword}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingPassword(false)}
+              className="rounded-full px-4 py-1.5 font-medium text-primary hover:bg-hover"
+            >
+              {t.cancel}
+            </button>
+          </form>
+        )}
       </div>
-      <button
-        type="button"
-        onClick={() => setConfirm(true)}
-        className="rounded-full border border-line px-4 py-1.5 font-medium text-primary hover:bg-hover"
-      >
-        {t.accountsPanel.rebuild}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        {oauthProvider && state === "auth_failed" && (
+          <button
+            type="button"
+            disabled={reauth.isPending}
+            onClick={() => reauth.mutate()}
+            className="rounded-full bg-primary px-4 py-1.5 font-medium text-white disabled:opacity-60"
+          >
+            {t.reauthorize}
+          </button>
+        )}
+        {account.authType === "password" && !editingPassword && (
+          <button type="button" onClick={() => setEditingPassword(true)} className={outline}>
+            {t.accountsPanel.changePassword}
+          </button>
+        )}
+        <button type="button" onClick={() => setConfirm("rebuild")} className={outline}>
+          {t.accountsPanel.rebuild}
+        </button>
+        <button type="button" onClick={() => setConfirm("remove")} className={outline}>
+          {t.accountsPanel.remove}
+        </button>
+      </div>
       <ConfirmDialog
-        open={confirm}
+        open={confirm === "rebuild"}
         title={t.accountsPanel.rebuildTitle(account.email)}
         body={t.accountsPanel.rebuildBody}
         confirmLabel={t.accountsPanel.rebuild}
         busy={rebuild.isPending}
         onConfirm={() => rebuild.mutate()}
-        onCancel={() => setConfirm(false)}
+        onCancel={() => setConfirm(null)}
+      />
+      <ConfirmDialog
+        open={confirm === "remove"}
+        title={t.accountsPanel.removeTitle(account.email)}
+        body={t.accountsPanel.removeBody}
+        confirmLabel={t.accountsPanel.remove}
+        busy={remove.isPending}
+        onConfirm={() => remove.mutate()}
+        onCancel={() => setConfirm(null)}
       />
     </li>
   );

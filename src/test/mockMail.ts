@@ -2,7 +2,9 @@ import { http, HttpResponse } from "msw";
 import type {
   Account,
   Address,
+  ConnectionParams,
   ContactSuggestion,
+  Discovery,
   Draft,
   Filter,
   FilterBody,
@@ -12,6 +14,7 @@ import type {
   Settings,
   SnoozePreset,
   Thread,
+  TestResult,
   ThreadDetail,
   UploadInfo,
 } from "../api/types";
@@ -161,10 +164,27 @@ export function createMockMail() {
     settingsProblem: {} as Record<string, FakeProblem>,
     /** Problem answered by PATCH /labels/{id} when the body has a parentId. */
     labelParentProblem: null as FakeProblem | null,
+    /** GET /meta versions, oauthProviders and allowCustomServers. */
+    serverVersion: "0.3.0",
+    minWebVersion: "0.3.0",
+    oauthProviders: [] as string[],
+    allowCustomServers: false,
+    /** Answer of POST /accounts/discover (null: the default server of the instance). */
+    discovery: null as Discovery | null,
+    /** Problems answered by discover and POST /accounts; testFails fails the IMAP login step. */
+    discoverProblem: null as FakeProblem | null,
+    testFails: false,
+    createProblem: null as FakeProblem | null,
     /** Label counts of accounts other than acc_1: accountId → label id → counts. */
     accountCounts: {} as Record<string, Record<string, { unread: number; total: number }>>,
     calls: {
       labelsGet: [] as string[],
+      discover: [] as string[],
+      accountTest: [] as ConnectionParams[],
+      accountCreate: [] as (ConnectionParams & { displayName?: string })[],
+      accountPatch: [] as { id: string; password?: string }[],
+      accountDelete: [] as string[],
+      oauthStart: [] as { provider: string; returnTo?: string; accountId?: string }[],
       settings: [] as Record<string, unknown>[],
       labelsCreate: [] as Record<string, unknown>[],
       labelsPatch: [] as (Record<string, unknown> & { id: string })[],
@@ -435,13 +455,13 @@ export function createMockMail() {
     http.get("*/api/v1/meta", () => {
       state.calls.meta += 1;
       return HttpResponse.json({
-        serverVersion: "0.3.0",
+        serverVersion: state.serverVersion,
         apiVersion: "1",
-        minWebVersion: "0.3.0",
+        minWebVersion: state.minWebVersion,
         authMode: "imap",
-        allowCustomServers: false,
+        allowCustomServers: state.allowCustomServers,
         maxAttachmentBytes: state.metaMaxAttachmentBytes ?? state.maxUploadBytes,
-        oauthProviders: [],
+        oauthProviders: state.oauthProviders,
       });
     }),
     http.get("*/api/v1/session", () =>
@@ -583,6 +603,86 @@ export function createMockMail() {
         { status: 202 },
       );
     }),
+    http.post("*/api/v1/accounts/discover", async ({ request }) => {
+      const { email } = (await request.json()) as { email: string };
+      state.calls.discover.push(email);
+      if (state.discoverProblem) {
+        const { status, code } = state.discoverProblem;
+        return problem(status, code);
+      }
+      const d: Discovery = state.discovery ?? {
+        email,
+        domain: email.split("@")[1] ?? "",
+        imap: { host: "mail.silo.test", port: 993, tls: "implicit" },
+        smtp: { host: "mail.silo.test", port: 587, tls: "starttls" },
+        username: email,
+        loginFormat: "email",
+        source: "default",
+        sources: [{ source: "default", ok: true, detail: "default server" }],
+        provider: "generic",
+        params: {
+          email,
+          username: email,
+          imapHost: "mail.silo.test",
+          imapPort: 993,
+          imapTls: "implicit",
+          smtpHost: "mail.silo.test",
+          smtpPort: 587,
+          smtpTls: "starttls",
+        },
+      };
+      return HttpResponse.json(d);
+    }),
+    http.post("*/api/v1/accounts/test", async ({ request }) => {
+      const body = (await request.json()) as ConnectionParams;
+      state.calls.accountTest.push(body);
+      return HttpResponse.json(testResult());
+    }),
+    http.post("*/api/v1/accounts", async ({ request }) => {
+      const body = (await request.json()) as ConnectionParams & { displayName?: string };
+      state.calls.accountCreate.push(body);
+      if (state.testFails) return problem(422, "account_test_failed", { test: testResult() });
+      if (state.createProblem) {
+        const { status, code } = state.createProblem;
+        return problem(status, code);
+      }
+      const a = addAccount(session.accounts!.length + 1, {
+        email: body.email ?? "",
+        username: body.username ?? body.email ?? "",
+        displayName: body.displayName ?? "",
+        state: "connecting",
+      });
+      return HttpResponse.json(a, { status: 201 });
+    }),
+    http.patch("*/api/v1/accounts/:id", async ({ params, request }) => {
+      const id = String(params.id);
+      const body = (await request.json()) as { password?: string };
+      state.calls.accountPatch.push({ id, ...body });
+      const a = session.accounts!.find((x) => x.id === id);
+      if (!a) return problem(404, "not_found");
+      if (body.password && a.authType === "xoauth2") return problem(409, "not_available");
+      if (body.password) a.state = "connecting";
+      return HttpResponse.json(a);
+    }),
+    http.delete("*/api/v1/accounts/:id", ({ params }) => {
+      const id = String(params.id);
+      state.calls.accountDelete.push(id);
+      const before = session.accounts!.length;
+      session.accounts = session.accounts!.filter((x) => x.id !== id);
+      return session.accounts.length < before
+        ? new HttpResponse(null, { status: 204 })
+        : problem(404, "not_found");
+    }),
+    http.post("*/api/v1/oauth/:provider/start", async ({ params, request }) => {
+      const provider = String(params.provider);
+      const body = (await request.json()) as { returnTo?: string; accountId?: string };
+      state.calls.oauthStart.push({ provider, ...body });
+      if (!state.oauthProviders.includes(provider)) return problem(404, "not_found");
+      return HttpResponse.json({
+        state: "st_1",
+        url: `https://${provider}.example/auth?state=st_1`,
+      });
+    }),
     http.post("*/api/v1/accounts/:id/resync", async ({ params, request }) => {
       const { mode } = (await request.json()) as { mode: string };
       state.calls.resync.push({ id: String(params.id), mode });
@@ -592,11 +692,12 @@ export function createMockMail() {
       }
       return new HttpResponse(null, { status: 202 });
     }),
-    http.get("*/api/v1/accounts/:id/sync-status", () =>
-      HttpResponse.json({
-        id: "acc_1",
-        email: "dev1@silo.test",
-        state: "live",
+    http.get("*/api/v1/accounts/:id/sync-status", ({ params }) => {
+      const a = session.accounts!.find((x) => x.id === params.id);
+      return HttpResponse.json({
+        id: String(params.id),
+        email: a?.email ?? "dev1@silo.test",
+        state: a?.state ?? "live",
         lastSyncAt: "2026-11-05T09:00:00Z",
         error: null,
         initialSync: {
@@ -615,8 +716,8 @@ export function createMockMail() {
         keywordsSupported: state.keywordsSupported,
         missingRoles: [],
         folders: [],
-      }),
-    ),
+      });
+    }),
     http.get("*/api/v1/threads", ({ request }) => {
       const url = new URL(request.url);
       const labelId = url.searchParams.get("labelId");
@@ -903,6 +1004,27 @@ export function createMockMail() {
       if (prev) t.labelIds = Array.isArray(prev) ? prev : prev.labelIds;
     }
   };
+
+  /** POST /accounts/test: every stage passes, or the IMAP login fails (state.testFails). */
+  const testResult = (): TestResult => ({
+    imap: {
+      ok: !state.testFails,
+      steps: [
+        { step: "connect", ok: true, ms: 3 },
+        { step: "tls", ok: true, ms: 5 },
+        state.testFails
+          ? { step: "login", ok: false, ms: 9, detail: "AUTHENTICATIONFAILED" }
+          : { step: "login", ok: true, ms: 9 },
+      ],
+    },
+    smtp: {
+      ok: true,
+      steps: [
+        { step: "connect", ok: true, ms: 2 },
+        { step: "auth", ok: true, ms: 4 },
+      ],
+    },
+  });
 
   /** A second (third…) account of the user, as GET /session lists it. */
   const addAccount = (n: number, extra: Partial<Account> = {}): Account => {

@@ -1,8 +1,12 @@
 import * as Progress from "@radix-ui/react-progress";
+import { useMutation } from "@tanstack/react-query";
+import { Link, useLocation } from "@tanstack/react-router";
 import { formatCount } from "../../lib/format";
 import { t } from "../../lib/i18n";
 import { useConnection } from "../../state/connection";
-import { useActiveAccount } from "../account";
+import { useAccountIndex, useActiveAccount } from "../account";
+import { providerOf, startOAuth } from "../account/oauth";
+import { toast } from "../../state/toasts";
 import { isInitialSync, progressPercent, useResync, useSyncStatus } from "./useSync";
 
 /** Silo itself unreachable: SSE, polling and /meta fail. */
@@ -17,11 +21,46 @@ function AccountErrorBanner() {
   const status = useSyncStatus();
   const account = useActiveAccount();
   const resync = useResync();
+  const index = useAccountIndex();
+  const returnTo = useLocation().pathname;
+  const oauthProvider = account?.authType === "xoauth2" ? providerOf(account.provider) : null;
+  const reauth = useMutation({
+    mutationFn: () => startOAuth(oauthProvider!, { returnTo, account }),
+    onError: () => toast(t.genericError),
+  });
   if (!status) return null;
   if (status.state === "auth_failed") {
+    // Losing the account's authorization is announced at once (plan 6.7).
     return (
-      <div role="alert" className="bg-warn-bg px-4 py-2 text-warn-ink">
-        {t.authFailedBanner}
+      <div
+        role="alert"
+        aria-live="assertive"
+        className="flex flex-wrap items-center gap-x-3 bg-warn-bg px-4 py-2 text-warn-ink"
+      >
+        {oauthProvider ? (
+          <>
+            <span>{t.authFailedOAuth(account?.email ?? status.email)}</span>
+            <button
+              type="button"
+              disabled={reauth.isPending}
+              onClick={() => reauth.mutate()}
+              className="font-medium underline"
+            >
+              {t.reauthorize}
+            </button>
+          </>
+        ) : (
+          <>
+            <span>{t.authFailedText(account?.email ?? status.email)}</span>
+            <Link
+              to="/u/$account/settings/accounts"
+              params={{ account: index }}
+              className="font-medium underline"
+            >
+              {t.updatePassword}
+            </Link>
+          </>
+        )}
       </div>
     );
   }
