@@ -190,7 +190,12 @@ describe("accounts", () => {
     const { user, router } = setup("/u/0/admin/accounts");
     const table = await screen.findByRole("table", { name: "Konta" });
     const row = within(table).getByRole("row", { name: /ala@example.com/ });
+    expect(within(table).getByRole("columnheader", { name: "Logowanie" })).toBeInTheDocument();
     expect(within(row).getByText("imap.example.com")).toBeInTheDocument();
+    expect(within(row).getByText("OAuth2")).toBeInTheDocument();
+    expect(
+      within(within(table).getByRole("row", { name: /dev1@silo.test/ })).getByText("Hasło"),
+    ).toBeInTheDocument();
     expect(within(row).getByText("AUTHENTICATIONFAILED")).toBeInTheDocument();
     expect(within(row).getByText("nigdy")).toBeInTheDocument();
     await user.click(

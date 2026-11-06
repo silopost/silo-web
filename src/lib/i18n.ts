@@ -528,6 +528,8 @@ export const t = {
     // accounts
     user: "Użytkownik",
     host: "Serwer IMAP",
+    authType: "Logowanie",
+    authTypes: { password: "Hasło", xoauth2: "OAuth2" } as Record<string, string>,
     state: "Stan synchronizacji",
     lastSync: "Ostatnia synchronizacja",
     error: "Błąd",

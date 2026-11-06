@@ -18,6 +18,7 @@ export function AdminAccountsPanel() {
     t.admin.user,
     t.admin.email,
     t.admin.host,
+    t.admin.authType,
     t.admin.state,
     t.admin.lastSync,
     t.admin.error,
@@ -48,6 +49,7 @@ export function AdminAccountsPanel() {
                     {a.email}
                   </th>
                   <td className={td}>{a.imapHost}</td>
+                  <td className={td}>{t.admin.authTypes[a.authType] ?? a.authType}</td>
                   <td className={td}>
                     <StateChip state={a.state} />
                   </td>
