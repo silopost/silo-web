@@ -412,6 +412,13 @@ describe("every shortcut of plan 6.6 in its scope", () => {
   });
 });
 
+it("g 1 on the first account goes to its inbox (from another view)", async () => {
+  const c = setup("/u/0/starred", secondAccount);
+  await screen.findByRole("grid");
+  await c.user.keyboard("g1");
+  await waitFor(() => expect(path(c)).toBe("/u/0/inbox"));
+});
+
 /** Fields where typing must not trigger shortcuts. */
 const FIELDS: [string, () => HTMLElement][] = [
   ["input", () => addField("input")],

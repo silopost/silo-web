@@ -114,9 +114,10 @@ export function useGlobalShortcuts(): void {
     goLabel: () => useUi.getState().setLabelPickerOpen(true),
     ...goAccounts((n) => {
       // g 1 … g 9: the n-th account in the order of Account.position, its inbox (plan 6.6);
-      // like the AccountSwitcher it remembers the account in the settings.
+      // like the AccountSwitcher it remembers the account in the settings. The current account
+      // too: g 1 from a label of the first account goes to its inbox.
       const target = accounts[n - 1];
-      if (target && target.position !== Number(account)) switchAccount(target, "inbox");
+      if (target) switchAccount(target, "inbox");
     }),
   });
 
