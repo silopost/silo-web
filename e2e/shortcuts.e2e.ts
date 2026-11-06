@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { login, rowOf } from "./support/app";
+import { escapeRe, login, rowOf } from "./support/app";
 import { accounts } from "./support/env";
 import { deleteLabelsNamed } from "./support/api";
 import { appendMessage, deleteTagged, runTag } from "./support/imap";
@@ -161,7 +161,10 @@ test("the remaining shortcuts of plan 6.6", async ({ page }) => {
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(search).not.toBeFocused();
+  // fill() focuses the field again: leave it before the list shortcuts.
   await search.fill("");
+  await page.keyboard.press("Escape");
+  await expect(search).not.toBeFocused();
 
   // * a selects all rows, * n none.
   await page.keyboard.press("*");
@@ -238,7 +241,9 @@ test("the remaining shortcuts of plan 6.6", async ({ page }) => {
   // n / p move between the messages of a thread.
   await talk.focus();
   await page.keyboard.press("o");
-  await expect(page.getByRole("heading", { name: new RegExp(`${tag} rozmowa`) })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: new RegExp(`${escapeRe(tag)} rozmowa`) }),
+  ).toBeVisible();
   const messages = page.locator("[data-message-id]");
   await expect(messages).toHaveCount(2);
   await page.keyboard.press("p");
@@ -250,14 +255,23 @@ test("the remaining shortcuts of plan 6.6", async ({ page }) => {
   await page.keyboard.press("!");
   await expect(page).toHaveURL(/\/u\/0\/inbox$/);
   await expect(talk).toHaveCount(0);
+  // z undoes the operation of the snackbar: wait for the server's operationId.
+  await expect(page.getByRole("status").getByRole("button", { name: "Cofnij" })).toBeVisible();
   await page.keyboard.press("z");
+  // As in Gmail, undoing an action taken in the thread view opens that thread again.
+  await expect(
+    page.getByRole("heading", { name: new RegExp(`${escapeRe(tag)} rozmowa`) }),
+  ).toBeVisible();
+  await page.keyboard.press("u");
   await expect(talk).toBeVisible();
 
   // Shift+C: maximised compose. Letters in its fields are text; Esc closes it.
   await page.keyboard.press("Shift+C");
-  const win = page.getByRole("dialog", { name: "Nowa wiadomość" });
-  await expect(win).toBeVisible();
-  const subject = win.getByRole("textbox", { name: "Temat" });
+  await expect(page.getByRole("dialog", { name: "Nowa wiadomość" })).toBeVisible();
+  // The window is named after its subject once one is typed: find it by its fields.
+  const composeWin = () =>
+    page.getByRole("dialog").filter({ has: page.getByRole("textbox", { name: "Temat" }) });
+  const subject = composeWin().getByRole("textbox", { name: "Temat" });
   await subject.focus();
   await page.keyboard.type("e#cgi");
   await expect(subject).toHaveValue("e#cgi");
@@ -267,8 +281,8 @@ test("the remaining shortcuts of plan 6.6", async ({ page }) => {
 
   // Ctrl+Enter sends from the body of the compose window.
   await page.keyboard.press("c");
-  const send = page.getByRole("dialog", { name: "Nowa wiadomość" });
-  await expect(send).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Nowa wiadomość" })).toBeVisible();
+  const send = composeWin();
   await send.getByRole("combobox", { name: "Do" }).fill(`${dev1.email},`);
   await send.getByRole("textbox", { name: "Temat" }).fill(`${tag} wysłane skrótem`);
   await send.getByRole("textbox", { name: "Treść wiadomości" }).click();

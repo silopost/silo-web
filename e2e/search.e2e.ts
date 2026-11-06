@@ -129,11 +129,11 @@ test("operators, suggestions, chips, advanced search and invalid queries", async
   await box(page).fill(`from:anna.${uniq}`);
   const contacts = list.getByRole("group", { name: "Kontakty" });
   await expect(contacts.getByRole("option", { name: new RegExp(escapeRe(anna)) })).toBeVisible();
-  // A history entry searches at once.
+  // A history entry searches at once (the history lists only the 5 newest queries).
   await box(page).fill("");
-  await recent.getByRole("option", { name: `${uniq} is:unread`, exact: true }).click();
+  await recent.getByRole("option", { name: `${uniq} faktura`, exact: true }).click();
   await expect(page).toHaveURL(/\/u\/0\/search/);
-  await expectResults(page, ["b"]);
+  await expectResults(page, ["a", "d"]);
 
   // Chips: removing one part removes that text from q.
   await search(page, `from:${anna} ${uniq}`);
