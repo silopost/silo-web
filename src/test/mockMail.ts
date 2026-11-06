@@ -169,6 +169,8 @@ export function createMockMail() {
     minWebVersion: "0.3.0",
     oauthProviders: [] as string[],
     allowCustomServers: false,
+    /** GET /meta authMode (createLocalMock switches it to local). */
+    authMode: "imap" as "imap" | "local",
     /** Answer of POST /accounts/discover (null: the default server of the instance). */
     discovery: null as Discovery | null,
     /** Problems answered by discover and POST /accounts; testFails fails the IMAP login step. */
@@ -458,7 +460,7 @@ export function createMockMail() {
         serverVersion: state.serverVersion,
         apiVersion: "1",
         minWebVersion: state.minWebVersion,
-        authMode: "imap",
+        authMode: state.authMode,
         allowCustomServers: state.allowCustomServers,
         maxAttachmentBytes: state.metaMaxAttachmentBytes ?? state.maxUploadBytes,
         oauthProviders: state.oauthProviders,

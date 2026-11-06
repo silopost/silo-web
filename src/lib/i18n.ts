@@ -28,6 +28,19 @@ export const t = {
     seconds
       ? `Zbyt wiele prób logowania. Spróbuj ponownie za ${seconds} s.`
       : "Zbyt wiele prób logowania. Spróbuj ponownie później.",
+  login: {
+    localTitle: "Zaloguj się do Silo",
+    invalidLocal: "Nieprawidłowy e-mail, hasło lub kod.",
+    codeTitle: "Weryfikacja dwuetapowa",
+    codeHint: "Wpisz 6-cyfrowy kod z aplikacji uwierzytelniającej.",
+    backupHint: "Wpisz jeden z kodów zapasowych. Każdy działa tylko raz.",
+    appCode: "Kod z aplikacji",
+    backupCode: "Kod zapasowy",
+    useBackupCode: "Użyj kodu zapasowego",
+    useAppCode: "Użyj kodu z aplikacji",
+    back: "Wróć",
+    verify: "Potwierdź",
+  },
 
   // shell
   mainMenu: "Menu główne",
