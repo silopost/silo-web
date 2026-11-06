@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { login, rowOf } from "./support/app";
 import { accounts } from "./support/env";
+import { deleteLabelsNamed } from "./support/api";
 import { appendMessage, deleteTagged, runTag } from "./support/imap";
 
 /**
@@ -12,6 +13,8 @@ const { dev1 } = accounts;
 
 test.afterAll(async () => {
   await deleteTagged(dev1, tag);
+  // The label `<tag>-etykieta` created with `l` (its keyword goes with it).
+  await deleteLabelsNamed(dev1, tag);
 });
 
 /** data-thread-id of the row with the cursor (the grid's tab stop, plan 6.7). */

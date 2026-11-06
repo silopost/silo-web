@@ -68,3 +68,46 @@ export async function stableInboxCount(page: Page, quietMs = 1_500): Promise<num
   }
   return value;
 }
+
+/**
+ * The first full minute at least `aheadMs` from now: its `datetime-local` value in the browser's
+ * time zone (the field has minute precision) and the instant in ms since epoch.
+ */
+export async function minuteAhead(
+  page: Page,
+  aheadMs: number,
+): Promise<{ value: string; at: number }> {
+  return page.evaluate((ahead) => {
+    const at = Math.ceil((Date.now() + ahead) / 60_000) * 60_000;
+    const d = new Date(at);
+    const p = (n: number) => String(n).padStart(2, "0");
+    const value = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+    return { value, at };
+  }, aheadMs);
+}
+
+/** "Wybierz datę i godzinę" of an open snooze / schedule-send menu: fills the dialog and saves. */
+export async function pickDateTime(page: Page, title: string, value: string): Promise<void> {
+  await page.getByRole("menuitem", { name: "Wybierz datę i godzinę" }).click();
+  const dialog = page.getByRole("dialog", { name: title });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Data i godzina").fill(value);
+  await dialog.getByRole("button", { name: "Zapisz" }).click();
+  await expect(dialog).toBeHidden();
+}
+
+/** Thread ids of the list in row order (aria-rowindex; the virtualizer's DOM order may differ). */
+export const rowIds = (page: Page) =>
+  page.locator("[role=row][data-thread-id]").evaluateAll((rows) =>
+    rows
+      .map(
+        (r) => [Number(r.getAttribute("aria-rowindex")), r.getAttribute("data-thread-id")] as const,
+      )
+      .sort((a, b) => a[0] - b[0])
+      .map(([, id]) => id),
+  );
+
+/** Opens a view of the first account by its slug (inbox, snoozed, scheduled, l_…, settings/…). */
+export async function openView(page: Page, slug: string): Promise<void> {
+  await page.goto(`/u/0/${slug}`);
+}
