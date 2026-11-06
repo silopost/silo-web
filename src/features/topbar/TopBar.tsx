@@ -1,17 +1,12 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
-import type { CSSProperties } from "react";
-import { api } from "../../api/client";
-import { setCsrfToken } from "../../api/csrf";
-import { call } from "../../api/errors";
+import { Link } from "@tanstack/react-router";
 import { usePatchSettings } from "../../api/queries/settings";
-import { Avatar } from "../../components/Avatar";
 import { Icon } from "../../components/Icon";
 import { IconButton } from "../../components/IconButton";
 import { t } from "../../lib/i18n";
 import { usePrefs, useUi, type Density } from "../../state/ui";
-import { useAccountIndex, useActiveAccount, useSession } from "../account";
+import { useAccountIndex } from "../account";
+import { AccountSwitcher } from "../account/AccountSwitcher";
 import { SyncStatusIndicator } from "../sync/SyncStatusIndicator";
 import { SearchBox } from "../search/SearchBox";
 
@@ -53,47 +48,7 @@ function DensityMenu() {
   );
 }
 
-function UserMenu() {
-  const session = useSession();
-  const account = useActiveAccount();
-  const qc = useQueryClient();
-  const navigate = useNavigate();
-  const logout = useMutation({
-    mutationFn: () => call(api.DELETE("/session")),
-    onSettled: async () => {
-      setCsrfToken(null);
-      qc.clear();
-      await navigate({ to: "/login" });
-    },
-  });
-  const user = session?.user;
-  if (!user) return null;
-  return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger
-        aria-label={`${t.accountMenu}: ${user.email}`}
-        className="ml-2 rounded-full p-1 hover:bg-hover"
-        style={{ "--avatar-size": "32px" } as CSSProperties}
-      >
-        <Avatar address={{ email: user.email, name: user.displayName }} />
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content align="end" className={menuContent}>
-          <div className="px-3 py-2">
-            <div className="font-medium">{user.displayName || user.email}</div>
-            <div className="text-ink-muted">{account?.email ?? user.email}</div>
-          </div>
-          <DropdownMenu.Separator className="my-1 h-px bg-line" />
-          <DropdownMenu.Item className={menuItem} onSelect={() => logout.mutate()}>
-            {t.signOut}
-          </DropdownMenu.Item>
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
-  );
-}
-
-/** TopBar (plan 6.3): menu, logo, search, sync status, density, help, account menu. */
+/** TopBar (plan 6.3): menu, logo, search, sync status, density, help, AccountSwitcher. */
 export function TopBar() {
   const toggleNav = usePrefs((s) => s.toggleNav);
   const collapsed = usePrefs((s) => s.navCollapsed);
@@ -123,7 +78,7 @@ export function TopBar() {
         >
           <Icon name="settings" size={20} />
         </Link>
-        <UserMenu />
+        <AccountSwitcher />
       </div>
     </header>
   );

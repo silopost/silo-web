@@ -1,5 +1,6 @@
 import { http, HttpResponse } from "msw";
 import type {
+  Account,
   Address,
   ContactSuggestion,
   Draft,
@@ -159,7 +160,10 @@ export function createMockMail() {
     settingsProblem: {} as Record<string, FakeProblem>,
     /** Problem answered by PATCH /labels/{id} when the body has a parentId. */
     labelParentProblem: null as FakeProblem | null,
+    /** Label counts of accounts other than acc_1: accountId → label id → counts. */
+    accountCounts: {} as Record<string, Record<string, { unread: number; total: number }>>,
     calls: {
+      labelsGet: [] as string[],
       settings: [] as Record<string, unknown>[],
       labelsCreate: [] as Record<string, unknown>[],
       labelsPatch: [] as (Record<string, unknown> & { id: string })[],
@@ -226,13 +230,19 @@ export function createMockMail() {
   let labelSeq = 0;
   let filterSeq = 0;
 
-  const labels = (): Label[] => [
+  /**
+   * GET /labels?accountId=: the threads of the fake belong to acc_1; another account's labels
+   * are empty except for the counts set in state.accountCounts.
+   */
+  const labels = (accountId = "acc_1"): Label[] => [
     ...["INBOX", "STARRED", "SNOOZED", "SENT", "SCHEDULED", "DRAFT", "SPAM", "TRASH"].map(
       (id, i) => {
-        const inLabel = state.threads.filter((t) => t.labelIds?.includes(id));
+        const inLabel =
+          accountId === "acc_1" ? state.threads.filter((t) => t.labelIds?.includes(id)) : [];
+        const other = state.accountCounts[accountId]?.[id];
         return {
           id,
-          accountId: "acc_1",
+          accountId,
           name: id,
           type: "system",
           colorBg: null,
@@ -242,12 +252,12 @@ export function createMockMail() {
           parentId: null,
           position: i,
           showInList: "show",
-          threadsTotal: inLabel.length,
-          threadsUnread: inLabel.filter((t) => t.unreadCount > 0).length,
+          threadsTotal: other?.total ?? inLabel.length,
+          threadsUnread: other?.unread ?? inLabel.filter((t) => t.unreadCount > 0).length,
         } satisfies Label;
       },
     ),
-    ...state.extraLabels.map(counted),
+    ...(accountId === "acc_1" ? state.extraLabels.map(counted) : []),
   ];
 
   const detail = (t: Thread): ThreadDetail => ({
@@ -452,7 +462,11 @@ export function createMockMail() {
       state.loggedIn = false;
       return new HttpResponse(null, { status: 204 });
     }),
-    http.get("*/api/v1/labels", () => HttpResponse.json({ labels: labels() })),
+    http.get("*/api/v1/labels", ({ request }) => {
+      const accountId = new URL(request.url).searchParams.get("accountId") ?? "acc_1";
+      state.calls.labelsGet.push(accountId);
+      return HttpResponse.json({ labels: labels(accountId) });
+    }),
     http.post("*/api/v1/labels", async ({ request }) => {
       const body = (await request.json()) as {
         name: string;
@@ -875,5 +889,29 @@ export function createMockMail() {
     }
   };
 
-  return { state, session, handlers, revert, saveElsewhere, addDraftThread, makeLabel };
+  /** A second (third…) account of the user, as GET /session lists it. */
+  const addAccount = (n: number, extra: Partial<Account> = {}): Account => {
+    const a: Account = {
+      ...session.accounts![0]!,
+      id: `acc_${n}`,
+      email: `dev${n}@silo.test`,
+      displayName: `Dev ${n}`,
+      username: `dev${n}@silo.test`,
+      position: session.accounts!.length,
+      ...extra,
+    };
+    session.accounts!.push(a);
+    return a;
+  };
+
+  return {
+    state,
+    session,
+    handlers,
+    revert,
+    saveElsewhere,
+    addDraftThread,
+    makeLabel,
+    addAccount,
+  };
 }

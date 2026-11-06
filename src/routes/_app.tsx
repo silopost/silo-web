@@ -4,7 +4,9 @@ import { useEffect } from "react";
 import { isApiError } from "../api/errors";
 import { connectEvents } from "../api/events";
 import { sessionQuery } from "../api/queries/session";
+import { useLabels } from "../api/queries/labels";
 import { useSettings } from "../api/queries/settings";
+import { useActiveAccount } from "../features/account";
 import { ComposeDock } from "../features/compose/ComposeDock";
 import { LeftNav } from "../features/nav/LeftNav";
 import { setNotificationNavigator } from "../features/notifications/desktop";
@@ -76,11 +78,22 @@ function useNotificationNavigator() {
   }, [router]);
 }
 
+/** "Odebrane (3) – dev1@silo.test – Silo": the active account of the tab (label.counts). */
+function useDocumentTitle() {
+  const account = useActiveAccount();
+  const unread = useLabels(account?.id).find((l) => l.id === "INBOX")?.threadsUnread ?? 0;
+  useEffect(() => {
+    if (!account) return;
+    document.title = `${t.inboxTitle}${unread > 0 ? ` (${unread})` : ""} – ${account.email} – ${t.appName}`;
+  }, [account, unread]);
+}
+
 function AppLayout() {
   const qc = useQueryClient();
   useEffect(() => connectEvents(qc), [qc]);
   useDensityAttribute();
   useNotificationNavigator();
+  useDocumentTitle();
   useGlobalShortcuts();
 
   return (

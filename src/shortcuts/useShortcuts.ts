@@ -3,7 +3,12 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useSettings } from "../api/queries/settings";
-import { useAccountIndex, useActiveAccount, useSession } from "../features/account";
+import {
+  useAccountIndex,
+  useAccounts,
+  useActiveAccount,
+  useSwitchAccount,
+} from "../features/account";
 import { openNewCompose } from "../features/compose/actions";
 import { useToasts } from "../state/toasts";
 import { useUi } from "../state/ui";
@@ -84,7 +89,8 @@ export function useGlobalShortcuts(): void {
   const accountId = useActiveAccount()?.id;
   const qc = useQueryClient();
   const setPrefix = useUi((s) => s.setPendingPrefix);
-  const session = useSession();
+  const accounts = useAccounts();
+  const switchAccount = useSwitchAccount();
   const enabled = useShortcutsEnabled();
   const enabledRef = useRef(enabled);
   useLayoutEffect(() => {
@@ -107,13 +113,10 @@ export function useGlobalShortcuts(): void {
     goAll: go("all"),
     goLabel: () => useUi.getState().setLabelPickerOpen(true),
     ...goAccounts((n) => {
-      // g 1 … g 9: the n-th account in the order of Account.position (/u/<position>).
-      const target = [...(session?.accounts ?? [])].sort((a, b) => a.position - b.position)[n - 1];
-      if (target)
-        void navigate({
-          to: "/u/$account/$label",
-          params: { account: String(target.position), label: "inbox" },
-        });
+      // g 1 … g 9: the n-th account in the order of Account.position, its inbox (plan 6.6);
+      // like the AccountSwitcher it remembers the account in the settings.
+      const target = accounts[n - 1];
+      if (target && target.position !== Number(account)) switchAccount(target, "inbox");
     }),
   });
 

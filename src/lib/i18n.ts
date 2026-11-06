@@ -7,6 +7,7 @@ const n3 = (n: number, one: string, few: string, many: string) =>
 /** UI strings (Polish, as in the plan). A plain map; no i18n library yet. */
 export const t = {
   appName: "Silo",
+  inboxTitle: "Odebrane",
   loading: "Wczytywanie…",
   retry: "Ponów",
   close: "Zamknij",
@@ -482,6 +483,18 @@ export const t = {
     rebuildBlocked:
       "Nie można teraz odbudować cache: wiadomości czekają na wysłanie albo zmiany na zapis na serwerze. Spróbuj ponownie za chwilę.",
     pendingOps: (n: number) => `Oczekujące zmiany: ${n}`,
+    add: "Dodaj konto",
+    oauth: "OAuth",
+    oauthTitle: "Logowanie przez dostawcę (OAuth2)",
+    changePassword: "Zmień hasło",
+    newPassword: (email: string) => `Nowe hasło do ${email}`,
+    savePassword: "Zapisz hasło",
+    passwordSaved: "Hasło zapisane.",
+    remove: "Usuń konto",
+    removeTitle: (email: string) => `Usunąć konto ${email} z Silo?`,
+    removeBody:
+      "Silo usunie konto i wszystko, co dla niego przechowuje (kopię wiadomości, etykiety i filtry). Skrzynka na serwerze poczty pozostanie nietknięta.",
+    removed: (email: string) => `Usunięto konto ${email}.`,
     states: {
       connecting: "Łączenie",
       discovering: "Wykrywanie folderów",
@@ -492,6 +505,119 @@ export const t = {
       disabled: "Wyłączone",
     } as Record<string, string>,
   },
+
+  switcher: {
+    title: "Konta",
+    authFailed: "Błąd logowania do skrzynki",
+    offline: "Brak połączenia z serwerem poczty",
+    unread: (n: number) =>
+      n === 0
+        ? "brak nieprzeczytanych"
+        : n3(n, "nieprzeczytany", "nieprzeczytane", "nieprzeczytanych"),
+    otherUnread: (n: number) =>
+      `${n3(n, "nieprzeczytany", "nieprzeczytane", "nieprzeczytanych")} w innych kontach`,
+    addAccount: "Dodaj konto",
+    manage: "Zarządzaj kontami",
+  },
+  fromAccount: "Wyślij z konta",
+  fromLocked: "Odpowiedź i przekazanie wysyła się z konta oryginalnej wiadomości.",
+  fromChangeFailed: "Nie udało się zmienić konta nadawcy.",
+  addAccount: {
+    title: "Dodaj konto",
+    email: "Adres e-mail",
+    password: "Hasło",
+    displayName: "Nazwa wyświetlana (opcjonalnie)",
+    next: "Dalej",
+    back: "Wstecz",
+    discovering: "Szukanie ustawień serwera…",
+    sources: {
+      ispdb: "ISPDB",
+      autoconfig: "autoconfig",
+      srv: "SRV",
+      guess: "zgadnięte",
+      default: "serwer domyślny",
+    } as Record<string, string>,
+    found: (source: string) => `Ustawienia znalezione: ${source}`,
+    notFound: "Nie znaleziono ustawień serwera – wpisz je w sekcji Zaawansowane.",
+    advanced: "Zaawansowane",
+    imap: "IMAP (odbieranie)",
+    smtp: "SMTP (wysyłanie)",
+    host: "Serwer",
+    port: "Port",
+    tls: "Szyfrowanie",
+    tlsModes: { implicit: "SSL/TLS", starttls: "STARTTLS", none: "brak" },
+    tlsNone: "Bez szyfrowania hasło i poczta idą przez sieć jawnym tekstem.",
+    username: "Nazwa użytkownika",
+    hostsFixed: "Ta instancja Silo łączy się tylko ze swoim serwerem poczty.",
+    appPasswordHint:
+      "Jeśli konto ma weryfikację dwuetapową, użyj hasła aplikacji wygenerowanego u dostawcy poczty.",
+    test: "Sprawdź połączenie",
+    testing: "Sprawdzanie…",
+    testOk: "Połączenie działa.",
+    testFailed: "Połączenie nie działa – sprawdź kroki poniżej.",
+    add: "Dodaj",
+    adding: "Dodawanie…",
+    added: (email: string) => `Dodano konto ${email}.`,
+    or: "albo",
+    oauth: { google: "Zaloguj przez Google", microsoft: "Zaloguj przez Microsoft" } as Record<
+      string,
+      string
+    >,
+    providerHint: {
+      gmail: "To konto Google – użyj logowania Google.",
+      microsoft: "To konto Microsoft – użyj logowania Microsoft.",
+    } as Record<string, string>,
+    protocols: { imap: "IMAP", smtp: "SMTP" },
+    steps: {
+      connect: "Połączenie",
+      tls: "TLS",
+      starttls: "STARTTLS",
+      ehlo: "EHLO",
+      login: "Logowanie",
+      auth: "Uwierzytelnianie",
+      capability: "Możliwości serwera",
+      list: "Lista folderów",
+    } as Record<string, string>,
+    stepOk: "udany",
+    stepFailed: "nieudany",
+    errors: {
+      account_limit_reached: "Osiągnięto limit kont dla tego użytkownika.",
+      account_exists: "To konto jest już dodane.",
+      custom_servers_disabled: "Ta instancja Silo nie pozwala na inne serwery poczty.",
+      host_not_allowed: "Ten adres serwera jest niedozwolony.",
+      validation_failed: "Sprawdź wprowadzone dane.",
+      account_test_failed: "Test połączenia nie powiódł się – sprawdź kroki poniżej.",
+      invalid_email: "Nieprawidłowy adres e-mail.",
+    } as Record<string, string>,
+  },
+  oauthResult: {
+    ok: "Konto połączone przez logowanie dostawcy.",
+    errors: {
+      oauth_denied: "Logowanie zostało anulowane albo odmówiono dostępu.",
+      oauth_state_invalid: "Sesja logowania wygasła. Spróbuj ponownie w tej samej przeglądarce.",
+      oauth_exchange_failed: "Dostawca nie wydał tokenu dostępu. Spróbuj ponownie.",
+      oauth_no_email: "Dostawca nie podał adresu e-mail konta.",
+      oauth_account_mismatch: "Zalogowano na inne konto niż to, które miało zostać odnowione.",
+      account_limit_reached: "Osiągnięto limit kont dla tego użytkownika.",
+      account_test_failed: "Silo nie połączyło się ze skrzynką mimo udanego logowania.",
+    } as Record<string, string>,
+    unknown: "Nie udało się połączyć konta przez logowanie dostawcy.",
+  },
+  versionBanner: {
+    newVersion: "Dostępna nowa wersja",
+    serverUpdated: "Serwer został zaktualizowany",
+    reload: "Odśwież",
+  },
+  tooManyTabs: (seconds: number) =>
+    `Zbyt wiele otwartych kart Silo – ta karta sprawdza nowości co ${seconds} s. Zamknij nieużywane karty.`,
+  rateLimitedToast: (seconds?: number) =>
+    seconds
+      ? `Zbyt wiele żądań. Spróbuj ponownie za ${seconds} s.`
+      : "Zbyt wiele żądań. Spróbuj ponownie za chwilę.",
+  authFailedOAuth: (email: string) => `Autoryzacja konta ${email} wygasła lub została cofnięta`,
+  authFailedText: (email: string) => `Hasło do skrzynki ${email} przestało działać`,
+  updatePassword: "Zaktualizuj hasło",
+  reauthorize: "Zaloguj ponownie",
 
   // shortcuts help
   shortcutScopes: {
