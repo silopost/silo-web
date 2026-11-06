@@ -314,6 +314,7 @@ export function ComposeWindow({ draftId, mode }: { draftId: string; mode: Window
                   loadSeq={state.loadSeq}
                   onChange={(bodyHtml, bodyJson) => session.edit(() => ({ bodyHtml, bodyJson }))}
                   onFiles={(files) => session.addFiles(files)}
+                  onInlineImage={(file) => session.uploadInline(file)}
                 />
                 <AttachmentList
                   attachments={form.attachments}

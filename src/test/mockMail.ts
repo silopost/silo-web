@@ -6,6 +6,7 @@ import type {
   Filter,
   FilterBody,
   Label,
+  MessageAttachment,
   Session,
   Settings,
   SnoozePreset,
@@ -143,6 +144,8 @@ export function createMockMail() {
     applyEstimate: 12 as number | null,
     /** Problem answered by the next POST /accounts/{id}/resync. */
     resyncProblem: null as FakeProblem | null,
+    /** Attachments of the second message of every thread (default: oferta.pdf). */
+    messageAttachments: null as MessageAttachment[] | null,
     /** Fields of the next draft created with mode forward (attachments, warnings). */
     forwardExtra: {} as Partial<Draft>,
     /** Problem answered by PATCH /settings, per field. */
@@ -269,7 +272,7 @@ export function createMockMail() {
       bodyText: "",
       attachments:
         m === 2
-          ? [
+          ? (state.messageAttachments ?? [
               {
                 id: "a_1",
                 filename: "oferta.pdf",
@@ -279,7 +282,7 @@ export function createMockMail() {
                 downloaded: true,
                 thumbnail: false,
               },
-            ]
+            ])
           : [],
       listUnsubscribe: null,
       pendingSync: false,

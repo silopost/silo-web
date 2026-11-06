@@ -2,6 +2,7 @@ import * as Progress from "@radix-ui/react-progress";
 import type { ReactNode } from "react";
 import type { UploadInfo } from "../../api/types";
 import { Icon } from "../../components/Icon";
+import { Thumbnail } from "../thread/AttachmentChips";
 import { formatSize } from "../../lib/format";
 import { t } from "../../lib/i18n";
 import type { UploadItem } from "./session";
@@ -17,12 +18,17 @@ function Chip({
   name,
   size,
   error,
+  thumbnailOf,
+  contentType,
   onRemove,
   children,
 }: {
   name: string;
   size: number;
   error?: string;
+  /** Attachment id whose thumbnail to show (UploadInfo.thumbnail). */
+  thumbnailOf?: string;
+  contentType?: string;
   onRemove: () => void;
   children?: ReactNode;
 }) {
@@ -31,6 +37,9 @@ function Chip({
       className={`flex w-64 flex-col rounded border px-2 py-1 ${error ? "border-error-ink bg-error-bg text-error-ink" : "border-line bg-surface"}`}
     >
       <div className="flex items-center gap-2">
+        {contentType !== undefined && (
+          <Thumbnail id={thumbnailOf} contentType={contentType} size={24} />
+        )}
         <span className="min-w-0 flex-1 truncate font-medium text-primary" title={name}>
           {name}
         </span>
@@ -55,12 +64,27 @@ function Chip({
 }
 
 /** Attachments of the draft and uploads in progress with their progress bars (plan 5.6). */
-export function AttachmentList({ attachments, uploads, onRemove, onRemoveUpload }: Props) {
+export function AttachmentList({
+  attachments: all,
+  uploads: allUploads,
+  onRemove,
+  onRemoveUpload,
+}: Props) {
+  // Inline pictures live in the text (plan 5.6).
+  const attachments = all.filter((a) => !a.inline);
+  const uploads = allUploads.filter((u) => !u.inline);
   if (attachments.length === 0 && uploads.length === 0) return null;
   return (
     <ul aria-label={t.attachments} className="flex flex-wrap gap-2 px-3 py-2">
       {attachments.map((a) => (
-        <Chip key={a.id} name={a.filename} size={a.size} onRemove={() => onRemove(a.id)} />
+        <Chip
+          key={a.id}
+          name={a.filename}
+          size={a.size}
+          thumbnailOf={a.thumbnail ? a.id : undefined}
+          contentType={a.contentType}
+          onRemove={() => onRemove(a.id)}
+        />
       ))}
       {uploads.map((u) => (
         <Chip

@@ -89,6 +89,7 @@ export function uploadFile(
   file: File,
   onProgress: (fraction: number) => void,
   signal?: AbortSignal,
+  opts: { inline?: boolean } = {},
 ): Promise<UploadInfo> {
   return new Promise((resolve, reject) => {
     const xhr = uploadConfig.createXhr();
@@ -120,6 +121,8 @@ export function uploadFile(
     xhr.onabort = () => reject(new DOMException("aborted", "AbortError"));
     signal?.addEventListener("abort", () => xhr.abort());
     const form = new FormData();
+    // An inline picture (plan 5.6): the field goes before the file, the server reads it first.
+    if (opts.inline) form.append("inline", "true");
     form.append("file", file, file.name);
     xhr.send(form);
   });

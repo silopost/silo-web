@@ -14,6 +14,7 @@ import { keys } from "../../api/keys";
 import type { Address, Draft, SendResult, UploadInfo } from "../../api/types";
 import { formatSnoozeTime } from "../../lib/format";
 import { t } from "../../lib/i18n";
+import { refersToCid, toEditorHtml, toServerHtml } from "../../lib/inlineImages";
 import { useCompose } from "../../state/compose";
 import { toast, useToasts } from "../../state/toasts";
 
@@ -37,6 +38,8 @@ export type UploadItem = {
   /** 0..1 */
   progress: number;
   error?: string;
+  /** A picture pasted into the text: its placeholder is in the editor, not in the list. */
+  inline?: boolean;
 };
 
 export type SessionState = {
@@ -75,7 +78,8 @@ const formOf = (d: Draft): Form => ({
   cc: d.cc ?? [],
   bcc: d.bcc ?? [],
   subject: d.subject,
-  bodyHtml: d.bodyHtml,
+  // cid: pictures shown through their uploads (lib/inlineImages).
+  bodyHtml: toEditorHtml(d.bodyHtml, d.attachments),
   bodyJson: d.bodyJson ?? null,
   attachments: d.attachments ?? [],
 });
@@ -207,7 +211,16 @@ export class DraftSession {
 
   edit(change: (f: Form) => Partial<Form>) {
     this.dirty = true;
-    const form = { ...this.state.form, ...change(this.state.form) };
+    const patch = change(this.state.form);
+    const form = { ...this.state.form, ...patch };
+    // A picture removed from the text unpins its inline upload: the server would otherwise send
+    // it as a plain attachment (plan 5.6).
+    if (patch.bodyHtml !== undefined) {
+      const html = form.bodyHtml;
+      form.attachments = form.attachments.filter(
+        (a) => !a.inline || !a.cid || refersToCid(html, a.cid),
+      );
+    }
     const bad = this.state.invalid;
     const stillBad = bad !== null && form[bad.field].some((a) => a.email === bad.address);
     this.set({ form, save: "idle", ...(stillBad ? {} : { invalid: null }) });
@@ -242,7 +255,7 @@ export class DraftSession {
             cc: f.cc,
             bcc: f.bcc,
             subject: f.subject,
-            bodyHtml: f.bodyHtml,
+            bodyHtml: toServerHtml(f.bodyHtml),
             bodyJson: f.bodyJson,
             attachmentIds: f.attachments.map((a) => a.id),
           },
@@ -326,6 +339,50 @@ export class DraftSession {
         },
       );
     }
+  }
+
+  /**
+   * A picture pasted or dropped into the text: POST /uploads with inline=true. The server makes
+   * the cid; the upload is pinned (attachmentIds) before the editor puts the cid in the text.
+   */
+  uploadInline(file: File): Promise<UploadInfo> {
+    const key = ++uploadSeq;
+    const abort = new AbortController();
+    this.uploadAborts.set(key, abort);
+    const item: UploadItem = { key, name: file.name, size: file.size, progress: 0, inline: true };
+    this.set({ uploads: [...this.state.uploads, item], error: null });
+    const done = () => {
+      this.uploadAborts.delete(key);
+      this.set({ uploads: this.state.uploads.filter((u) => u.key !== key) });
+    };
+    return queueUpload(() =>
+      uploadFile(
+        file,
+        (progress) =>
+          this.set({
+            uploads: this.state.uploads.map((u) => (u.key === key ? { ...u, progress } : u)),
+          }),
+        abort.signal,
+        { inline: true },
+      ),
+    ).then(
+      (info) => {
+        done();
+        if (!this.closed) this.edit((f) => ({ attachments: [...f.attachments, info] }));
+        return info;
+      },
+      (err: unknown) => {
+        done();
+        if (!(err instanceof DOMException && err.name === "AbortError")) {
+          toast(
+            isApiError(err, 413)
+              ? t.uploadTooLarge(file.name, err.problem?.limit)
+              : t.uploadFailed(file.name),
+          );
+        }
+        throw err;
+      },
+    );
   }
 
   removeUpload(key: number) {
