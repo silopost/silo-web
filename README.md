@@ -75,7 +75,7 @@ in `api/openapi.yaml`.
   brackets, for display only; removing a chip removes that text from `q`.
 - `AdvancedSearchPopover`: Gmail's options (from, to, subject, words, without, attachment,
   size, date range, where) joined into the text of `q` (`lib/searchText.ts`). "Utwórz filtr"
-  opens `/u/<n>/settings/filters?criteria=<q>` once that route exists; until then it is disabled.
+  opens `/u/<n>/settings/filters?criteria=<q>` with a new filter (see Filters).
 - Results show "Indeksowanie treści: NN% – wyniki mogą być niepełne" while `indexing.done < 1`,
   a notice when the search hit the server's time limit (`approximate`), the estimate ("ok. 1240
   wyników", "2000+ wyników") and `422 invalid_query` under the box.
@@ -98,6 +98,103 @@ presets of the server ("Jutro rano", "W poniedziałek rano") and a picked date a
 `POST /drafts/{id}/send {sendAt}`; the snackbar's "Cofnij" cancels it. "Zaplanowane"
 (`SCHEDULED`) lists the messages with their `scheduledAt`; "Anuluj wysyłkę" is
 `POST /outbound/{outboundId}/cancel`, whose draft opens in a compose window.
+
+## Attachments & inline images
+
+- Files are attached by the paperclip, drag and drop or paste: `POST /uploads` (multipart,
+  `XMLHttpRequest` for progress, three at a time); `413 upload_too_large` names the limit. The
+  ids go to `PUT /drafts/{id}` as `attachmentIds`.
+- Pictures pasted or dropped into the text are inline uploads: the form field `inline=true` goes
+  before the file and the server generates the Content-ID (`UploadInfo.cid`); the client never
+  makes one up. While uploading, the editor shows a local preview; afterwards it shows the
+  upload itself (`GET /attachments/{u_…}?inline=1`) and keeps the cid in `data-cid`.
+  `bodyHtml` of `PUT /drafts/{id}` carries `<img src="cid:…">`; a draft loaded from the server
+  is converted back (`lib/inlineImages.ts`). Inline pictures are not listed in
+  `AttachmentList`, and removing one from the text unpins its upload from `attachmentIds`.
+- Thumbnails: when the server says `thumbnail: true`, the chip (thread and compose) loads
+  `GET /attachments/{id}/thumbnail?size=s` lazily; otherwise, or on error, the type icon.
+- Forward (`POST /drafts {mode: forward}`) gets the original attachments from the server; its
+  `warnings` (`quote_unavailable`, `attachments_unavailable`, `attachments_too_large`) are shown
+  in a snackbar.
+
+## Settings
+
+`/u/<n>/settings/…` (`src/features/settings`, plan 6.5), each tab its own route:
+
+- **Ogólne** (`GeneralSettings`): density, undo-send seconds, signature, time zone, keyboard
+  shortcuts on/off, conversation view and desktop notifications. Every change is one
+  `PATCH /settings` with one field (JSON merge); the answer replaces the cache and the session's
+  copy, `422 invalid_setting` / `invalid_timezone` show a snackbar. Desktop notifications ask
+  for the browser's permission first and are shown on `message.new` events.
+- **Etykiety** (`LabelsPanel`): see Labels.
+- **Filtry** (`FiltersPanel`, `FilterEditor`): see Filters.
+- **Konta** (`AccountsPanel`): the accounts in `position` order with their state and errors;
+  "Odbuduj cache" is `POST /accounts/{id}/resync {mode: rebuild}` (`409 rebuild_blocked` while
+  a send or a write-back waits).
+
+## Labels
+
+User labels (IMAP keywords) and server folders, both from `GET /labels`. The settings tab shows
+them as trees by `parentId`, with colours (`colorBg` / `colorText`), "Pokaż na liście" and
+counts; create is `POST /labels` (`type: user` or `folder`), rename / colour / visibility
+`PATCH /labels/{id}`, delete `DELETE /labels/{id}` (a folder only when empty). The parent is
+chosen when a label is created: `PATCH /labels/{id}` does not take `parentId` (server gap).
+`keywordState` `local_only` / `partial` shows a warning next to the label, in the settings and
+in LeftNav. Threads are labelled from the toolbar popover or `l`, moved with "Przenieś do" or
+`v` (a folder label is a folder change in the Gmail model: the target is added, `INBOX` and the
+other folder labels of the threads removed; the server moves the messages after the undo
+window).
+
+## Filters
+
+`GET/POST/PUT/DELETE /filters`: criteria are a query of the search syntax (parsed and evaluated
+only by the server), actions are archive, mark read, star, important, trash, add labels and
+forward. `POST /filters/{id}/apply` runs a filter on existing mail and shows the server's
+estimate. "Utwórz filtr" in the advanced search opens `/u/<n>/settings/filters?criteria=<q>`
+with a new filter. `422 invalid_query` / `invalid_filter` / `invalid_label` are shown in the
+editor.
+
+## Shortcuts
+
+`src/shortcuts/keymap.ts` is the only list; the `?` dialog is generated from it. Keys are
+matched by `event.key` (so `#`, `!`, `?` and `*` work on the Polish layout). The dispatcher
+ignores keys typed in `input`, `textarea`, `select` and `[contenteditable]`, inside dialogs,
+menus and popovers (they have their own keys), during IME composition and with Ctrl/Alt/Meta.
+Sequences (`g …`, `* …`) wait 1500 ms for the second key. "Skróty klawiszowe" off in the
+settings (`keyboardShortcutsEnabled`) turns the dispatcher off; the keys handled by the
+components themselves (Esc, Ctrl/⌘+Enter in compose, the keys of fields and menus) keep working.
+
+| Keys                                  | Action                                                                       | Scope                       |
+| ------------------------------------- | ---------------------------------------------------------------------------- | --------------------------- |
+| `c`                                   | Nowa wiadomość                                                               | global                      |
+| `Shift+C`                             | Nowa wiadomość na pełnym ekranie                                             | global                      |
+| `/`                                   | Szukaj                                                                       | global                      |
+| `?`                                   | Lista skrótów                                                                | global                      |
+| `z`                                   | Cofnij ostatnią akcję                                                        | global                      |
+| `j` / `k`                             | Następny / poprzedni wątek                                                   | list, thread                |
+| `o`, `Enter`                          | Otwórz wątek                                                                 | list                        |
+| `u`                                   | Wróć do listy                                                                | thread                      |
+| `x`                                   | Zaznacz wątek                                                                | list                        |
+| `s`                                   | Gwiazdka                                                                     | list, thread                |
+| `e`                                   | Archiwizuj                                                                   | list, thread                |
+| `#`                                   | Do kosza                                                                     | list, thread                |
+| `!`                                   | Zgłoś spam                                                                   | list, thread                |
+| `Shift+I` / `Shift+U`                 | Oznacz jako przeczytane / nieprzeczytane                                     | list, thread                |
+| `n` / `p`                             | Następna / poprzednia wiadomość w wątku                                      | thread                      |
+| `l`                                   | Etykietuj                                                                    | list, thread                |
+| `v`                                   | Przenieś do folderu                                                          | list, thread                |
+| `b`                                   | Odłóż                                                                        | list, thread                |
+| `r` / `a` / `f`                       | Odpowiedz / Odpowiedz wszystkim / Przekaż                                    | thread                      |
+| `g i` / `g s` / `g t` / `g d` / `g a` | Idź do: Odebrane / Oznaczone gwiazdką / Wysłane / Wersje robocze / Wszystkie | global                      |
+| `g l`                                 | Idź do: etykieta lub folder (picker)                                         | global                      |
+| `g 1` … `g 9`                         | Idź do konta nr n (kolejność `position`, `/u/<position>/inbox`)              | global                      |
+| `* a` / `* n`                         | Zaznacz wszystkie / odznacz                                                  | list                        |
+| `* r` / `* u`                         | Zaznacz przeczytane / nieprzeczytane                                         | list                        |
+| `* s` / `* t`                         | Zaznacz z gwiazdką / bez gwiazdki                                            | list                        |
+| `Ctrl+Enter` (`⌘+Enter`)              | Wyślij                                                                       | compose (also in fields)    |
+| `Esc`                                 | Zamknij okno lub menu, wyjdź z pola wyszukiwania                             | everywhere (also in fields) |
+
+In the list, `l` and `v` act on the selection or, without one, on the row under the cursor.
 
 ## End-to-end tests
 
