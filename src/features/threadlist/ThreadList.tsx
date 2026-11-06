@@ -159,6 +159,15 @@ export function ThreadList({ ctx }: { ctx: ListContext }) {
     if (ids.length > 1) setSelection([]);
   };
   const onSelect = (kind: SelectKind) => setSelection(selectIds(rows, kind));
+  // l / v open the toolbar's popovers; without a selection they act on the cursor row.
+  const [popover, setPopover] = useState<"labels" | "move" | null>(null);
+  const openPopover = (which: "labels" | "move") => {
+    if (selection.size === 0) {
+      if (!focusedId) return;
+      setSelection([focusedId]);
+    }
+    setPopover(which);
+  };
 
   const act = (action: ThreadAction) => () => {
     if (!actions.includes(action) && ["archive", "trash", "spam"].includes(action)) return;
@@ -170,6 +179,8 @@ export function ThreadList({ ctx }: { ctx: ListContext }) {
     onAction(action, ids);
   };
   useShortcutHandlers({
+    label: () => openPopover("labels"),
+    move: () => openPopover("move"),
     // Without a cursor the first row is shown as the cursor (tab stop), so j goes to the second.
     next: () => focusRow(Math.min(Math.max(focusedIndex, 0) + 1, rows.length - 1)),
     prev: () => focusRow(Math.max(focusedIndex - 1, 0)),
@@ -224,6 +235,8 @@ export function ThreadList({ ctx }: { ctx: ListContext }) {
         refreshing={resync.isPending || list.isRefetching}
         onSelect={onSelect}
         onAction={onAction}
+        popover={popover}
+        onPopoverChange={setPopover}
         onRefresh={() => {
           resync.mutate();
           void list.refetch();

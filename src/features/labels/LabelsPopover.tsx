@@ -15,10 +15,13 @@ type Props = {
   threads: { id: string; labelIds: string[] }[];
   /** Applies a change of user labels to the target threads. */
   onChange: (add: string[], remove: string[]) => void;
+  /** Controlled open state (the `l` shortcut opens it). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 /** "Etykiety" popover: user labels as checkboxes and creating a new one (POST /labels). */
-export function LabelsPopover({ accountId, threads, onChange }: Props) {
+export function LabelsPopover({ accountId, threads, onChange, open, onOpenChange }: Props) {
   const qc = useQueryClient();
   const labels = useLabels(accountId).filter((l) => l.type === "user");
   const [name, setName] = useState("");
@@ -40,7 +43,7 @@ export function LabelsPopover({ accountId, threads, onChange }: Props) {
   };
 
   return (
-    <Popover.Root>
+    <Popover.Root open={open} onOpenChange={onOpenChange}>
       <Popover.Trigger asChild>
         <IconButton icon="label" label={t.labelAs} disabled={threads.length === 0} />
       </Popover.Trigger>

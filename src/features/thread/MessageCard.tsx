@@ -76,6 +76,8 @@ export function MessageCard({ message, expanded, me, onToggle, onStar, onReply }
   if (!expanded) {
     return (
       <article
+        data-message-id={message.id}
+        tabIndex={-1}
         aria-label={`${displayName(message.from)}, ${formatListDate(message.date)}`}
         className="flex cursor-pointer items-center gap-3 border-t border-line px-4 py-3 hover:bg-surface"
         onClick={onToggle}
@@ -96,6 +98,8 @@ export function MessageCard({ message, expanded, me, onToggle, onStar, onReply }
 
   return (
     <article
+      data-message-id={message.id}
+      tabIndex={-1}
       aria-label={`${displayName(message.from)}, ${formatFullDate(message.date)}`}
       className="border-t border-line px-4 py-3"
     >

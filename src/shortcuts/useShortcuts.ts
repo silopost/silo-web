@@ -2,7 +2,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import { useAccountIndex, useActiveAccount } from "../features/account";
+import { useSettings } from "../api/queries/settings";
+import { useAccountIndex, useActiveAccount, useSession } from "../features/account";
 import { openNewCompose } from "../features/compose/actions";
 import { useToasts } from "../state/toasts";
 import { useUi } from "../state/ui";
@@ -40,8 +41,13 @@ export function useShortcutHandlers(handlers: Handlers): void {
   }, []);
 }
 
-const PREFIX_TIMEOUT_MS = 1500;
+export const PREFIX_TIMEOUT_MS = 1500;
+
+const goAccounts = (go: (n: number) => void): Handlers =>
+  Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => [`goAccount${n}`, () => go(n)]));
 const TEXT_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
+/** contenteditable and its children (isContentEditable, without relying on it). */
+const EDITABLE = "[contenteditable]:not([contenteditable='false'])";
 
 /**
  * Events that must not trigger shortcuts (plan 6.6): typing in fields or contenteditable, IME
@@ -51,11 +57,20 @@ export function isIgnored(e: KeyboardEvent): boolean {
   const target = e.target instanceof Element ? e.target : null;
   if (e.isComposing || e.ctrlKey || e.altKey || e.metaKey) return true;
   if (!target) return false;
-  if (TEXT_TAGS.has(target.tagName) || (target as HTMLElement).isContentEditable) return true;
+  if (TEXT_TAGS.has(target.tagName) || target.closest(EDITABLE)) return true;
   if (target.closest("[role=dialog], [role=menu], [role=alertdialog]")) return true;
   // Enter on a control activates the control, not "open thread".
   if (e.key === "Enter" && target.closest("button, a, [role=menuitem]")) return true;
   return false;
+}
+
+/**
+ * keyboardShortcutsEnabled of GET /settings (the session's copy until it answers). Off, the
+ * dispatcher ignores every key; the keys the components handle themselves (Esc, Ctrl/⌘+Enter in
+ * compose, the keys of fields, menus and dialogs) still work.
+ */
+function useShortcutsEnabled(): boolean {
+  return useSettings()?.keyboardShortcutsEnabled ?? true;
 }
 
 /**
@@ -69,6 +84,12 @@ export function useGlobalShortcuts(): void {
   const accountId = useActiveAccount()?.id;
   const qc = useQueryClient();
   const setPrefix = useUi((s) => s.setPendingPrefix);
+  const session = useSession();
+  const enabled = useShortcutsEnabled();
+  const enabledRef = useRef(enabled);
+  useLayoutEffect(() => {
+    enabledRef.current = enabled;
+  });
 
   const go = (label: string) => () =>
     void navigate({ to: "/u/$account/$label", params: { account, label } });
@@ -84,12 +105,22 @@ export function useGlobalShortcuts(): void {
     goSent: go("sent"),
     goDrafts: go("drafts"),
     goAll: go("all"),
+    goLabel: () => useUi.getState().setLabelPickerOpen(true),
+    ...goAccounts((n) => {
+      // g 1 … g 9: the n-th account in the order of Account.position (/u/<position>).
+      const target = [...(session?.accounts ?? [])].sort((a, b) => a.position - b.position)[n - 1];
+      if (target)
+        void navigate({
+          to: "/u/$account/$label",
+          params: { account: String(target.position), label: "inbox" },
+        });
+    }),
   });
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (isIgnored(e)) return;
+      if (!enabledRef.current || isIgnored(e)) return;
       const pending = useUi.getState().pendingPrefix;
       if (pending) {
         clearTimeout(timer);
@@ -122,7 +153,7 @@ export function useGlobalShortcuts(): void {
     {
       useKey: true,
       ignoreModifiers: true,
-      ignoreEventWhen: (e) => e.defaultPrevented || isIgnored(e),
+      ignoreEventWhen: (e) => !enabledRef.current || e.defaultPrevented || isIgnored(e),
     },
   );
 }

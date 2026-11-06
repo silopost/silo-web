@@ -12,6 +12,7 @@ import { Banners } from "../features/sync/Banners";
 import { Snackbar } from "../features/toasts/Snackbar";
 import { TopBar } from "../features/topbar/TopBar";
 import { t } from "../lib/i18n";
+import { GoToLabelDialog } from "../features/labels/GoToLabelDialog";
 import { ShortcutsHelpDialog } from "../shortcuts/ShortcutsHelpDialog";
 import { useGlobalShortcuts } from "../shortcuts/useShortcuts";
 import { usePrefs } from "../state/ui";
@@ -95,6 +96,7 @@ function AppLayout() {
       <ComposeDock />
       <Snackbar />
       <ShortcutsHelpDialog />
+      <GoToLabelDialog />
     </div>
   );
 }

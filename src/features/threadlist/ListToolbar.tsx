@@ -3,6 +3,7 @@ import type { Thread } from "../../api/types";
 import { IconButton } from "../../components/IconButton";
 import { t } from "../../lib/i18n";
 import { LabelsPopover } from "../labels/LabelsPopover";
+import { MovePopover } from "../labels/MovePopover";
 import { ACTION_META } from "./actionMeta";
 import { SelectMenu } from "./SelectMenu";
 import type { SelectKind } from "./selection";
@@ -20,6 +21,9 @@ type Props = {
   snoozable: boolean;
   /** Opens the snooze picker for the selected threads, anchored at the button. */
   onSnooze: (ids: string[], anchor: HTMLElement) => void;
+  /** Popover opened by the `l` / `v` shortcuts. */
+  popover?: "labels" | "move" | null;
+  onPopoverChange?: (popover: "labels" | "move" | null) => void;
 };
 
 /** Selection, actions for the selected threads, refresh and range (plan 6.3). */
@@ -67,6 +71,15 @@ export function ListToolbar(p: Props) {
             accountId={p.accountId}
             threads={selected.map((r) => ({ id: r.id, labelIds: r.labelIds ?? [] }))}
             onChange={(add, remove) => p.onAction("labels", ids, add, remove)}
+            open={p.popover === "labels"}
+            onOpenChange={(open) => p.onPopoverChange?.(open ? "labels" : null)}
+          />
+          <MovePopover
+            accountId={p.accountId}
+            threads={selected.map((r) => ({ id: r.id, labelIds: r.labelIds ?? [] }))}
+            onMove={(c) => p.onAction(c.action, ids, c.add, c.remove)}
+            open={p.popover === "move"}
+            onOpenChange={(open) => p.onPopoverChange?.(open ? "move" : null)}
           />
         </>
       )}

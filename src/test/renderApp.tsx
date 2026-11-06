@@ -15,6 +15,7 @@ export function renderApp(url: string) {
     focusedThreadId: null,
     shortcutsHelpOpen: false,
     pendingPrefix: null,
+    labelPickerOpen: false,
   });
   useCompose.setState({ windows: [], failures: {}, remoteVersions: {} });
   resetSessions();

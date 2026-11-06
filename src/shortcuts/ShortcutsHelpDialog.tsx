@@ -5,7 +5,7 @@ import { useUi } from "../state/ui";
 import { KEYMAP } from "./keymap";
 
 const keyLabel = (k: string) =>
-  k === "Enter" ? "Enter" : k === "I" || k === "U" ? `Shift+${k}` : k;
+  k === "Escape" ? "Esc" : k === "I" || k === "U" ? `Shift+${k}` : k;
 
 /** The `?` dialog, generated from keymap.ts (plan 6.6). */
 export function ShortcutsHelpDialog() {

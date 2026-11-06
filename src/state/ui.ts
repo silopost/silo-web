@@ -39,6 +39,9 @@ type Ui = {
   /** First key of a sequence (`g`, `*`) waiting for the second one. */
   pendingPrefix: string | null;
   setPendingPrefix: (prefix: string | null) => void;
+  /** The `g l` picker of labels and folders. */
+  labelPickerOpen: boolean;
+  setLabelPickerOpen: (open: boolean) => void;
 };
 
 export const useUi = create<Ui>()((set) => ({
@@ -56,4 +59,6 @@ export const useUi = create<Ui>()((set) => ({
   setShortcutsHelpOpen: (shortcutsHelpOpen) => set({ shortcutsHelpOpen }),
   pendingPrefix: null,
   setPendingPrefix: (pendingPrefix) => set({ pendingPrefix }),
+  labelPickerOpen: false,
+  setLabelPickerOpen: (labelPickerOpen) => set({ labelPickerOpen }),
 }));

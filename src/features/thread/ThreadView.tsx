@@ -17,6 +17,8 @@ import { useActiveAccount } from "../account";
 import { openReply } from "../compose/actions";
 import { openDraft } from "../compose/session";
 import { LabelsPopover } from "../labels/LabelsPopover";
+import type { MoveCommand } from "../labels/move";
+import { MovePopover } from "../labels/MovePopover";
 import { SnoozeMenu } from "../snooze/PresetTimeMenu";
 import { PendingIcon } from "../sync/PendingIcon";
 import { ACTION_META } from "../threadlist/actionMeta";
@@ -72,6 +74,10 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
   const [expandedState, setExpanded] = useState<{ id: string; set: Set<string> } | null>(null);
   const [unfolded, setUnfolded] = useState(false);
   const [snoozeOpen, setSnoozeOpen] = useState(false);
+  const [labelsOpen, setLabelsOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+  /** Message cursor of n / p (plan 6.6); null = not moved yet in this thread. */
+  const [cursor, setCursor] = useState<{ id: string; index: number } | null>(null);
   const expanded = expandedState?.id === threadId ? expandedState.set : initiallyExpanded(messages);
   const toggle = (id: string) => {
     const next = new Set(expanded);
@@ -134,7 +140,45 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
     if (messageId) void openReply(qc, messageId, mode);
   };
 
+  // Fold long runs of collapsed messages after the first one.
+  const firstExpanded = messages.findIndex((m, i) => i > 0 && expanded.has(m.id));
+  const foldEnd = firstExpanded < 0 ? messages.length - 1 : firstExpanded;
+  const fold = !unfolded && foldEnd - 1 >= FOLD_MIN;
+
+  // n / p: the cursor starts at the first expanded message (unread or the last one).
+  const focusMessage = (step: 1 | -1) => {
+    if (messages.length === 0) return;
+    const start =
+      cursor?.id === threadId
+        ? cursor.index
+        : Math.max(
+            messages.findIndex((m) => expanded.has(m.id)),
+            0,
+          );
+    const index = Math.min(Math.max(start + step, 0), messages.length - 1);
+    setCursor({ id: threadId, index });
+    if (index >= 1 && index < foldEnd) setUnfolded(true);
+    const id = messages[index]!.id;
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(id)}"]`);
+      el?.focus();
+      el?.scrollIntoView?.({ block: "nearest" });
+    });
+  };
+  // A move leaves the thread view, as archive does.
+  const move = (c: MoveCommand) =>
+    run(c.action, [threadId], {
+      add: c.add,
+      remove: c.remove,
+      after: leave,
+      onUndo: () => ctx.openThread(threadId),
+    });
+
   useShortcutHandlers({
+    nextMessage: () => focusMessage(1),
+    prevMessage: () => focusMessage(-1),
+    label: () => setLabelsOpen(true),
+    move: () => setMoveOpen(true),
     reply: () => reply("reply"),
     replyAll: () => reply("replyAll"),
     forward: () => reply("forward"),
@@ -154,11 +198,6 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
     .filter((id) => !isSystemLabelId(id))
     .map((id) => labels.find((l) => l.id === id))
     .filter((l) => !!l);
-
-  // Fold long runs of collapsed messages after the first one.
-  const firstExpanded = messages.findIndex((m, i) => i > 0 && expanded.has(m.id));
-  const foldEnd = firstExpanded < 0 ? messages.length - 1 : firstExpanded;
-  const fold = !unfolded && foldEnd - 1 >= FOLD_MIN;
 
   return (
     <section aria-label={detail?.subject || t.noSubject} className="flex min-h-0 flex-1 flex-col">
@@ -191,6 +230,15 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
           accountId={ctx.accountId}
           threads={[{ id: threadId, labelIds }]}
           onChange={(add, remove) => run("labels", [threadId], { add, remove })}
+          open={labelsOpen}
+          onOpenChange={setLabelsOpen}
+        />
+        <MovePopover
+          accountId={ctx.accountId}
+          threads={[{ id: threadId, labelIds }]}
+          onMove={move}
+          open={moveOpen}
+          onOpenChange={setMoveOpen}
         />
         <div className="ml-auto flex items-center">
           <IconButton
