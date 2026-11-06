@@ -27,6 +27,9 @@ export function AdvancedSearchPopover({ accountId, text, onSearch }: Props) {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    // React bubbles events through the portal: without this the search box's own form would
+    // submit too and search for the box's text instead.
+    e.stopPropagation();
     if (!q) return;
     setOpen(false);
     onSearch(q);

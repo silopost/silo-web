@@ -187,6 +187,27 @@ it("the advanced search joins its fields into q", async () => {
   );
 });
 
+it("the advanced search wins over the text in the box (its form is inside the box's form)", async () => {
+  const { user, router } = setup(searchUrl("umowa"));
+  await waitFor(() => expect(box()).toHaveValue("umowa"));
+  await user.click(screen.getByRole("button", { name: "Pokaż opcje wyszukiwania" }));
+  const form = await screen.findByRole("dialog", { name: "Wyszukiwanie zaawansowane" });
+  expect(within(form).getByRole("textbox", { name: "Zawiera słowa" })).toHaveValue("umowa");
+
+  await user.type(within(form).getByRole("textbox", { name: "Od" }), "jan@firma.pl");
+  await user.click(within(form).getByRole("button", { name: "Szukaj" }));
+
+  await waitFor(() =>
+    expect(router.state.location.search).toEqual({
+      q: expect.stringContaining("from:jan@firma.pl"),
+    }),
+  );
+  // The submit event must not bubble (through the portal) to the box's form, which would
+  // search for the box's text again.
+  await new Promise((r) => setTimeout(r, 50));
+  expect(router.state.location.search).toEqual({ q: expect.stringContaining("from:jan@firma.pl") });
+});
+
 it("list shortcuts do not fire while typing in the search box; Esc leaves it", async () => {
   const { mail, user } = setup();
   await screen.findByRole("row", { name: /Temat 5/ });
