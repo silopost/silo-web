@@ -41,7 +41,13 @@ type FakeProblem = {
 export function createMockMail() {
   const session: Session = {
     csrfToken: "csrf-1",
-    user: { id: "u_1", email: "dev1@silo.test", displayName: "Dev One", isAdmin: false },
+    user: {
+      id: "u_1",
+      email: "dev1@silo.test",
+      displayName: "Dev One",
+      isAdmin: false,
+      totpEnabled: false,
+    },
     settings: {
       activeAccountId: "acc_1",
       conversationView: true,
@@ -67,6 +73,7 @@ export function createMockMail() {
         smtpTls: "starttls",
         lastSyncAt: "2026-11-05T09:00:00Z",
         provider: "generic",
+        authType: "password",
         sentAppend: true,
         state: "live",
         username: "dev1@silo.test",
@@ -423,6 +430,7 @@ export function createMockMail() {
         authMode: "imap",
         allowCustomServers: false,
         maxAttachmentBytes: state.metaMaxAttachmentBytes ?? state.maxUploadBytes,
+        oauthProviders: [],
       });
     }),
     http.get("*/api/v1/session", () =>
