@@ -150,6 +150,8 @@ export function createMockMail() {
     forwardExtra: {} as Partial<Draft>,
     /** Problem answered by PATCH /settings, per field. */
     settingsProblem: {} as Record<string, FakeProblem>,
+    /** Problem answered by PATCH /labels/{id} when the body has a parentId. */
+    labelParentProblem: null as FakeProblem | null,
     calls: {
       settings: [] as Record<string, unknown>[],
       labelsCreate: [] as Record<string, unknown>[],
@@ -472,6 +474,9 @@ export function createMockMail() {
       state.calls.labelsPatch.push({ ...body, id });
       const l = state.extraLabels.find((x) => x.id === id);
       if (!l) return problem(404, "not_found");
+      if ("parentId" in body && state.labelParentProblem) {
+        return problem(state.labelParentProblem.status, state.labelParentProblem.code);
+      }
       Object.assign(l, body);
       return HttpResponse.json(counted(l));
     }),

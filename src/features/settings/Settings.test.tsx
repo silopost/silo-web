@@ -262,6 +262,63 @@ describe("labels", () => {
     await waitFor(() => expect(screen.queryByRole("listitem", { name: "Rachunki" })).toBeNull());
   });
 
+  it("moves a label to another parent and to the top level with PATCH parentId", async () => {
+    const { mail, user } = setup("/u/0/settings/labels", (m) => {
+      labelsOf(m);
+      m.state.extraLabels.push(m.makeLabel("l_dom", "Dom"));
+    });
+    const praca = await screen.findByRole("listitem", { name: "Praca" });
+    await user.click(within(praca).getByRole("button", { name: "Edytuj etykietę Praca" }));
+    let dialog = await screen.findByRole("dialog", { name: "Edytuj etykietę Praca" });
+    const parent = within(dialog).getByRole("combobox", { name: "Zagnieżdż w" });
+    // Neither the label itself nor its child Projekty can be its parent.
+    const options = within(parent)
+      .getAllByRole("option")
+      .map((o) => o.getAttribute("value"));
+    expect(options).toEqual(["", "l_dom", "l_lok"]);
+    await user.selectOptions(parent, "l_dom");
+    await user.click(within(dialog).getByRole("button", { name: "Zapisz" }));
+    await waitFor(() =>
+      expect(mail.state.calls.labelsPatch).toEqual([
+        { id: "l_praca", parentId: "l_dom", colorBg: "#4a86e8", colorText: "#ffffff" },
+      ]),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    const proj = await screen.findByRole("listitem", { name: "Projekty" });
+    await user.click(within(proj).getByRole("button", { name: "Edytuj etykietę Projekty" }));
+    dialog = await screen.findByRole("dialog", { name: "Edytuj etykietę Projekty" });
+    await user.selectOptions(within(dialog).getByRole("combobox", { name: "Zagnieżdż w" }), "");
+    await user.click(within(dialog).getByRole("button", { name: "Zapisz" }));
+    await waitFor(() =>
+      expect(mail.state.calls.labelsPatch[1]).toEqual({
+        id: "l_proj",
+        parentId: null,
+        colorBg: "",
+        colorText: "",
+      }),
+    );
+  });
+
+  it("shows 422 invalid_parent in the dialog and keeps it open", async () => {
+    const { mail, user } = setup("/u/0/settings/labels", (m) => {
+      labelsOf(m);
+      m.state.labelParentProblem = { status: 422, code: "invalid_parent" };
+    });
+    const lok = await screen.findByRole("listitem", { name: "Lokalna" });
+    await user.click(within(lok).getByRole("button", { name: "Edytuj etykietę Lokalna" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edytuj etykietę Lokalna" });
+    const parent = within(dialog).getByRole("combobox", { name: "Zagnieżdż w" });
+    await user.selectOptions(parent, "l_praca");
+    await user.click(within(dialog).getByRole("button", { name: "Zapisz" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      /Nie można zagnieździć etykiety/,
+    );
+    expect(parent).toHaveAttribute("aria-invalid", "true");
+    expect(mail.state.calls.labelsPatch[0]).toMatchObject({ id: "l_lok", parentId: "l_praca" });
+    expect(screen.getByRole("dialog", { name: "Edytuj etykietę Lokalna" })).toBeInTheDocument();
+  });
+
   it("creates folders and reports a folder that is not empty", async () => {
     const { mail, user } = setup("/u/0/settings/labels", (m) => {
       labelsOf(m);

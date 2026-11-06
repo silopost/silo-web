@@ -404,8 +404,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Rename, recolour or hide a label
-         * @description Renaming a user label gives it a new IMAP keyword and moves its messages to it on the server (queued). System labels and folders cannot be renamed (400).
+         * Rename, move, recolour or hide a label
+         * @description Renaming a user label gives it a new IMAP keyword and moves its messages to it on the server (queued). parentId moves a user label under another user label of the account (null: top level; the label itself, a descendant or any other label answers 422 invalid_parent); the keyword stays. System labels and folders cannot be renamed or moved (400).
          */
         patch: operations["updateLabel"];
         trace?: never;
@@ -1727,6 +1727,11 @@ export interface components {
             colorText?: string;
             /** @description User labels only. */
             name?: string;
+            /**
+             * @description User labels only: l_ id of the new parent (a user label of the same account, not the label itself or one of its descendants; else 422 invalid_parent); null moves the label to the top level. The name and the IMAP keyword do not change (the keyword comes from the leaf name).
+             * @example l_12
+             */
+            parentId?: string | null;
             /** @enum {string} */
             showInList?: "show" | "hide" | "show_if_unread";
         };

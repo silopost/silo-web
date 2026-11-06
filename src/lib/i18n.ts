@@ -410,7 +410,8 @@ export const t = {
     removeFolderTitle: (name: string) => `Usunąć folder „${name}”?`,
     removeFolderBody: "Folder zostanie usunięty z serwera poczty. Można usunąć tylko pusty folder.",
     folderNotEmpty: "Folder nie jest pusty – przenieś najpierw wiadomości.",
-    parentReadOnly: "Rodzica nie można zmienić po utworzeniu etykiety.",
+    invalidParent:
+      "Nie można zagnieździć etykiety w niej samej, w jej etykiecie podrzędnej ani poza etykietami tego konta.",
     keywordsUnsupported:
       "Etykiety są zapisywane tylko w Silo – nie będą widoczne w innych programach pocztowych i wymagają kopii zapasowej Silo",
     localOnly: "Etykieta tylko w Silo – nie jest widoczna w innych programach pocztowych.",

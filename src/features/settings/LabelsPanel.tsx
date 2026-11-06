@@ -21,6 +21,21 @@ type Kind = "user" | "folder";
 type Color = { bg: string; text: string } | null;
 type Editing = { kind: Kind; label: Label | null };
 
+/** The label and every label below it (they cannot become its parent: the server answers 422). */
+function subtree(labels: Label[], id: string): Set<string> {
+  const out = new Set([id]);
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const l of labels) {
+      if (l.parentId && out.has(l.parentId) && !out.has(l.id)) {
+        out.add(l.id);
+        grew = true;
+      }
+    }
+  }
+  return out;
+}
+
 /** Labels of one kind as a tree (parentId), depth-first, siblings by name. */
 function labelTree(labels: Label[]): { label: Label; depth: number }[] {
   const ids = new Set(labels.map((l) => l.id));
@@ -245,6 +260,8 @@ function LabelDialog({
     l?.colorBg ? { bg: l.colorBg, text: l.colorText ?? DEFAULT_LABEL_TEXT } : null,
   );
   const [parentId, setParentId] = useState(l?.parentId ?? "");
+  const [parentError, setParentError] = useState(false);
+  const excluded = l ? subtree(parents, l.id) : new Set<string>();
   const save = useMutation({
     mutationFn: () =>
       l
@@ -253,6 +270,8 @@ function LabelDialog({
               params: { path: { id: l.id } },
               body: {
                 ...(name.trim() !== l.name ? { name: name.trim() } : {}),
+                // Only a changed parent is sent; null moves the label to the top level.
+                ...(parentId !== (l.parentId ?? "") ? { parentId: parentId || null } : {}),
                 // An empty string clears the colour.
                 colorBg: color?.bg ?? "",
                 colorText: color?.text ?? "",
@@ -276,7 +295,10 @@ function LabelDialog({
       void qc.invalidateQueries({ queryKey: keys.labels(accountId) });
       onClose();
     },
-    onError: () => toast(t.genericError),
+    onError: (err) => {
+      if (isApiError(err, 422) && err.code === "invalid_parent") setParentError(true);
+      else toast(t.genericError);
+    },
   });
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -315,20 +337,28 @@ function LabelDialog({
               <span className="text-sm text-ink-muted">{t.labelsPanel.parent}</span>
               <select
                 value={parentId}
-                disabled={!!l}
-                title={l ? t.labelsPanel.parentReadOnly : undefined}
-                onChange={(e) => setParentId(e.target.value)}
+                aria-invalid={parentError || undefined}
+                aria-describedby={parentError ? "label-parent-error" : undefined}
+                onChange={(e) => {
+                  setParentId(e.target.value);
+                  setParentError(false);
+                }}
                 className="rounded border border-line px-2 py-1"
               >
                 <option value="">{t.labelsPanel.noParent}</option>
                 {parents
-                  .filter((p) => p.id !== l?.id)
+                  .filter((p) => !excluded.has(p.id))
                   .map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
                     </option>
                   ))}
               </select>
+              {parentError && (
+                <span id="label-parent-error" role="alert" className="text-sm text-error-ink">
+                  {t.labelsPanel.invalidParent}
+                </span>
+              )}
             </label>
             <div className="flex justify-end gap-2">
               <Dialog.Close className="rounded-full px-4 py-2 font-medium text-primary hover:bg-hover">
