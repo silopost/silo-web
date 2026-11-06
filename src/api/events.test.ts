@@ -1,11 +1,12 @@
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, expect, it, vi } from "vitest";
 import { waitFor } from "@testing-library/react";
 import { useConnection } from "../state/connection";
-import { connectEvents, eventsConfig } from "./events";
+import { applyEvent, connectEvents, eventsConfig } from "./events";
 import { keys } from "./keys";
+import { labelsQuery } from "./queries/labels";
 import type { Label } from "./types";
 
 const server = setupServer();
@@ -98,5 +99,37 @@ it("closes the stream on stream.limit, polls, shows the banner and retries SSE a
     stop();
     vi.useRealTimers();
     Object.assign(eventsConfig, original);
+  }
+});
+
+it("fetches the labels again when label.counts names a label the cached list lacks", async () => {
+  // A newly added account: GET /labels answered before discovery created INBOX.
+  let calls = 0;
+  server.use(
+    http.get("*/api/v1/labels", () => {
+      calls += 1;
+      const labels =
+        calls === 1 ? [] : [{ id: "INBOX", accountId: "acc_2", threadsUnread: 1, threadsTotal: 1 }];
+      return HttpResponse.json({ labels });
+    }),
+  );
+  const qc = new QueryClient();
+  const observer = new QueryObserver(qc, labelsQuery("acc_2"));
+  const unsubscribe = observer.subscribe(() => undefined);
+  try {
+    await waitFor(() => expect(qc.getQueryData(keys.labels("acc_2"))).toEqual({ labels: [] }));
+    applyEvent(qc, "label.counts", {
+      accountId: "acc_2",
+      labels: [{ id: "INBOX", threadsUnread: 1, threadsTotal: 1 }],
+    });
+    await waitFor(() =>
+      expect(qc.getQueryData<{ labels: Label[] }>(keys.labels("acc_2"))?.labels[0]).toMatchObject({
+        id: "INBOX",
+        threadsUnread: 1,
+      }),
+    );
+    expect(calls).toBe(2);
+  } finally {
+    unsubscribe();
   }
 });

@@ -109,6 +109,13 @@ export function applyEvent(qc: QueryClient, type: string, data: Data): void {
           l,
         ]),
       );
+      // A label missing from the cached list (e.g. INBOX of an account added a moment ago: its
+      // GET /labels may answer before discovery creates the folders) means the list is stale.
+      const cached = qc.getQueryData<LabelsData>(keys.labels(accountId))?.labels;
+      if (cached && [...counts.keys()].some((id) => !cached.some((l) => l.id === id))) {
+        void qc.invalidateQueries({ queryKey: keys.labels(accountId) });
+        return;
+      }
       qc.setQueryData<LabelsData>(keys.labels(accountId), (d) =>
         d?.labels
           ? {
