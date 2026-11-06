@@ -7,6 +7,7 @@ import { keys } from "../api/keys";
 import { metaQuery } from "../api/queries/meta";
 import { adoptSession } from "../api/queries/session";
 import { t } from "../lib/i18n";
+import { clearOfflineData } from "../pwa/offlineCache";
 
 type LoginSearch = { redirect?: string };
 
@@ -67,6 +68,8 @@ function LoginPage() {
       setPassword("");
       setCode("");
       qc.clear();
+      // Another user may sign in on this browser: drop what the PWA cached before.
+      await clearOfflineData();
       qc.setQueryData(keys.session, adoptSession(session));
       if (redirect?.startsWith("/u/")) await navigate({ to: redirect });
       else await navigate({ to: "/u/$account/$label", params: { account: "0", label: "inbox" } });

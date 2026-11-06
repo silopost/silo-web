@@ -3,6 +3,7 @@ import { createFileRoute, Outlet, redirect, useRouter } from "@tanstack/react-ro
 import { useEffect } from "react";
 import { isApiError } from "../api/errors";
 import { connectEvents } from "../api/events";
+import { keys } from "../api/keys";
 import { sessionQuery } from "../api/queries/session";
 import { useLabels } from "../api/queries/labels";
 import { useSettings } from "../api/queries/settings";
@@ -18,7 +19,24 @@ import { t } from "../lib/i18n";
 import { GoToLabelDialog } from "../features/labels/GoToLabelDialog";
 import { ShortcutsHelpDialog } from "../shortcuts/ShortcutsHelpDialog";
 import { useGlobalShortcuts } from "../shortcuts/useShortcuts";
+import { loadOfflineSession } from "../pwa/offlineCache";
 import { usePrefs } from "../state/ui";
+
+/** The session comes from the offline snapshot; GET /session again once back online. */
+let offlineSnapshot = false;
+
+function useSessionAfterOffline() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const online = () => {
+      if (!offlineSnapshot) return;
+      offlineSnapshot = false;
+      void qc.invalidateQueries({ queryKey: keys.session });
+    };
+    window.addEventListener("online", online);
+    return () => window.removeEventListener("online", online);
+  }, [qc]);
+}
 
 export const Route = createFileRoute("/_app")({
   // Session guard: no session → /login (plan 6.2); the session also provides the CSRF token.
@@ -28,7 +46,11 @@ export const Route = createFileRoute("/_app")({
     } catch (err) {
       if (isApiError(err, 401))
         throw redirect({ to: "/login", search: { redirect: location.href } });
-      throw err;
+      // Server unreachable (offline PWA): open the cached mail with the last session snapshot.
+      const snapshot = isApiError(err) ? null : loadOfflineSession();
+      if (!snapshot) throw err;
+      context.queryClient.setQueryData(keys.session, snapshot);
+      offlineSnapshot = true;
     }
   },
   component: AppLayout,
@@ -96,6 +118,7 @@ function AppLayout() {
   useNotificationNavigator();
   useDocumentTitle();
   useGlobalShortcuts();
+  useSessionAfterOffline();
 
   return (
     <div className="flex h-full flex-col bg-surface">

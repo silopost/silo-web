@@ -4,6 +4,7 @@ import { setCsrfToken } from "./api/csrf";
 import { isApiError } from "./api/errors";
 import { setSessionLostHandler } from "./api/sessionLost";
 import { keys } from "./api/keys";
+import { clearOfflineData } from "./pwa/offlineCache";
 import { routeTree } from "./routeTree.gen";
 
 export type RouterContext = { queryClient: QueryClient };
@@ -60,6 +61,8 @@ export function createApp(history?: RouterHistory) {
   const onSessionLost = () => {
     queryClient.removeQueries({ queryKey: keys.session });
     setCsrfToken(null);
+    // Cached mail of the PWA must not outlive the session (plan 7 Faza 5).
+    void clearOfflineData();
     if (router && router.state.location.pathname !== "/login") {
       const redirect = router.state.location.href;
       void router.navigate({ to: "/login", search: { redirect } });

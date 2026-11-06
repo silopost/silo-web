@@ -784,6 +784,7 @@ export const t = {
   versionBanner: {
     newVersion: "Dostępna nowa wersja",
     serverUpdated: "Serwer został zaktualizowany",
+    appReady: "Nowa wersja aplikacji gotowa",
     reload: "Odśwież",
   },
   tooManyTabs:

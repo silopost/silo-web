@@ -9,6 +9,7 @@ import type { Account } from "../../api/types";
 import { Avatar } from "../../components/Avatar";
 import { Icon } from "../../components/Icon";
 import { t } from "../../lib/i18n";
+import { clearOfflineData } from "../../pwa/offlineCache";
 import {
   useAccountIndex,
   useAccounts,
@@ -49,6 +50,7 @@ export function AccountSwitcher() {
     onSettled: async () => {
       setCsrfToken(null);
       qc.clear();
+      await clearOfflineData();
       await navigate({ to: "/login" });
     },
   });
