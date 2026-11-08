@@ -5,7 +5,7 @@ import { copyText, downloadText } from "./clipboard";
 
 /**
  * The backup codes of POST /totp/enable or /totp/backup-codes, shown only this once: copy,
- * download, and the dialog closes only after "Zapisałem kody".
+ * download, and the dialog closes only after "I saved the codes".
  */
 export function BackupCodesDialog({ codes, onClose }: { codes: string[]; onClose: () => void }) {
   const [saved, setSaved] = useState(false);

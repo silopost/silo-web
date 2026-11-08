@@ -47,7 +47,7 @@ async function create(qc: QueryClient, body: Parameters<typeof createDraft>[0], 
   }
 }
 
-/** "Utwórz" / `c`: POST /drafts for the account (plan 3.8). */
+/** "Compose" / `c`: POST /drafts for the account (plan 3.8). */
 export const openNewCompose = (qc: QueryClient, accountId: string | undefined, maximized = false) =>
   create(qc, { accountId }, maximized);
 

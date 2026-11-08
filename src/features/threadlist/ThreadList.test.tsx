@@ -25,27 +25,27 @@ const rowNames = () => screen.getAllByRole("row").map((r) => r.getAttribute("dat
 it("renders the inbox and loads the next page by cursor", async () => {
   const { mail } = setup();
   const first = await row("Temat 1");
-  expect(first).toHaveAttribute("aria-label", expect.stringContaining("Nieprzeczytane"));
+  expect(first).toHaveAttribute("aria-label", expect.stringContaining("Unread"));
   // Page 1 has 3 rows; the viewport is taller, so page 2 (cursor "3") follows.
   expect(await row("Temat 5")).toBeInTheDocument();
   expect(mail.state.calls.threadPages).toEqual([null, "3"]);
   expect(rowNames()).toEqual(["t_1", "t_2", "t_3", "t_4", "t_5"]);
   expect(screen.getByRole("grid")).toHaveAttribute("aria-rowcount", "5");
   // LeftNav counter from GET /labels.
-  expect(screen.getByRole("link", { name: /Odebrane/ })).toHaveTextContent("1");
+  expect(screen.getByRole("link", { name: /Inbox/ })).toHaveTextContent("1");
 });
 
 it("archives optimistically and restores the row on Cofnij", async () => {
   const { mail, user } = setup();
   await row("Temat 5");
-  await user.click(within(await row("Temat 2")).getByRole("button", { name: "Archiwizuj" }));
+  await user.click(within(await row("Temat 2")).getByRole("button", { name: "Archive" }));
 
   await waitFor(() => expect(screen.queryByRole("row", { name: /Temat 2/ })).toBeNull());
   expect(mail.state.calls.modify).toEqual([
     { ids: ["t_2"], addLabelIds: [], removeLabelIds: ["INBOX"] },
   ]);
-  const snackbar = await screen.findByText("Wątek zarchiwizowany");
-  await user.click(within(snackbar.parentElement!).getByRole("button", { name: "Cofnij" }));
+  const snackbar = await screen.findByText("Conversation archived");
+  await user.click(within(snackbar.parentElement!).getByRole("button", { name: "Undo" }));
 
   expect(await row("Temat 2")).toBeInTheDocument();
   expect(mail.state.calls.undo).toEqual(["op_1"]);
@@ -56,9 +56,9 @@ it("rolls back when the request fails", async () => {
   const { mail, user } = setup();
   mail.state.failModify = true;
   await row("Temat 5");
-  await user.click(within(await row("Temat 3")).getByRole("button", { name: "Archiwizuj" }));
+  await user.click(within(await row("Temat 3")).getByRole("button", { name: "Archive" }));
 
-  expect(await screen.findByText("Nie udało się. Spróbuj ponownie.")).toBeInTheDocument();
+  expect(await screen.findByText("Something went wrong. Try again.")).toBeInTheDocument();
   expect(await row("Temat 3")).toBeInTheDocument();
   expect(rowNames()).toEqual(["t_1", "t_2", "t_3", "t_4", "t_5"]);
 });
@@ -66,8 +66,8 @@ it("rolls back when the request fails", async () => {
 it("rolls back on operation.failed from the event stream", async () => {
   const { mail, user } = setup();
   await row("Temat 5");
-  await user.click(within(await row("Temat 4")).getByRole("button", { name: "Archiwizuj" }));
-  await screen.findByText("Wątek zarchiwizowany");
+  await user.click(within(await row("Temat 4")).getByRole("button", { name: "Archive" }));
+  await screen.findByText("Conversation archived");
   expect(screen.queryByRole("row", { name: /Temat 4/ })).toBeNull();
 
   // The write-back gave up: the server restored its state and reports it.
@@ -85,7 +85,7 @@ it("rolls back on operation.failed from the event stream", async () => {
   expect(await row("Temat 4")).toBeInTheDocument();
   expect(
     screen.getByText(
-      "Nie udało się przenieść 1 wątku na serwerze poczty – przywrócono stan z serwera",
+      "Couldn't move 1 conversation on the mail server – restored the server's state",
     ),
   ).toBeInTheDocument();
 });
@@ -93,26 +93,26 @@ it("rolls back on operation.failed from the event stream", async () => {
 it("selects rows with SelectMenu and acts on the selection", async () => {
   const { mail, user } = setup();
   await row("Temat 5");
-  await user.click(screen.getByRole("button", { name: "Opcje zaznaczania" }));
-  await user.click(await screen.findByRole("menuitem", { name: "Z gwiazdką" }));
+  await user.click(screen.getByRole("button", { name: "Selection options" }));
+  await user.click(await screen.findByRole("menuitem", { name: "Starred" }));
 
   expect(screen.getByRole("row", { name: /Temat 2/ })).toHaveAttribute("aria-selected", "true");
   expect(screen.getByRole("row", { name: /Temat 1/ })).toHaveAttribute("aria-selected", "false");
 
-  await user.click(screen.getByRole("button", { name: "Opcje zaznaczania" }));
-  await user.click(await screen.findByRole("menuitem", { name: "Wszystkie" }));
+  await user.click(screen.getByRole("button", { name: "Selection options" }));
+  await user.click(await screen.findByRole("menuitem", { name: "All" }));
   expect(screen.getAllByRole("row").every((r) => r.getAttribute("aria-selected") === "true")).toBe(
     true,
   );
 
   const toolbar = screen.getByRole("toolbar");
-  await user.click(within(toolbar).getByRole("button", { name: "Oznacz jako przeczytane" }));
+  await user.click(within(toolbar).getByRole("button", { name: "Mark as read" }));
   await waitFor(() => expect(mail.state.calls.modify).toHaveLength(1));
   expect(mail.state.calls.modify[0]).toMatchObject({
     ids: ["t_1", "t_2", "t_3", "t_4", "t_5"],
     removeLabelIds: ["UNREAD"],
   });
-  expect(await screen.findByText("5 wątków oznaczonych jako przeczytane")).toBeInTheDocument();
+  expect(await screen.findByText("5 conversations marked as read")).toBeInTheDocument();
 });
 
 it("moves with j/k, archives with e and undoes with z", async () => {
@@ -137,7 +137,7 @@ it("moves with j/k, archives with e and undoes with z", async () => {
   await user.keyboard("e");
   await waitFor(() => expect(screen.queryByRole("row", { name: /Temat 2/ })).toBeNull());
   expect(mail.state.calls.modify[0]).toMatchObject({ ids: ["t_2"], removeLabelIds: ["INBOX"] });
-  await screen.findByText("Wątek zarchiwizowany");
+  await screen.findByText("Conversation archived");
 
   await user.keyboard("z");
   expect(await row("Temat 2")).toBeInTheDocument();
@@ -147,8 +147,8 @@ it("moves with j/k, archives with e and undoes with z", async () => {
 it("ignores shortcuts while typing in the search box", async () => {
   const { mail, user } = setup();
   await row("Temat 5");
-  await user.click(screen.getByRole("combobox", { name: "Szukaj w poczcie" }));
+  await user.click(screen.getByRole("combobox", { name: "Search mail" }));
   await user.keyboard("je");
   expect(mail.state.calls.modify).toEqual([]);
-  expect(screen.getByRole("combobox", { name: "Szukaj w poczcie" })).toHaveValue("je");
+  expect(screen.getByRole("combobox", { name: "Search mail" })).toHaveValue("je");
 });

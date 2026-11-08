@@ -9,7 +9,7 @@ import { AdvancedFieldsForm } from "./AdvancedFields";
 
 type Props = {
   accountId: string;
-  /** The text in the search box, prefilled as "Zawiera słowa" (as text, not parsed). */
+  /** The text in the search box, prefilled as "Has the words" (as text, not parsed). */
   text: string;
   onSearch: (q: string) => void;
 };

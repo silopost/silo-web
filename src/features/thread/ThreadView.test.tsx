@@ -23,7 +23,7 @@ it("renders the message in a sandboxed iframe without allow-scripts", async () =
   mail.state.html = '<p>Treść</p><script>alert(1)</script><img src=x onerror="alert(2)">';
 
   expect(await screen.findByRole("heading", { name: "Temat 1" })).toBeInTheDocument();
-  const frame = await screen.findByTitle("Treść wiadomości: Temat 1");
+  const frame = await screen.findByTitle("Message body: Temat 1");
   const sandbox = frame.getAttribute("sandbox") ?? "";
   expect(sandbox).not.toContain("allow-scripts");
   expect(sandbox).toContain("allow-same-origin");
@@ -33,7 +33,7 @@ it("renders the message in a sandboxed iframe without allow-scripts", async () =
   expect(doc).not.toContain("onerror");
   expect(doc).toContain("script-src 'none'");
   // The unread message is expanded with its attachment link.
-  expect(screen.getByRole("link", { name: /Pobierz oferta\.pdf/ })).toHaveAttribute(
+  expect(screen.getByRole("link", { name: /Download oferta\.pdf/ })).toHaveAttribute(
     "href",
     "/api/v1/attachments/a_1",
   );
@@ -66,18 +66,18 @@ it("retries a body that is not downloaded yet (503 + Retry-After)", async () => 
       return new HttpResponse(mail.state.html, { headers: { "Content-Type": "text/html" } });
     }),
   );
-  expect(await screen.findByText("Pobieranie treści z serwera poczty…")).toBeInTheDocument();
-  expect(await screen.findByTitle("Treść wiadomości: Temat 3")).toBeInTheDocument();
+  expect(await screen.findByText("Fetching the message from the mail server…")).toBeInTheDocument();
+  expect(await screen.findByTitle("Message body: Temat 3")).toBeInTheDocument();
 });
 
 it("archives from the thread and goes back to the list", async () => {
   const { mail, user, router } = setup("/u/0/inbox/t_2");
   await screen.findByRole("heading", { name: "Temat 2" });
   const toolbar = screen.getAllByRole("toolbar")[0]!;
-  await user.click(within(toolbar).getByRole("button", { name: "Archiwizuj" }));
+  await user.click(within(toolbar).getByRole("button", { name: "Archive" }));
   await waitFor(() => expect(router.state.location.pathname).toBe("/u/0/inbox"));
   expect(mail.state.calls.modify.at(-1)).toMatchObject({ ids: ["t_2"], removeLabelIds: ["INBOX"] });
-  expect(await screen.findByText("Wątek zarchiwizowany")).toBeInTheDocument();
+  expect(await screen.findByText("Conversation archived")).toBeInTheDocument();
 });
 
 it("goes back to the list with u", async () => {

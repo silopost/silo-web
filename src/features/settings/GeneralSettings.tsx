@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { usePatchSettings, useSettings } from "../../api/queries/settings";
 import type { Settings } from "../../api/types";
-import { t } from "../../lib/i18n";
+import { isLocale, LOCALE_NAMES, LOCALES, setLocale, t, useLocale } from "../../lib/i18n";
 import { toast } from "../../state/toasts";
 import { usePrefs, type Density } from "../../state/ui";
 import { Editor } from "../compose/Editor";
@@ -55,8 +55,9 @@ function Toggle({
 }
 
 /**
- * "Ogólne" (plan 5.1 /settings): every change is its own PATCH of that one field; the server
- * validates (422 → snackbar). The density is applied at once, before the answer.
+ * "General" (plan 5.1 /settings): every change is its own PATCH of that one field; the server
+ * validates (422 → snackbar). The density and the language are applied at once, before the
+ * answer (a refused language comes back with the settings and switches the UI back).
  */
 export function GeneralSettings() {
   const settings = useSettings();
@@ -74,6 +75,7 @@ function GeneralForm({ settings }: { settings: Settings }) {
   const [signatureDirty, setSignatureDirty] = useState(false);
 
   const save = (p: Partial<Settings>) => patch.mutate(p);
+  const locale = useLocale();
 
   const toggleNotifications = async (on: boolean) => {
     if (!on) return save({ desktopNotifications: false });
@@ -85,6 +87,25 @@ function GeneralForm({ settings }: { settings: Settings }) {
 
   return (
     <div className="max-w-4xl">
+      <Row title={t.settings.language}>
+        <select
+          aria-label={t.settings.language}
+          value={locale}
+          onChange={(e) => {
+            const next = e.target.value;
+            if (!isLocale(next)) return;
+            setLocale(next);
+            save({ language: next });
+          }}
+          className="w-60 rounded border border-line px-2 py-1"
+        >
+          {LOCALES.map((l) => (
+            <option key={l} value={l} lang={l}>
+              {LOCALE_NAMES[l]}
+            </option>
+          ))}
+        </select>
+      </Row>
       <Row title={t.settings.density}>
         <div role="radiogroup" aria-label={t.settings.density} className="flex gap-4">
           {(Object.keys(t.densities) as Density[]).map((d) => (

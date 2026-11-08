@@ -42,15 +42,41 @@ const labelsOf = (mail: Mail) => {
 describe("general settings", () => {
   it("applies the density at once and PATCHes only that field", async () => {
     const { mail, user } = setup("/u/0/settings/general");
-    await user.click(await screen.findByRole("radio", { name: "Kompaktowa" }));
+    await user.click(await screen.findByRole("radio", { name: "Compact" }));
     expect(document.documentElement.dataset.density).toBe("compact");
     await waitFor(() => expect(mail.state.calls.settings).toEqual([{ density: "compact" }]));
+  });
+
+  it("switches the language at once, PATCHes it and keeps it for the login screen", async () => {
+    const { mail, user } = setup("/u/0/settings/general");
+    const select = await screen.findByRole("combobox", { name: "Language" });
+    expect(select).toHaveValue("en");
+    expect(within(select).getByRole("option", { name: "Polski" })).toBeInTheDocument();
+    await user.selectOptions(select, "pl");
+    // Same page, new language, no reload.
+    expect(await screen.findByRole("combobox", { name: "Język" })).toHaveValue("pl");
+    expect(screen.getByRole("link", { name: /Odebrane/ })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe("pl");
+    expect(localStorage.getItem("silo.language")).toBe("pl");
+    await waitFor(() => expect(mail.state.calls.settings).toEqual([{ language: "pl" }]));
+    expect(mail.session.settings.language).toBe("pl");
+  });
+
+  it("follows settings.language of the server and goes back when the PATCH is refused", async () => {
+    const { user } = setup("/u/0/settings/general", (m) => {
+      m.session.settings.language = "pl";
+      m.state.settingsProblem.language = { status: 422, code: "invalid_setting" };
+    });
+    const select = await screen.findByRole("combobox", { name: "Język" });
+    await user.selectOptions(select, "en");
+    expect(await screen.findByText("Serwer odrzucił tę wartość ustawienia.")).toBeInTheDocument();
+    expect(await screen.findByRole("combobox", { name: "Język" })).toHaveValue("pl");
   });
 
   it("sends the undo send period alone", async () => {
     const { mail, user } = setup("/u/0/settings/general");
     await user.selectOptions(
-      await screen.findByRole("combobox", { name: /Okres anulowania/ }),
+      await screen.findByRole("combobox", { name: /Send cancellation period/ }),
       "20",
     );
     await waitFor(() => expect(mail.state.calls.settings).toEqual([{ undoSendSeconds: 20 }]));
@@ -61,17 +87,17 @@ describe("general settings", () => {
     const { mail, user } = setup("/u/0/settings/general", (m) => {
       m.state.settingsProblem.timezone = { status: 422, code: "invalid_timezone" };
     });
-    const select = await screen.findByRole("combobox", { name: "Strefa czasowa" });
+    const select = await screen.findByRole("combobox", { name: "Time zone" });
     expect(select).toHaveValue("Europe/Warsaw");
     await user.selectOptions(select, "Asia/Tokyo");
-    expect(await screen.findByText("Nieznana strefa czasowa.")).toBeInTheDocument();
+    expect(await screen.findByText("Unknown time zone.")).toBeInTheDocument();
     expect(mail.state.calls.settings).toEqual([{ timezone: "Asia/Tokyo" }]);
     await waitFor(() => expect(select).toHaveValue("Europe/Warsaw"));
   });
 
   it("reloads the settings on settings.updated from another session", async () => {
     const { mail } = setup("/u/0/settings/general");
-    const box = await screen.findByRole("checkbox", { name: "Skróty klawiszowe włączone" });
+    const box = await screen.findByRole("checkbox", { name: "Keyboard shortcuts on" });
     expect(box).toBeChecked();
     mail.session.settings = { ...mail.session.settings, keyboardShortcutsEnabled: false };
     act(() =>
@@ -84,12 +110,12 @@ describe("general settings", () => {
     const { mail, user } = setup("/u/0/settings/general", (m) => {
       m.session.settings.signature = "<p>Pozdrawiam, Dev</p>";
     });
-    expect(await screen.findByRole("textbox", { name: "Podpis" })).toHaveTextContent(
+    expect(await screen.findByRole("textbox", { name: "Signature" })).toHaveTextContent(
       "Pozdrawiam, Dev",
     );
     await user.keyboard("c");
-    const win = await screen.findByRole("dialog", { name: "Nowa wiadomość" });
-    const body = within(win).getByRole("textbox", { name: "Treść wiadomości" });
+    const win = await screen.findByRole("dialog", { name: "New message" });
+    const body = within(win).getByRole("textbox", { name: "Message body" });
     await waitFor(() =>
       expect(body.querySelector(".silo-signature")).toHaveTextContent("Pozdrawiam, Dev"),
     );
@@ -117,7 +143,7 @@ describe("general settings", () => {
     }
     vi.stubGlobal("Notification", FakeNotification);
     const { mail, user, router } = setup("/u/0/settings/general");
-    await user.click(await screen.findByRole("checkbox", { name: "Powiadomienia na pulpicie" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Desktop notifications" }));
     await waitFor(() =>
       expect(mail.state.calls.settings).toEqual([{ desktopNotifications: true }]),
     );
@@ -141,7 +167,7 @@ describe("general settings", () => {
     act(() => FakeEventSource.latest().emit("message.new", { ...event, labelIds: ["SPAM"] }));
     act(() => FakeEventSource.latest().emit("message.new", event));
     expect(created).toHaveLength(1);
-    expect(created[0]!.title).toBe("Nowa wiadomość od Jan Kowalski");
+    expect(created[0]!.title).toBe("New message from Jan Kowalski");
     act(() => created[0]!.onclick?.());
     await waitFor(() => expect(router.state.location.pathname).toBe("/u/0/inbox/t_3"));
   });
@@ -153,17 +179,17 @@ describe("general settings", () => {
     }
     vi.stubGlobal("Notification", Denied);
     const { mail, user } = setup("/u/0/settings/general");
-    await user.click(await screen.findByRole("checkbox", { name: "Powiadomienia na pulpicie" }));
-    expect(await screen.findByText(/Przeglądarka blokuje powiadomienia/)).toBeInTheDocument();
+    await user.click(await screen.findByRole("checkbox", { name: "Desktop notifications" }));
+    expect(await screen.findByText(/The browser blocks notifications/)).toBeInTheDocument();
     expect(mail.state.calls.settings).toEqual([]);
   });
 
   it("opens from the gear in the top bar", async () => {
     const { user, router } = setup("/u/0/inbox");
     await screen.findByRole("grid");
-    await user.click(screen.getByRole("link", { name: "Ustawienia" }));
+    await user.click(screen.getByRole("link", { name: "Settings" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/u/0/settings/general"));
-    expect(await screen.findByRole("heading", { name: "Ustawienia" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
   });
 });
 
@@ -172,19 +198,17 @@ describe("labels", () => {
     setup("/u/0/settings/labels", (m) => {
       labelsOf(m);
     });
-    const user = await screen.findByRole("region", { name: "Etykiety" });
+    const user = await screen.findByRole("region", { name: "Labels" });
     const rows = await within(user).findAllByRole("listitem");
     expect(rows.map((r) => r.getAttribute("aria-label"))).toEqual(["Lokalna", "Praca", "Projekty"]);
     expect(rows[2]!.style.paddingLeft).toBe("1.5rem");
-    expect(
-      within(rows[0]!).getByRole("img", { name: /Etykieta tylko w Silo/ }),
-    ).toBeInTheDocument();
+    expect(within(rows[0]!).getByRole("img", { name: /Label only in Silo/ })).toBeInTheDocument();
     // partial: the folder ids are shown by name (sync-status folders; unknown ids as they are).
     expect(
-      within(rows[2]!).getByRole("img", { name: "W folderze f_9 tylko lokalnie." }),
+      within(rows[2]!).getByRole("img", { name: "Only local in the folder f_9." }),
     ).toBeInTheDocument();
     expect(within(rows[1]!).queryByRole("img")).toBeNull();
-    const folders = screen.getByRole("region", { name: "Foldery na serwerze" });
+    const folders = screen.getByRole("region", { name: "Folders on the server" });
     expect(within(folders).getByRole("listitem", { name: "Stare" })).toBeInTheDocument();
   });
 
@@ -194,30 +218,30 @@ describe("labels", () => {
     });
     expect(
       await screen.findByText(
-        "Etykiety są zapisywane tylko w Silo – nie będą widoczne w innych programach pocztowych i wymagają kopii zapasowej Silo",
+        "Labels are stored only in Silo – other mail programs won't see them and they need a Silo backup",
       ),
     ).toBeInTheDocument();
   });
 
   it("marks local-only labels in LeftNav", async () => {
     setup("/u/0/inbox", labelsOf);
-    const nav = await screen.findByRole("navigation", { name: "Menu główne" });
+    const nav = await screen.findByRole("navigation", { name: "Main menu" });
     const link = await within(nav).findByRole("link", { name: /Lokalna/ });
-    expect(within(link).getByRole("img", { name: /Etykieta tylko w Silo/ })).toBeInTheDocument();
+    expect(within(link).getByRole("img", { name: /Label only in Silo/ })).toBeInTheDocument();
   });
 
   it("creates a label with colour and parent, renames it and deletes after confirming", async () => {
     const { mail, user } = setup("/u/0/settings/labels", labelsOf);
     await screen.findByRole("listitem", { name: "Praca" });
-    await user.click(screen.getByRole("button", { name: "Nowa etykieta" }));
-    let dialog = await screen.findByRole("dialog", { name: "Nowa etykieta" });
-    await user.type(within(dialog).getByRole("textbox", { name: "Nazwa" }), "Faktury");
+    await user.click(screen.getByRole("button", { name: "New label" }));
+    let dialog = await screen.findByRole("dialog", { name: "New label" });
+    await user.type(within(dialog).getByRole("textbox", { name: "Name" }), "Faktury");
     await user.click(within(dialog).getByRole("radio", { name: "#16a766" }));
     await user.selectOptions(
-      within(dialog).getByRole("combobox", { name: "Zagnieżdż w" }),
+      within(dialog).getByRole("combobox", { name: "Nest under" }),
       "l_praca",
     );
-    await user.click(within(dialog).getByRole("button", { name: "Utwórz" }));
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
     await waitFor(() =>
       expect(mail.state.calls.labelsCreate).toEqual([
         {
@@ -232,13 +256,13 @@ describe("labels", () => {
     );
     const row = await screen.findByRole("listitem", { name: "Faktury" });
 
-    await user.click(within(row).getByRole("button", { name: "Edytuj etykietę Faktury" }));
-    dialog = await screen.findByRole("dialog", { name: "Edytuj etykietę Faktury" });
-    const name = within(dialog).getByRole("textbox", { name: "Nazwa" });
+    await user.click(within(row).getByRole("button", { name: "Edit the label Faktury" }));
+    dialog = await screen.findByRole("dialog", { name: "Edit the label Faktury" });
+    const name = within(dialog).getByRole("textbox", { name: "Name" });
     await user.clear(name);
     await user.type(name, "Rachunki");
-    await user.click(within(dialog).getByRole("radio", { name: "Bez koloru" }));
-    await user.click(within(dialog).getByRole("button", { name: "Zapisz" }));
+    await user.click(within(dialog).getByRole("radio", { name: "No color" }));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(mail.state.calls.labelsPatch).toEqual([
         { id: "l_new1", name: "Rachunki", colorBg: "", colorText: "" },
@@ -247,17 +271,19 @@ describe("labels", () => {
 
     const renamed = await screen.findByRole("listitem", { name: "Rachunki" });
     await user.selectOptions(
-      within(renamed).getByRole("combobox", { name: "Na liście etykiet: Rachunki" }),
+      within(renamed).getByRole("combobox", { name: "In the label list: Rachunki" }),
       "hide",
     );
     await waitFor(() =>
       expect(mail.state.calls.labelsPatch[1]).toEqual({ id: "l_new1", showInList: "hide" }),
     );
 
-    await user.click(within(renamed).getByRole("button", { name: "Usuń Rachunki" }));
-    const confirm = await screen.findByRole("alertdialog", { name: "Usunąć etykietę „Rachunki”?" });
-    expect(confirm).toHaveTextContent("Wiadomości nie zostaną usunięte");
-    await user.click(within(confirm).getByRole("button", { name: "Usuń" }));
+    await user.click(within(renamed).getByRole("button", { name: "Delete Rachunki" }));
+    const confirm = await screen.findByRole("alertdialog", {
+      name: 'Delete the label "Rachunki"?',
+    });
+    expect(confirm).toHaveTextContent("Messages won't be deleted");
+    await user.click(within(confirm).getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(mail.state.calls.labelsDelete).toEqual(["l_new1"]));
     await waitFor(() => expect(screen.queryByRole("listitem", { name: "Rachunki" })).toBeNull());
   });
@@ -268,16 +294,16 @@ describe("labels", () => {
       m.state.extraLabels.push(m.makeLabel("l_dom", "Dom"));
     });
     const praca = await screen.findByRole("listitem", { name: "Praca" });
-    await user.click(within(praca).getByRole("button", { name: "Edytuj etykietę Praca" }));
-    let dialog = await screen.findByRole("dialog", { name: "Edytuj etykietę Praca" });
-    const parent = within(dialog).getByRole("combobox", { name: "Zagnieżdż w" });
+    await user.click(within(praca).getByRole("button", { name: "Edit the label Praca" }));
+    let dialog = await screen.findByRole("dialog", { name: "Edit the label Praca" });
+    const parent = within(dialog).getByRole("combobox", { name: "Nest under" });
     // Neither the label itself nor its child Projekty can be its parent.
     const options = within(parent)
       .getAllByRole("option")
       .map((o) => o.getAttribute("value"));
     expect(options).toEqual(["", "l_dom", "l_lok"]);
     await user.selectOptions(parent, "l_dom");
-    await user.click(within(dialog).getByRole("button", { name: "Zapisz" }));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(mail.state.calls.labelsPatch).toEqual([
         { id: "l_praca", parentId: "l_dom", colorBg: "#4a86e8", colorText: "#ffffff" },
@@ -286,10 +312,10 @@ describe("labels", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
     const proj = await screen.findByRole("listitem", { name: "Projekty" });
-    await user.click(within(proj).getByRole("button", { name: "Edytuj etykietę Projekty" }));
-    dialog = await screen.findByRole("dialog", { name: "Edytuj etykietę Projekty" });
-    await user.selectOptions(within(dialog).getByRole("combobox", { name: "Zagnieżdż w" }), "");
-    await user.click(within(dialog).getByRole("button", { name: "Zapisz" }));
+    await user.click(within(proj).getByRole("button", { name: "Edit the label Projekty" }));
+    dialog = await screen.findByRole("dialog", { name: "Edit the label Projekty" });
+    await user.selectOptions(within(dialog).getByRole("combobox", { name: "Nest under" }), "");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(mail.state.calls.labelsPatch[1]).toEqual({
         id: "l_proj",
@@ -306,17 +332,15 @@ describe("labels", () => {
       m.state.labelParentProblem = { status: 422, code: "invalid_parent" };
     });
     const lok = await screen.findByRole("listitem", { name: "Lokalna" });
-    await user.click(within(lok).getByRole("button", { name: "Edytuj etykietę Lokalna" }));
-    const dialog = await screen.findByRole("dialog", { name: "Edytuj etykietę Lokalna" });
-    const parent = within(dialog).getByRole("combobox", { name: "Zagnieżdż w" });
+    await user.click(within(lok).getByRole("button", { name: "Edit the label Lokalna" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit the label Lokalna" });
+    const parent = within(dialog).getByRole("combobox", { name: "Nest under" });
     await user.selectOptions(parent, "l_praca");
-    await user.click(within(dialog).getByRole("button", { name: "Zapisz" }));
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
-      /Nie można zagnieździć etykiety/,
-    );
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(/A label can't be nested/);
     expect(parent).toHaveAttribute("aria-invalid", "true");
     expect(mail.state.calls.labelsPatch[0]).toMatchObject({ id: "l_lok", parentId: "l_praca" });
-    expect(screen.getByRole("dialog", { name: "Edytuj etykietę Lokalna" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Edit the label Lokalna" })).toBeInTheDocument();
   });
 
   it("creates folders and reports a folder that is not empty", async () => {
@@ -325,20 +349,20 @@ describe("labels", () => {
       m.state.threads[0]!.labelIds = [...(m.state.threads[0]!.labelIds ?? []), "l_arch"];
     });
     await screen.findByRole("listitem", { name: "Stare" });
-    await user.click(screen.getByRole("button", { name: "Nowy folder" }));
-    const dialog = await screen.findByRole("dialog", { name: "Nowy folder" });
-    await user.type(within(dialog).getByRole("textbox", { name: "Nazwa" }), "Projekty 2026");
-    await user.click(within(dialog).getByRole("button", { name: "Utwórz" }));
+    await user.click(screen.getByRole("button", { name: "New folder" }));
+    const dialog = await screen.findByRole("dialog", { name: "New folder" });
+    await user.type(within(dialog).getByRole("textbox", { name: "Name" }), "Projekty 2026");
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
     await waitFor(() =>
       expect(mail.state.calls.labelsCreate).toEqual([
         { accountId: "acc_1", name: "Projekty 2026", type: "folder" },
       ]),
     );
 
-    await user.click(screen.getByRole("button", { name: "Usuń Stare" }));
-    const confirm = await screen.findByRole("alertdialog", { name: "Usunąć folder „Stare”?" });
-    await user.click(within(confirm).getByRole("button", { name: "Usuń" }));
-    expect(await screen.findByText(/Folder nie jest pusty/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Delete Stare" }));
+    const confirm = await screen.findByRole("alertdialog", { name: 'Delete the folder "Stare"?' });
+    await user.click(within(confirm).getByRole("button", { name: "Delete" }));
+    expect(await screen.findByText(/The folder isn.t empty/)).toBeInTheDocument();
     expect(screen.getByRole("listitem", { name: "Stare" })).toBeInTheDocument();
   });
 
@@ -395,10 +419,10 @@ describe("filters", () => {
 
   it("lists filters with their actions; enabling and moving are a PUT of the whole filter", async () => {
     const { mail, user } = setup("/u/0/settings/filters", withFilters);
-    const list = await screen.findByRole("list", { name: "Filtry" });
+    const list = await screen.findByRole("list", { name: "Filters" });
     const first = await within(list).findByRole("listitem", { name: "Newslettery" });
-    expect(first).toHaveTextContent("archiwizuj, etykieta Praca");
-    await user.click(within(first).getByRole("checkbox", { name: "Filtr Newslettery włączony" }));
+    expect(first).toHaveTextContent("archive, label Praca");
+    await user.click(within(first).getByRole("checkbox", { name: "Filter Newslettery on" }));
     await waitFor(() =>
       expect(mail.state.calls.filtersPut).toEqual([
         {
@@ -419,7 +443,7 @@ describe("filters", () => {
         },
       ]),
     );
-    await user.click(within(first).getByRole("button", { name: "Przesuń niżej: Newslettery" }));
+    await user.click(within(first).getByRole("button", { name: "Move down: Newslettery" }));
     await waitFor(() =>
       expect(mail.state.calls.filtersPut[1]).toMatchObject({ id: "f_a", position: 1 }),
     );
@@ -434,25 +458,25 @@ describe("filters", () => {
 
   it("joins the fields into criteria, saves the actions and applies to existing mail", async () => {
     const { mail, user } = setup("/u/0/settings/filters", labelsOf);
-    await user.click(await screen.findByRole("button", { name: "Utwórz nowy filtr" }));
-    const dialog = await screen.findByRole("dialog", { name: "Utwórz nowy filtr" });
-    await user.type(within(dialog).getByRole("textbox", { name: "Nazwa filtru" }), "Faktury");
-    await user.type(within(dialog).getByRole("textbox", { name: "Od" }), "biuro@firma.pl");
-    await user.type(within(dialog).getByRole("textbox", { name: "Temat" }), "faktura VAT");
-    await user.click(within(dialog).getByRole("checkbox", { name: "Ma załącznik" }));
-    expect(within(dialog).getByLabelText("Kryteria", { selector: "p" })).toHaveTextContent(
+    await user.click(await screen.findByRole("button", { name: "Create a new filter" }));
+    const dialog = await screen.findByRole("dialog", { name: "Create a new filter" });
+    await user.type(within(dialog).getByRole("textbox", { name: "Filter name" }), "Faktury");
+    await user.type(within(dialog).getByRole("textbox", { name: "From" }), "biuro@firma.pl");
+    await user.type(within(dialog).getByRole("textbox", { name: "Subject" }), "faktura VAT");
+    await user.click(within(dialog).getByRole("checkbox", { name: "Has attachment" }));
+    expect(within(dialog).getByLabelText("Criteria", { selector: "p" })).toHaveTextContent(
       'from:biuro@firma.pl subject:"faktura VAT" has:attachment',
     );
-    await user.click(within(dialog).getByRole("checkbox", { name: "Oznacz jako przeczytane" }));
+    await user.click(within(dialog).getByRole("checkbox", { name: "Mark as read" }));
     await user.click(within(dialog).getByRole("checkbox", { name: "Praca" }));
     await user.type(
-      within(dialog).getByRole("textbox", { name: "Przekaż do" }),
+      within(dialog).getByRole("textbox", { name: "Forward to" }),
       "ksiegowa@firma.pl",
     );
     await user.click(
-      within(dialog).getByRole("checkbox", { name: "Zastosuj też do pasujących wątków" }),
+      within(dialog).getByRole("checkbox", { name: "Also apply to matching conversations" }),
     );
-    await user.click(within(dialog).getByRole("button", { name: "Zapisz filtr" }));
+    await user.click(within(dialog).getByRole("button", { name: "Save filter" }));
 
     await waitFor(() =>
       expect(mail.state.calls.filtersCreate).toEqual([
@@ -474,7 +498,9 @@ describe("filters", () => {
       ]),
     );
     await waitFor(() => expect(mail.state.calls.filtersApply).toEqual(["f_1"]));
-    expect(await screen.findByText("Stosowanie filtru do ok. 12 wiadomości…")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Applying the filter to about 12 messages…"),
+    ).toBeInTheDocument();
     expect(await screen.findByRole("listitem", { name: "Faktury" })).toBeInTheDocument();
 
     act(() =>
@@ -485,22 +511,22 @@ describe("filters", () => {
         threads: 9,
       }),
     );
-    expect(await screen.findByText("Filtr zastosowano do 9 wątków.")).toBeInTheDocument();
+    expect(await screen.findByText("Filter applied to 9 conversations.")).toBeInTheDocument();
   });
 
   it("shows 422 invalid_query at the criteria field", async () => {
     const { mail, user } = setup("/u/0/settings/filters");
-    await user.click(await screen.findByRole("button", { name: "Utwórz nowy filtr" }));
-    const dialog = await screen.findByRole("dialog", { name: "Utwórz nowy filtr" });
-    await user.click(within(dialog).getByRole("button", { name: "Edytuj jako tekst" }));
-    const text = within(dialog).getByRole("textbox", { name: "Kryteria (składnia wyszukiwania)" });
+    await user.click(await screen.findByRole("button", { name: "Create a new filter" }));
+    const dialog = await screen.findByRole("dialog", { name: "Create a new filter" });
+    await user.click(within(dialog).getByRole("button", { name: "Edit as text" }));
+    const text = within(dialog).getByRole("textbox", { name: "Criteria (search syntax)" });
     await user.type(text, "a) from:x");
-    await user.click(within(dialog).getByRole("checkbox", { name: "Oznacz gwiazdką" }));
-    await user.click(within(dialog).getByRole("button", { name: "Zapisz filtr" }));
+    await user.click(within(dialog).getByRole("checkbox", { name: "Star it" }));
+    await user.click(within(dialog).getByRole("button", { name: "Save filter" }));
     const alert = await within(dialog).findByRole("alert");
-    expect(alert).toHaveTextContent("Nieprawidłowe kryteria");
+    expect(alert).toHaveTextContent("Invalid criteria");
     expect(text).toHaveAttribute("aria-invalid", "true");
-    expect(text).toHaveAccessibleDescription(/Nieprawidłowe kryteria/);
+    expect(text).toHaveAccessibleDescription(/Invalid criteria/);
     expect(mail.state.calls.filtersCreate).toHaveLength(1);
     expect(dialog).toBeInTheDocument();
   });
@@ -508,29 +534,31 @@ describe("filters", () => {
   it("opens the editor with ?criteria= from the search box", async () => {
     const { user, router } = setup("/u/0/inbox");
     await screen.findByRole("grid");
-    await user.type(screen.getByRole("combobox", { name: "Szukaj w poczcie" }), "from:jan");
-    await user.click(screen.getByRole("button", { name: "Pokaż opcje wyszukiwania" }));
-    const form = await screen.findByRole("dialog", { name: "Wyszukiwanie zaawansowane" });
-    await user.click(within(form).getByRole("button", { name: "Utwórz filtr" }));
-    const dialog = await screen.findByRole("dialog", { name: "Utwórz nowy filtr" });
+    await user.type(screen.getByRole("combobox", { name: "Search mail" }), "from:jan");
+    await user.click(screen.getByRole("button", { name: "Show search options" }));
+    const form = await screen.findByRole("dialog", { name: "Advanced search" });
+    await user.click(within(form).getByRole("button", { name: "Create filter" }));
+    const dialog = await screen.findByRole("dialog", { name: "Create a new filter" });
     expect(router.state.location.pathname).toBe("/u/0/settings/filters");
-    expect(
-      within(dialog).getByRole("textbox", { name: "Kryteria (składnia wyszukiwania)" }),
-    ).toHaveValue("from:jan");
+    expect(within(dialog).getByRole("textbox", { name: "Criteria (search syntax)" })).toHaveValue(
+      "from:jan",
+    );
   });
 
   it("tests the criteria in the search and removes a filter after confirming", async () => {
     const { mail, user, router } = setup("/u/0/settings/filters", withFilters);
     const row = await screen.findByRole("listitem", { name: "subject:faktura" });
-    await user.click(within(row).getByRole("button", { name: "Usuń filtr subject:faktura" }));
+    await user.click(
+      within(row).getByRole("button", { name: "Delete the filter subject:faktura" }),
+    );
     const confirm = await screen.findByRole("alertdialog");
-    await user.click(within(confirm).getByRole("button", { name: "Usuń" }));
+    await user.click(within(confirm).getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(mail.state.calls.filtersDelete).toEqual(["f_b"]));
 
     const first = await screen.findByRole("listitem", { name: "Newslettery" });
-    await user.click(within(first).getByRole("button", { name: "Edytuj filtr Newslettery" }));
-    const dialog = await screen.findByRole("dialog", { name: "Edytuj filtr Newslettery" });
-    await user.click(within(dialog).getByRole("button", { name: "Testuj kryteria" }));
+    await user.click(within(first).getByRole("button", { name: "Edit the filter Newslettery" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit the filter Newslettery" });
+    await user.click(within(dialog).getByRole("button", { name: "Test the criteria" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/u/0/search"));
     expect(router.state.location.search).toEqual({ q: "from:news@x.com" });
   });
@@ -540,15 +568,13 @@ describe("accounts", () => {
   it("rebuilds the cache after confirming", async () => {
     const { mail, user } = setup("/u/0/settings/accounts");
     const row = await screen.findByRole("listitem", { name: "dev1@silo.test" });
-    expect(
-      await within(row).findByText(/Etykiety jako słowa kluczowe IMAP: obsługiwane/),
-    ).toBeInTheDocument();
-    await user.click(within(row).getByRole("button", { name: "Odbuduj cache" }));
+    expect(await within(row).findByText(/Labels as IMAP keywords: supported/)).toBeInTheDocument();
+    await user.click(within(row).getByRole("button", { name: "Rebuild cache" }));
     const confirm = await screen.findByRole("alertdialog", {
-      name: "Odbudować cache konta dev1@silo.test?",
+      name: "Rebuild the cache of dev1@silo.test?",
     });
-    await user.click(within(confirm).getByRole("button", { name: "Odbuduj cache" }));
-    expect(await screen.findByText("Odbudowa cache rozpoczęta.")).toBeInTheDocument();
+    await user.click(within(confirm).getByRole("button", { name: "Rebuild cache" }));
+    expect(await screen.findByText("Cache rebuild started.")).toBeInTheDocument();
     expect(mail.state.calls.resync).toEqual([{ id: "acc_1", mode: "rebuild" }]);
   });
 
@@ -557,10 +583,12 @@ describe("accounts", () => {
       m.state.resyncProblem = { status: 409, code: "rebuild_blocked" };
     });
     const row = await screen.findByRole("listitem", { name: "dev1@silo.test" });
-    await user.click(within(row).getByRole("button", { name: "Odbuduj cache" }));
+    await user.click(within(row).getByRole("button", { name: "Rebuild cache" }));
     await user.click(
-      within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Odbuduj cache" }),
+      within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Rebuild cache" }),
     );
-    expect(await within(row).findByRole("alert")).toHaveTextContent(/Nie można teraz odbudować/);
+    expect(await within(row).findByRole("alert")).toHaveTextContent(
+      /The cache can't be rebuilt now/,
+    );
   });
 });

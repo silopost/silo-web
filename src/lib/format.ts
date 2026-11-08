@@ -1,28 +1,34 @@
 import { format, isSameDay, isSameYear } from "date-fns";
-import { pl } from "date-fns/locale";
 import type { Address, Participant } from "../api/types";
-import { t } from "./i18n";
+import { dateFnsLocale, intlLocale, t } from "./i18n";
 
-/** List date as in Gmail (plan 6.1): "09:12" today, "4 lis" this year, "04.11.2025" otherwise. */
+/** A date in a pattern of t.dateFormats, with the month and day names of the UI language. */
+const fmt = (d: Date, pattern: keyof typeof t.dateFormats) =>
+  format(d, t.dateFormats[pattern], { locale: dateFnsLocale() });
+
+/**
+ * List date as in Gmail (plan 6.1): the time today, day and month this year, the full date
+ * otherwise ("9:12 AM", "Nov 4", "11/4/25"; in Polish "09:12", "4 lis", "04.11.2025").
+ */
 export function formatListDate(iso: string, now = new Date()): string {
   const d = new Date(iso);
-  if (isSameDay(d, now)) return format(d, "HH:mm");
-  if (isSameYear(d, now)) return format(d, "d MMM", { locale: pl });
-  return format(d, "dd.MM.yyyy");
+  if (isSameDay(d, now)) return fmt(d, "time");
+  if (isSameYear(d, now)) return fmt(d, "dayMonth");
+  return fmt(d, "date");
 }
 
 export function formatFullDate(iso: string): string {
-  return format(new Date(iso), "d MMM yyyy, HH:mm", { locale: pl });
+  return fmt(new Date(iso), "full");
 }
 
-/** A wake or send time as in Gmail's menus: "pt., 08:00" (browser time zone). */
+/** A wake or send time as in Gmail's menus: "Fri, 8:00 AM" (browser time zone). */
 export function formatPresetTime(iso: string): string {
-  return format(new Date(iso), "EEE, HH:mm", { locale: pl });
+  return fmt(new Date(iso), "preset");
 }
 
-/** Snooze or send time in snackbars and rows: "6 lis, 08:00" (browser time zone). */
+/** Snooze or send time in snackbars and rows: "Nov 6, 8:00 AM" (browser time zone). */
 export function formatSnoozeTime(iso: string): string {
-  return format(new Date(iso), "d MMM, HH:mm", { locale: pl });
+  return fmt(new Date(iso), "snooze");
 }
 
 /** Value of a datetime-local field for a time: "2026-11-05T09:30" (minutes). */
@@ -37,14 +43,20 @@ export function dateTimeLocalToIso(value: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+/** "512 B", "277 KB", "3.0 MB" (decimal separator of the UI language: "3,0 MB" in Polish). */
 export function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
+  const number = (n: number, digits: number) =>
+    n.toLocaleString(intlLocale(), {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    });
+  if (bytes < 1024) return `${number(bytes, 0)} B`;
+  if (bytes < 1024 * 1024) return `${number(Math.round(bytes / 1024), 0)} KB`;
+  return `${number(bytes / (1024 * 1024), 1)} MB`;
 }
 
 export function formatCount(n: number): string {
-  return n.toLocaleString("pl-PL");
+  return n.toLocaleString(intlLocale());
 }
 
 export function displayName(a: Pick<Address, "email" | "name">): string {

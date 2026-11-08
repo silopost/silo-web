@@ -24,7 +24,7 @@ const ERROR_PREVIEW = 80;
 /**
  * Administracja → Zadania (plan 5.7 "Nieudane operacje"): the job queue filtered by state
  * (dead by default, pending) and account, refreshed every 30 s while the tab is visible;
- * "Ponów" (POST /admin/jobs/{id}/retry) and "Usuń" (DELETE), both confirmed.
+ * "Retry" (POST /admin/jobs/{id}/retry) and "Delete" (DELETE), both confirmed.
  */
 export function JobsPanel({ search }: { search: JobsSearch }) {
   const status = search.status ?? "dead";

@@ -20,7 +20,7 @@ function setup(url = "/u/0/inbox", prepare?: (mail: ReturnType<typeof createMock
   return { mail, user, ...app };
 }
 
-const box = () => screen.getByRole("combobox", { name: "Szukaj w poczcie" });
+const box = () => screen.getByRole("combobox", { name: "Search mail" });
 const searchUrl = (q: string) => `/u/0/search?q=${encodeURIComponent(q)}`;
 
 describe("search text helpers (no parser)", () => {
@@ -54,8 +54,8 @@ it("shows the history on focus, grouped, and forgets one query or all of them", 
   await screen.findByRole("grid");
   await user.click(box());
 
-  const list = await screen.findByRole("listbox", { name: "Podpowiedzi wyszukiwania" });
-  const recent = await within(list).findByRole("group", { name: "Ostatnie" });
+  const list = await screen.findByRole("listbox", { name: "Search suggestions" });
+  const recent = await within(list).findByRole("group", { name: "Recent" });
   expect(
     within(recent)
       .getAllByRole("option")
@@ -63,13 +63,13 @@ it("shows the history on focus, grouped, and forgets one query or all of them", 
   ).toEqual(["faktura", "from:jan@firma.pl"]);
   expect(box()).toHaveAttribute("aria-expanded", "true");
 
-  await user.click(screen.getByRole("button", { name: "Usuń z historii: faktura" }));
+  await user.click(screen.getByRole("button", { name: "Remove from history: faktura" }));
   await waitFor(() => expect(within(list).queryByRole("option", { name: "faktura" })).toBeNull());
   expect(mail.state.calls.deleteHistory).toEqual(["faktura"]);
   // The field keeps the focus: the list stays open.
   expect(box()).toHaveFocus();
 
-  await user.click(screen.getByRole("button", { name: "Wyczyść historię" }));
+  await user.click(screen.getByRole("button", { name: "Clear history" }));
   await waitFor(() => expect(mail.state.calls.deleteHistory).toEqual(["faktura", null]));
   await waitFor(() => expect(box()).toHaveAttribute("aria-expanded", "false"));
 });
@@ -80,7 +80,7 @@ it("accepting a suggestion puts its text in the field (keyboard and mouse)", asy
   await user.click(box());
   await user.type(box(), "Temat is:u");
 
-  const ops = await screen.findByRole("group", { name: "Operatory" });
+  const ops = await screen.findByRole("group", { name: "Operators" });
   expect(within(ops).getByRole("option", { name: "is:unread" })).toBeInTheDocument();
   // Typed text is sent as is; nothing is parsed in the browser.
   expect(mail.state.calls.suggest.at(-1)).toBe("Temat is:u");
@@ -96,7 +96,7 @@ it("accepting a suggestion puts its text in the field (keyboard and mouse)", asy
 
   await user.clear(box());
   await user.type(box(), "jan");
-  const contacts = await screen.findByRole("group", { name: "Kontakty" });
+  const contacts = await screen.findByRole("group", { name: "Contacts" });
   await user.click(within(contacts).getByRole("option", { name: "Jan Kowalski <jan@firma.pl>" }));
   expect(box()).toHaveValue("from:jan@firma.pl");
 });
@@ -125,10 +125,10 @@ it("shows the indexing progress and the result estimate", async () => {
     mail.state.searchExtra = { indexing: { done: 0.62 }, resultSizeEstimate: 2000 };
   });
   expect(
-    await screen.findByText("Indeksowanie treści: 62% – wyniki mogą być niepełne"),
+    await screen.findByText("Indexing message text: 62% – results may be incomplete"),
   ).toBeInTheDocument();
-  expect(screen.getByText("2000+ wyników")).toBeInTheDocument();
-  expect(screen.getByText(/Indeksowanie treści/).closest("[aria-live]")).toHaveAttribute(
+  expect(screen.getByText("2,000+ results")).toBeInTheDocument();
+  expect(screen.getByText(/Indexing message text/).closest("[aria-live]")).toHaveAttribute(
     "aria-live",
     "polite",
   );
@@ -139,29 +139,29 @@ it("says when the search ran out of time (approximate)", async () => {
     mail.state.searchExtra = { approximate: true, indexing: { done: 1 } };
   });
   expect(
-    await screen.findByText("Wyszukiwanie trwało zbyt długo – uprość zapytanie"),
+    await screen.findByText("The search took too long – try a simpler query"),
   ).toBeInTheDocument();
-  expect(screen.queryByText(/Indeksowanie treści/)).toBeNull();
+  expect(screen.queryByText(/Indexing message text/)).toBeNull();
 });
 
 it("shows 422 invalid_query under the field instead of a load error", async () => {
   setup(searchUrl("faktura)"));
   const alert = await screen.findByRole("alert");
-  expect(alert).toHaveTextContent("Nieprawidłowe zapytanie");
+  expect(alert).toHaveTextContent("Invalid query");
   expect(box()).toHaveAttribute("aria-invalid", "true");
-  expect(box()).toHaveAccessibleDescription(/Nieprawidłowe zapytanie/);
-  expect(screen.queryByText("Nie udało się wczytać listy.")).toBeNull();
+  expect(box()).toHaveAccessibleDescription(/Invalid query/);
+  expect(screen.queryByText("Couldn't load the list.")).toBeNull();
 });
 
 it("shows the query as chips; removing one removes that text from q", async () => {
   const { user, router } = setup(searchUrl('from:jan "umowa najmu" Temat'));
-  const chips = await screen.findByRole("list", { name: "Elementy zapytania" });
+  const chips = await screen.findByRole("list", { name: "Query terms" });
   expect(
     within(chips)
       .getAllByRole("listitem")
       .map((li) => li.textContent),
   ).toEqual(["from:jan", '"umowa najmu"', "Temat"]);
-  await user.click(within(chips).getByRole("button", { name: "Usuń z zapytania: from:jan" }));
+  await user.click(within(chips).getByRole("button", { name: "Remove from query: from:jan" }));
   await waitFor(() => expect(router.state.location.search).toEqual({ q: '"umowa najmu" Temat' }));
   expect(box()).toHaveValue('"umowa najmu" Temat');
 });
@@ -169,16 +169,16 @@ it("shows the query as chips; removing one removes that text from q", async () =
 it("the advanced search joins its fields into q", async () => {
   const { user, router } = setup();
   await screen.findByRole("grid");
-  await user.click(screen.getByRole("button", { name: "Pokaż opcje wyszukiwania" }));
-  const form = await screen.findByRole("dialog", { name: "Wyszukiwanie zaawansowane" });
+  await user.click(screen.getByRole("button", { name: "Show search options" }));
+  const form = await screen.findByRole("dialog", { name: "Advanced search" });
 
-  await user.type(within(form).getByRole("textbox", { name: "Od" }), "jan@firma.pl");
-  await user.type(within(form).getByRole("textbox", { name: "Temat" }), "umowa najmu");
-  await user.click(within(form).getByRole("checkbox", { name: "Ma załącznik" }));
-  fireEvent.change(within(form).getByLabelText("Po dniu"), { target: { value: "2026-11-01" } });
-  await user.selectOptions(within(form).getByRole("combobox", { name: "Szukaj w" }), "in:inbox");
-  expect(within(form).getByRole("button", { name: "Utwórz filtr" })).toBeEnabled();
-  await user.click(within(form).getByRole("button", { name: "Szukaj" }));
+  await user.type(within(form).getByRole("textbox", { name: "From" }), "jan@firma.pl");
+  await user.type(within(form).getByRole("textbox", { name: "Subject" }), "umowa najmu");
+  await user.click(within(form).getByRole("checkbox", { name: "Has attachment" }));
+  fireEvent.change(within(form).getByLabelText("After"), { target: { value: "2026-11-01" } });
+  await user.selectOptions(within(form).getByRole("combobox", { name: "Search" }), "in:inbox");
+  expect(within(form).getByRole("button", { name: "Create filter" })).toBeEnabled();
+  await user.click(within(form).getByRole("button", { name: "Search" }));
 
   await waitFor(() =>
     expect(router.state.location.search).toEqual({
@@ -190,12 +190,12 @@ it("the advanced search joins its fields into q", async () => {
 it("the advanced search wins over the text in the box (its form is inside the box's form)", async () => {
   const { user, router } = setup(searchUrl("umowa"));
   await waitFor(() => expect(box()).toHaveValue("umowa"));
-  await user.click(screen.getByRole("button", { name: "Pokaż opcje wyszukiwania" }));
-  const form = await screen.findByRole("dialog", { name: "Wyszukiwanie zaawansowane" });
-  expect(within(form).getByRole("textbox", { name: "Zawiera słowa" })).toHaveValue("umowa");
+  await user.click(screen.getByRole("button", { name: "Show search options" }));
+  const form = await screen.findByRole("dialog", { name: "Advanced search" });
+  expect(within(form).getByRole("textbox", { name: "Has the words" })).toHaveValue("umowa");
 
-  await user.type(within(form).getByRole("textbox", { name: "Od" }), "jan@firma.pl");
-  await user.click(within(form).getByRole("button", { name: "Szukaj" }));
+  await user.type(within(form).getByRole("textbox", { name: "From" }), "jan@firma.pl");
+  await user.click(within(form).getByRole("button", { name: "Search" }));
 
   await waitFor(() =>
     expect(router.state.location.search).toEqual({

@@ -26,7 +26,7 @@ export function StateChip({ state }: { state: string }) {
   );
 }
 
-/** Loading, 403 ("Brak uprawnień") and other errors of an /admin/* query, else the content. */
+/** Loading, 403 ("Access denied") and other errors of an /admin/* query, else the content. */
 export function QueryView<T>({
   query,
   children,

@@ -2,7 +2,7 @@ import type { DraftMode } from "../../api/drafts";
 import { Icon, type IconName } from "../../components/Icon";
 import { t } from "../../lib/i18n";
 
-const BUTTONS: [IconName, string, DraftMode][] = [
+const buttons = (): [IconName, string, DraftMode][] => [
   ["reply", t.reply, "reply"],
   ["replyAll", t.replyAll, "replyAll"],
   ["forward", t.forward, "forward"],
@@ -12,7 +12,7 @@ const BUTTONS: [IconName, string, DraftMode][] = [
 export function ReplyBar({ onReply }: { onReply: (mode: DraftMode) => void }) {
   return (
     <div className="mt-4 flex gap-2 pl-14">
-      {BUTTONS.map(([icon, label, mode]) => (
+      {buttons().map(([icon, label, mode]) => (
         <button
           key={icon}
           type="button"

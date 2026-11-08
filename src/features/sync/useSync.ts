@@ -13,7 +13,7 @@ export function useSyncStatus(): SyncStatus | undefined {
   return useQuery({ ...syncStatusQuery(account?.id ?? ""), enabled: !!account }).data;
 }
 
-/** "Synchronizuj teraz" / "Ponów teraz" / Refresh: an incremental resync of the account. */
+/** "Sync now" / "Retry now" / Refresh: an incremental resync of the account. */
 export function useResync() {
   const account = useActiveAccount();
   const qc = useQueryClient();

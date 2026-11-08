@@ -33,7 +33,7 @@ function ServerVersion() {
     <p className="text-xs text-ink-muted" role="status">
       {meta.isPending && t.loading}
       {meta.isError && t.serverUnreachable}
-      {meta.data && `Silo · serwer ${meta.data.serverVersion}`}
+      {meta.data && t.serverVersion(meta.data.serverVersion)}
     </p>
   );
 }

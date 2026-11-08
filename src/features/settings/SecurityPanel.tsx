@@ -42,7 +42,7 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 }
 
 /**
- * Ustawienia → Bezpieczeństwo (mode local, plan 3.15): the Silo password, TOTP with backup
+ * Settings → Security (mode local, plan 3.15): the Silo password, TOTP with backup
  * codes, and the signed-in devices. In mode imap the tab is hidden and the URL explains why.
  */
 export function SecurityPanel() {

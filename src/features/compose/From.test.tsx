@@ -8,7 +8,7 @@ import { createMockMail } from "../../test/mockMail";
 import { renderApp } from "../../test/renderApp";
 import { composeConfig } from "./session";
 
-/** The "Od" field of plan 6.3 with two accounts (plan 5.2: PUT /drafts/{id} accountId). */
+/** The "From" field of plan 6.3 with two accounts (plan 5.2: PUT /drafts/{id} accountId). */
 
 const server = setupServer();
 beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
@@ -29,11 +29,11 @@ function setup(url = "/u/0/inbox") {
 async function openCompose(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByRole("grid");
   await user.keyboard("c");
-  return screen.findByRole("dialog", { name: "Nowa wiadomość" });
+  return screen.findByRole("dialog", { name: "New message" });
 }
 
 const from = (win: HTMLElement) =>
-  within(win).getByRole<HTMLSelectElement>("combobox", { name: "Od" });
+  within(win).getByRole<HTMLSelectElement>("combobox", { name: "From" });
 
 it("creates the draft in the account of the URL and lists the accounts in Od", async () => {
   const { mail, user } = setup("/u/1/inbox");
@@ -50,7 +50,7 @@ it("creates the draft in the account of the URL and lists the accounts in Od", a
 it("moves the draft to the chosen account and follows its new id in the same window", async () => {
   const { mail, user } = setup();
   const win = await openCompose(user);
-  await user.type(within(win).getByRole("textbox", { name: "Temat" }), "Z drugiego");
+  await user.type(within(win).getByRole("textbox", { name: "Subject" }), "Z drugiego");
   await user.selectOptions(from(win), "acc_2");
 
   await waitFor(() =>
@@ -62,9 +62,9 @@ it("moves the draft to the chosen account and follows its new id in the same win
   // The answer carried new ids: the old draft is gone, the same window (no remount) edits d_2.
   expect([...mail.state.drafts.keys()]).toEqual(["d_2"]);
   expect(screen.getByRole("dialog", { name: "Z drugiego" })).toBe(win);
-  expect(within(win).getByRole("textbox", { name: "Temat" })).toHaveValue("Z drugiego");
+  expect(within(win).getByRole("textbox", { name: "Subject" })).toHaveValue("Z drugiego");
 
-  await user.type(within(win).getByRole("combobox", { name: "Do" }), "dev3@silo.test,");
+  await user.type(within(win).getByRole("combobox", { name: "To" }), "dev3@silo.test,");
   await user.keyboard("{Control>}{Enter}{/Control}");
   await waitFor(() => expect(mail.state.calls.send).toEqual(["d_2"]));
   expect(mail.state.calls.putDraft.at(-1)).toMatchObject({ id: "d_2" });
@@ -82,10 +82,12 @@ it("puts the old account back on 409 draft_account_locked", async () => {
   );
   const win = await openCompose(user);
   await user.selectOptions(from(win), "acc_2");
-  expect(await screen.findByText(/wysyła się z konta oryginalnej wiadomości/)).toBeInTheDocument();
+  expect(
+    await screen.findByText(/sent from the account of the original message/),
+  ).toBeInTheDocument();
   await waitFor(() => expect(within(win).getByText("Dev One <dev1@silo.test>")).toBeVisible());
   // Locked now: no choice any more.
-  expect(within(win).queryByRole("combobox", { name: "Od" })).toBeNull();
+  expect(within(win).queryByRole("combobox", { name: "From" })).toBeNull();
   expect([...mail.state.drafts.keys()]).toEqual(["d_1"]);
 });
 
@@ -94,7 +96,7 @@ it("hides Od for a reply", async () => {
   await screen.findByRole("heading", { name: "Temat 2" });
   await user.keyboard("r");
   const win = await screen.findByRole("dialog", { name: "Re: Temat 2" });
-  expect(within(win).queryByRole("combobox", { name: "Od" })).toBeNull();
+  expect(within(win).queryByRole("combobox", { name: "From" })).toBeNull();
   expect(within(win).getByText("Dev One <dev1@silo.test>")).toBeInTheDocument();
 });
 
@@ -117,10 +119,10 @@ it("follows draft.updated with previousDraftId from another tab", async () => {
   );
   await waitFor(() => expect(mail.state.calls.getDraft).toContain("d_9"));
   await waitFor(() => expect(from(win).value).toBe("acc_2"));
-  await user.type(within(win).getByRole("textbox", { name: "Temat" }), "Dalej");
+  await user.type(within(win).getByRole("textbox", { name: "Subject" }), "Next");
   // Autosaves go to the new id with the moved draft's version (typing may save in parts).
   await waitFor(() =>
-    expect(mail.state.calls.putDraft.at(-1)).toMatchObject({ id: "d_9", subject: "Dalej" }),
+    expect(mail.state.calls.putDraft.at(-1)).toMatchObject({ id: "d_9", subject: "Next" }),
   );
   expect(mail.state.calls.putDraft[0]).toMatchObject({ id: "d_9", version: 2 });
 });

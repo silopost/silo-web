@@ -42,14 +42,14 @@ function pasteFiles(target: Element, files: File[]) {
 async function openCompose(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByRole("grid");
   await user.keyboard("c");
-  return screen.findByRole("dialog", { name: "Nowa wiadomość" });
+  return screen.findByRole("dialog", { name: "New message" });
 }
 
 it("uploads a pasted picture inline and saves cid: in bodyHtml with the upload pinned", async () => {
   composeConfig.autosaveMs = 50;
   const { mail, user } = setup();
   const win = await openCompose(user);
-  const body = within(win).getByRole("textbox", { name: "Treść wiadomości" });
+  const body = within(win).getByRole("textbox", { name: "Message body" });
   pasteFiles(body, [png()]);
 
   const img = await waitFor(() => {
@@ -68,7 +68,7 @@ it("uploads a pasted picture inline and saves cid: in bodyHtml with the upload p
   expect(saved).toContain('src="cid:c1@silo"');
   expect(saved).not.toContain("data-cid");
   // Inline pictures are not listed as attachments.
-  expect(within(win).queryByRole("list", { name: "Załączniki" })).toBeNull();
+  expect(within(win).queryByRole("list", { name: "Attachments" })).toBeNull();
 
   // Removing the picture from the text unpins the upload.
   body.focus();
@@ -82,9 +82,9 @@ it("uploads a pasted picture inline and saves cid: in bodyHtml with the upload p
 it("puts other pasted files in the attachments, not in the text", async () => {
   const { mail, user } = setup();
   const win = await openCompose(user);
-  const body = within(win).getByRole("textbox", { name: "Treść wiadomości" });
+  const body = within(win).getByRole("textbox", { name: "Message body" });
   pasteFiles(body, [new File(["pdf"], "umowa.pdf", { type: "application/pdf" })]);
-  const list = await within(win).findByRole("list", { name: "Załączniki" });
+  const list = await within(win).findByRole("list", { name: "Attachments" });
   expect(await within(list).findByText("umowa.pdf")).toBeInTheDocument();
   expect(mail.state.calls.uploadInline).toEqual([false]);
   expect(body.querySelector("img")).toBeNull();
@@ -109,12 +109,12 @@ it("shows the cid: pictures of a draft from the server through their uploads", a
   });
   await user.click(await screen.findByRole("row", { name: /Szkic 9/ }));
   const win = await screen.findByRole("dialog", { name: "Szkic 9" });
-  const body = within(win).getByRole("textbox", { name: "Treść wiadomości" });
+  const body = within(win).getByRole("textbox", { name: "Message body" });
   await waitFor(() =>
     expect(body.querySelector("img")).toHaveAttribute("src", "/api/v1/attachments/u_77?inline=1"),
   );
   expect(body.querySelector("img")).toHaveAttribute("data-cid", "logo@silo");
-  expect(within(win).queryByRole("list", { name: "Załączniki" })).toBeNull();
+  expect(within(win).queryByRole("list", { name: "Attachments" })).toBeNull();
 });
 
 it("forward carries the original's attachments and reports what was left out", async () => {
@@ -142,14 +142,14 @@ it("forward carries the original's attachments and reports what was left out", a
   await user.keyboard("f");
   const win = await screen.findByRole("dialog", { name: "Fwd: Temat 1" });
   expect(
-    await screen.findByText("Nie udało się pobrać części załączników oryginału."),
+    await screen.findByText("Couldn't fetch some attachments of the original."),
   ).toBeInTheDocument();
-  const list = within(win).getByRole("list", { name: "Załączniki" });
+  const list = within(win).getByRole("list", { name: "Attachments" });
   expect(within(list).getByText("raport.pdf")).toBeInTheDocument();
   // A picture shows its thumbnail (UploadInfo.thumbnail), other files the type icon.
   expect(list.querySelector('img[src="/api/v1/attachments/u_51/thumbnail?size=s"]')).not.toBeNull();
   await user.click(within(list).getByRole("button", { name: /raport\.pdf/ }));
-  await user.type(within(win).getByRole("combobox", { name: "Do" }), "dev2@silo.test,");
+  await user.type(within(win).getByRole("combobox", { name: "To" }), "dev2@silo.test,");
   await waitFor(() =>
     expect(mail.state.calls.putDraft.at(-1)).toMatchObject({ attachmentIds: ["u_51"] }),
   );
@@ -178,7 +178,7 @@ it("shows thumbnails of attachments in the thread and previews pictures at natur
       },
     ];
   });
-  const list = await screen.findByRole("list", { name: "Załączniki" });
+  const list = await screen.findByRole("list", { name: "Attachments" });
   const thumb = list.querySelector("img")!;
   expect(thumb).toHaveAttribute("src", "/api/v1/attachments/a_7/thumbnail?size=s");
   expect(thumb).toHaveAttribute("loading", "lazy");
@@ -186,15 +186,15 @@ it("shows thumbnails of attachments in the thread and previews pictures at natur
   fireEvent.error(thumb);
   expect(list.querySelector("img")).toBeNull();
   // PDF opens in a new tab inline; every attachment can be downloaded.
-  expect(within(list).getByRole("link", { name: /Podgląd: umowa\.pdf/ })).toHaveAttribute(
+  expect(within(list).getByRole("link", { name: /Preview: umowa\.pdf/ })).toHaveAttribute(
     "href",
     "/api/v1/attachments/a_8?inline=1",
   );
-  expect(within(list).getByRole("link", { name: /Pobierz plan\.png/ })).toHaveAttribute(
+  expect(within(list).getByRole("link", { name: /Download plan\.png/ })).toHaveAttribute(
     "href",
     "/api/v1/attachments/a_7",
   );
-  await user.click(within(list).getByRole("button", { name: /Podgląd: plan\.png/ }));
+  await user.click(within(list).getByRole("button", { name: /Preview: plan\.png/ }));
   const dialog = await screen.findByRole("dialog", { name: "plan.png" });
   expect(within(dialog).getByRole("img", { name: "plan.png" })).toHaveAttribute(
     "src",

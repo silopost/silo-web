@@ -90,7 +90,7 @@ describe("offline data", () => {
     server.use(...mail.handlers);
     server.use(http.get("*/api/v1/session", () => HttpResponse.error()));
     renderApp("/u/0/inbox");
-    expect(await screen.findByText("Nie można połączyć się z serwerem Silo.")).toBeInTheDocument();
+    expect(await screen.findByText("Can't connect to the Silo server.")).toBeInTheDocument();
   });
 
   it("sign-out clears the cached mail", async () => {
@@ -101,7 +101,7 @@ describe("offline data", () => {
     const user = userEvent.setup();
     const { router } = renderApp("/u/0/inbox");
     await user.click(await screen.findByRole("button", { name: /dev1@silo.test/ }));
-    await user.click(await screen.findByRole("menuitem", { name: "Wyloguj" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Sign out" }));
     await vi.waitFor(() => expect(router.state.location.pathname).toBe("/login"));
     expect(del).toHaveBeenCalledWith(API_CACHE);
     expect(loadOfflineSession()).toBeNull();
@@ -115,9 +115,9 @@ describe("update banner", () => {
     server.use(...createMockMail().handlers);
     const user = userEvent.setup();
     renderApp("/u/0/inbox");
-    expect(await screen.findByText("Nowa wersja aplikacji gotowa")).toBeInTheDocument();
-    const banner = screen.getByText("Nowa wersja aplikacji gotowa").closest("[role=status]");
-    await user.click(within(banner as HTMLElement).getByRole("button", { name: "Odśwież" }));
+    expect(await screen.findByText("A new version of the app is ready")).toBeInTheDocument();
+    const banner = screen.getByText("A new version of the app is ready").closest("[role=status]");
+    await user.click(within(banner as HTMLElement).getByRole("button", { name: "Refresh" }));
     expect(update).toHaveBeenCalled();
   });
 });

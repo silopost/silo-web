@@ -31,7 +31,7 @@ function stateProblem(a: Account): string | null {
 
 /**
  * AccountSwitcher (plan 6.3): the avatar opens a menu with the user's accounts, the unread
- * count of each account's INBOX, its sync problem, "Dodaj konto", "Zarządzaj kontami",
+ * count of each account's INBOX, its sync problem, "Add account", "Manage accounts",
  * "Administracja" (admins only) and "Wyloguj". The avatar's badge sums the unread threads
  * of the other accounts. Radix gives the menu role="menu", arrow keys and Esc.
  */

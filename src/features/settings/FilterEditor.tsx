@@ -20,7 +20,7 @@ type Props = {
   accountId: string;
   /** The filter to edit; null = a new one. */
   filter: Filter | null;
-  /** Criteria text of a new filter ("Utwórz filtr" of the search). */
+  /** Criteria text of a new filter ("Create filter" of the search). */
   initialCriteria?: string;
   onClose: () => void;
 };

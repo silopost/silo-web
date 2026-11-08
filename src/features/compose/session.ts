@@ -491,7 +491,7 @@ export class DraftSession {
     if (this.closed) sessions.delete(this.id);
   }
 
-  /** "Odrzuć": DELETE /drafts/{id}; the server keeps no undo for it. */
+  /** "Discard": DELETE /drafts/{id}; the server keeps no undo for it. */
   async discard() {
     this.stop();
     this.dirty = false;
@@ -622,7 +622,7 @@ export function resetSessions() {
   sessions.clear();
 }
 
-/** "Wiadomość wysłana · Cofnij" (or "Wysyłka zaplanowana na …") until undoUntil (plan 6.5). */
+/** "Message sent · Undo" (or "Send scheduled for …") until undoUntil (plan 6.5). */
 function showSent(qc: QueryClient, res: SendResult, accountId: string, sendAt?: string) {
   const toasts = useToasts.getState();
   const undo = () =>
@@ -636,7 +636,7 @@ function showSent(qc: QueryClient, res: SendResult, accountId: string, sendAt?: 
 }
 
 /**
- * "Cofnij" and "Anuluj wysyłkę" of a scheduled message: POST /outbound/{id}/cancel; its draft
+ * "Undo" and "Cancel send" of a scheduled message: POST /outbound/{id}/cancel; its draft
  * opens again at once.
  */
 export async function undoSend(

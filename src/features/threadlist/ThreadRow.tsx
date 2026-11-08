@@ -35,9 +35,9 @@ type Props = {
   onHoverEnd: () => void;
   /** Opens the snooze picker for the row, anchored at the button. */
   onSnooze: (id: string, anchor: HTMLElement) => void;
-  /** "Wybudź teraz" of a snoozed thread. */
+  /** "Unsnooze" of a snoozed thread. */
   onWake: (id: string) => void;
-  /** "Anuluj wysyłkę" of a scheduled message (outboundId of the row). */
+  /** "Cancel send" of a scheduled message (outboundId of the row). */
   onCancelSend: (thread: Thread) => void;
 };
 

@@ -75,7 +75,7 @@ const CASES: Case[] = [
     run: async (c) => {
       await screen.findByRole("grid");
       await c.user.keyboard("c");
-      expect(await screen.findByRole("dialog", { name: "Nowa wiadomość" })).toBeInTheDocument();
+      expect(await screen.findByRole("dialog", { name: "New message" })).toBeInTheDocument();
     },
   },
   {
@@ -83,7 +83,7 @@ const CASES: Case[] = [
     run: async (c) => {
       await screen.findByRole("grid");
       await c.user.keyboard("C");
-      expect(await screen.findByRole("dialog", { name: "Nowa wiadomość" })).toBeInTheDocument();
+      expect(await screen.findByRole("dialog", { name: "New message" })).toBeInTheDocument();
     },
   },
   {
@@ -99,9 +99,9 @@ const CASES: Case[] = [
     run: async (c) => {
       await screen.findByRole("grid");
       await c.user.keyboard("?");
-      const dialog = await screen.findByRole("dialog", { name: "Skróty klawiszowe" });
+      const dialog = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
       // Generated from the keymap, the keys the components handle included.
-      expect(within(dialog).getByText("Następna wiadomość w wątku")).toBeInTheDocument();
+      expect(within(dialog).getByText("Next message in the conversation")).toBeInTheDocument();
       expect(within(dialog).getByText("Esc")).toBeInTheDocument();
       expect(within(dialog).getByText("Ctrl+Enter")).toBeInTheDocument();
     },
@@ -213,7 +213,7 @@ const CASES: Case[] = [
     run: async (c) => {
       await listWithCursor(c);
       await c.user.keyboard("b");
-      expect(await screen.findByRole("menu", { name: "Odłóż do…" })).toBeInTheDocument();
+      expect(await screen.findByRole("menu", { name: "Snooze until…" })).toBeInTheDocument();
     },
   },
   ...(
@@ -307,7 +307,7 @@ const CASES: Case[] = [
     run: async (c) => {
       await listWithCursor(c);
       await c.user.keyboard("l");
-      const pop = await screen.findByRole("dialog", { name: "Etykiety" });
+      const pop = await screen.findByRole("dialog", { name: "Label as" });
       await c.user.click(within(pop).getByRole("checkbox"));
       await waitFor(() =>
         expect(c.mail.state.calls.modify.at(-1)).toMatchObject({
@@ -324,7 +324,7 @@ const CASES: Case[] = [
     run: async (c) => {
       await thread();
       await c.user.keyboard("v");
-      const pop = await screen.findByRole("dialog", { name: "Przenieś do" });
+      const pop = await screen.findByRole("dialog", { name: "Move to" });
       await c.user.click(within(pop).getByRole("button", { name: "Projekty" }));
       await waitFor(() =>
         expect(c.mail.state.calls.modify.at(-1)).toEqual({
@@ -342,8 +342,8 @@ const CASES: Case[] = [
     run: async (c) => {
       await screen.findByRole("grid");
       await c.user.keyboard("gl");
-      const dialog = await screen.findByRole("dialog", { name: "Idź do etykiety" });
-      await c.user.type(within(dialog).getByRole("textbox", { name: "Filtruj etykiety" }), "proj");
+      const dialog = await screen.findByRole("dialog", { name: "Go to label" });
+      await c.user.type(within(dialog).getByRole("textbox", { name: "Filter labels" }), "proj");
       expect(
         within(dialog)
           .getAllByRole("button")
@@ -351,7 +351,7 @@ const CASES: Case[] = [
       ).toEqual(["Projekty"]);
       await c.user.keyboard("{Enter}");
       await waitFor(() => expect(path(c)).toBe("/u/0/l_f1"));
-      expect(screen.queryByRole("dialog", { name: "Idź do etykiety" })).toBeNull();
+      expect(screen.queryByRole("dialog", { name: "Go to label" })).toBeNull();
     },
   },
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n): Case => ({
@@ -372,8 +372,8 @@ const CASES: Case[] = [
     run: async (c) => {
       await screen.findByRole("grid");
       await c.user.keyboard("c");
-      const win = await screen.findByRole("dialog", { name: "Nowa wiadomość" });
-      await c.user.type(within(win).getByRole("combobox", { name: "Do" }), "dev2@silo.test,");
+      const win = await screen.findByRole("dialog", { name: "New message" });
+      await c.user.type(within(win).getByRole("combobox", { name: "To" }), "dev2@silo.test,");
       // In a field: the compose window handles it.
       await c.user.keyboard("{Control>}{Enter}{/Control}");
       await waitFor(() => expect(c.mail.state.calls.send).toEqual(["d_1"]));
@@ -384,11 +384,11 @@ const CASES: Case[] = [
     run: async (c) => {
       await screen.findByRole("grid");
       await c.user.keyboard("c");
-      const win = await screen.findByRole("dialog", { name: "Nowa wiadomość" });
-      await c.user.type(within(win).getByRole("textbox", { name: "Temat" }), "x");
+      const win = await screen.findByRole("dialog", { name: "New message" });
+      await c.user.type(within(win).getByRole("textbox", { name: "Subject" }), "x");
       await c.user.keyboard("{Escape}");
       await waitFor(() =>
-        expect(screen.queryByRole("dialog", { name: /Nowa wiadomość|x/ })).toBeNull(),
+        expect(screen.queryByRole("dialog", { name: /New message|x/ })).toBeNull(),
       );
       // Esc also leaves the SearchBox, so that the list keys work again.
       await c.user.keyboard("/");
@@ -467,8 +467,8 @@ describe("shortcuts do not fire while typing", () => {
     const c = setup();
     await screen.findByRole("grid");
     await c.user.keyboard("c");
-    let win = await screen.findByRole("dialog", { name: "Nowa wiadomość" });
-    const subject = within(win).getByRole("textbox", { name: "Temat" });
+    let win = await screen.findByRole("dialog", { name: "New message" });
+    const subject = within(win).getByRole("textbox", { name: "Subject" });
     // Letters are text here.
     await c.user.type(subject, "e#c");
     expect(subject).toHaveValue("e#c");
@@ -477,9 +477,9 @@ describe("shortcuts do not fire while typing", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: /e#c/ })).toBeNull());
 
     await c.user.keyboard("c");
-    win = await screen.findByRole("dialog", { name: "Nowa wiadomość" });
-    await c.user.type(within(win).getByRole("combobox", { name: "Do" }), "dev2@silo.test,");
-    act(() => within(win).getByRole("textbox", { name: "Treść wiadomości" }).focus());
+    win = await screen.findByRole("dialog", { name: "New message" });
+    await c.user.type(within(win).getByRole("combobox", { name: "To" }), "dev2@silo.test,");
+    act(() => within(win).getByRole("textbox", { name: "Message body" }).focus());
     await c.user.keyboard("{Control>}{Enter}{/Control}");
     await waitFor(() => expect(c.mail.state.calls.send).toHaveLength(1));
   });
@@ -498,9 +498,9 @@ describe("keyboardShortcutsEnabled", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(path(c)).toBe("/u/0/inbox");
 
-    await c.user.click(screen.getByRole("button", { name: "Utwórz" }));
-    const win = await screen.findByRole("dialog", { name: "Nowa wiadomość" });
-    await c.user.type(within(win).getByRole("combobox", { name: "Do" }), "dev2@silo.test,");
+    await c.user.click(screen.getByRole("button", { name: "Compose" }));
+    const win = await screen.findByRole("dialog", { name: "New message" });
+    await c.user.type(within(win).getByRole("combobox", { name: "To" }), "dev2@silo.test,");
     await c.user.keyboard("{Control>}{Enter}{/Control}");
     await waitFor(() => expect(c.mail.state.calls.send).toHaveLength(1));
   });
@@ -510,8 +510,8 @@ describe("keyboardShortcutsEnabled", () => {
       mail.session.settings!.keyboardShortcutsEnabled = false;
     });
     await screen.findByRole("grid");
-    await c.user.click(screen.getByRole("button", { name: "Utwórz" }));
-    await screen.findByRole("dialog", { name: "Nowa wiadomość" });
+    await c.user.click(screen.getByRole("button", { name: "Compose" }));
+    await screen.findByRole("dialog", { name: "New message" });
     await c.user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });

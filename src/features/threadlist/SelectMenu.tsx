@@ -4,7 +4,7 @@ import type { SelectKind } from "./selection";
 import { Icon } from "../../components/Icon";
 import { t } from "../../lib/i18n";
 
-const ITEMS: [SelectKind, string][] = [
+const items = (): [SelectKind, string][] => [
   ["all", t.selectAll],
   ["none", t.selectNone],
   ["read", t.selectRead],
@@ -49,7 +49,7 @@ export function SelectMenu({ total, selected, onSelect }: Props) {
             align="start"
             className="z-50 min-w-40 rounded-lg bg-panel p-1 shadow-lg"
           >
-            {ITEMS.map(([kind, label]) => (
+            {items().map(([kind, label]) => (
               <DropdownMenu.Item
                 key={kind}
                 onSelect={() => onSelect(kind)}

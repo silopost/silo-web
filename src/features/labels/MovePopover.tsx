@@ -22,7 +22,7 @@ type Props = {
   onOpenChange?: (open: boolean) => void;
 };
 
-/** "Przenieś do": Odebrane, Archiwum, Spam, Kosz and the server folders of the account. */
+/** "Move to": Inbox, Archive, Spam, Trash and the server folders of the account. */
 export function MovePopover({ accountId, threads, onMove, open, onOpenChange }: Props) {
   const folders = useLabels(accountId).filter((l) => l.type === "folder");
   const pick = (target: MoveTarget) => {

@@ -18,7 +18,7 @@ const PATHS = {
 /** Settings (plan 6.3): Gmail-like tabs over the panels, each tab its own URL. */
 export function SettingsLayout() {
   const account = useAccountIndex();
-  // Bezpieczeństwo (Silo password, TOTP) exists only in mode local.
+  // Security (Silo password, TOTP) exists only in mode local.
   const local = useQuery(metaQuery).data?.authMode === "local";
   const tabs = TABS.filter((tab) => tab !== "security" || local);
   return (

@@ -10,9 +10,9 @@ import { versionConfig } from "./version";
 const RECHECK_MS = 15 * 60_000;
 
 /**
- * "Dostępna nowa wersja · Odśwież" when this silo-web is older than meta.minWebVersion
- * (plan 2.4), "Serwer został zaktualizowany · Odśwież" when serverVersion changed while the
- * page is open, "Nowa wersja aplikacji gotowa · Odśwież" when the service worker has a newer
+ * "A new version is available · Refresh" when this silo-web is older than meta.minWebVersion
+ * (plan 2.4), "The server was updated · Refresh" when serverVersion changed while the
+ * page is open, "A new version of the app is ready · Refresh" when the service worker has a newer
  * build waiting (PWA, registerType "prompt"; the click activates it). Informational: the app
  * keeps working until the user reloads.
  */

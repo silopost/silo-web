@@ -28,7 +28,7 @@ export type PresetTimeMenuProps = {
 };
 
 /**
- * A menu of times from GET /snooze/presets plus "Wybierz datę i godzinę" (plan 3.10, 6.3). The
+ * A menu of times from GET /snooze/presets plus "Pick date & time" (plan 3.10, 6.3). The
  * server computes every preset in the user's time zone; the menu only translates and formats.
  */
 export function PresetTimeMenu(p: PresetTimeMenuProps) {
@@ -99,7 +99,7 @@ export function PresetTimeMenu(p: PresetTimeMenuProps) {
 
 const snoozeLabel = (preset: SnoozePreset) => t.snoozePresets[preset.key] ?? preset.label;
 
-/** SnoozeMenu (plan 6.3): Gmail's "Odłóż do…" with the server's presets. */
+/** SnoozeMenu (plan 6.3): Gmail's "Snooze until…" with the server's presets. */
 export function SnoozeMenu(
   props: Omit<PresetTimeMenuProps, "title" | "labelOf"> & { title?: string },
 ) {

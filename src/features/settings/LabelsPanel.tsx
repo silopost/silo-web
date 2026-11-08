@@ -10,7 +10,7 @@ import type { Label } from "../../api/types";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Icon } from "../../components/Icon";
 import { IconButton } from "../../components/IconButton";
-import { t } from "../../lib/i18n";
+import { intlLocale, t } from "../../lib/i18n";
 import { DEFAULT_LABEL_BG, DEFAULT_LABEL_TEXT, LABEL_COLORS } from "../../lib/labelColors";
 import { toast } from "../../state/toasts";
 import { useActiveAccount } from "../account";
@@ -46,7 +46,9 @@ function labelTree(labels: Label[]): { label: Label; depth: number }[] {
   }
   const out: { label: Label; depth: number }[] = [];
   const walk = (parent: string | null, depth: number) => {
-    const list = [...(children.get(parent) ?? [])].sort((a, b) => a.name.localeCompare(b.name));
+    const list = [...(children.get(parent) ?? [])].sort((a, b) =>
+      a.name.localeCompare(b.name, intlLocale()),
+    );
     for (const l of list) {
       out.push({ label: l, depth });
       walk(l.id, depth + 1);

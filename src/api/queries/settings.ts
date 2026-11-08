@@ -1,5 +1,5 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { t } from "../../lib/i18n";
+import { applyServerLocale, t } from "../../lib/i18n";
 import { toast } from "../../state/toasts";
 import { api } from "../client";
 import { call, isApiError } from "../errors";
@@ -52,7 +52,11 @@ export function usePatchSettings() {
       );
     },
     onError: (err, _patch, ctx) => {
-      if (ctx?.prev) qc.setQueryData(keys.settings, ctx.prev);
+      if (ctx?.prev) {
+        qc.setQueryData(keys.settings, ctx.prev);
+        // A refused language switches back before the message is written.
+        applyServerLocale(ctx.prev.language);
+      }
       toast(settingsErrorMessage(err));
     },
   });

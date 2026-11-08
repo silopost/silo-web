@@ -159,7 +159,7 @@ function ServerFields({
 /**
  * "Dodaj konto" (plan 6.3): address and password → POST /accounts/discover fills the server
  * settings (editable under "Zaawansowane"; read-only hosts when the instance allows only its
- * own server) → "Sprawdź połączenie" (POST /accounts/test, steps with ✓/✗) → "Dodaj"
+ * own server) → "Test connection" (POST /accounts/test, steps with ✓/✗) → "Add"
  * (POST /accounts, which tests again). OAuth providers of the instance get their own buttons.
  */
 export function AddAccountDialog({ open, onClose }: { open: boolean; onClose: () => void }) {

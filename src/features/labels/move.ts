@@ -7,7 +7,7 @@ export type MoveTarget = "INBOX" | "ARCHIVE" | "TRASH" | "SPAM" | Label;
 export type MoveCommand = { action: ThreadAction; add?: string[]; remove?: string[] };
 
 /**
- * "Przenieś do" (`v`, plan 6.6). A folder label is a folder change in the Gmail model (the
+ * "Move to" (`v`, plan 6.6). A folder label is a folder change in the Gmail model (the
  * server moves the messages after the undo window): the target is added, INBOX and the other
  * folder labels the threads carry are removed.
  */

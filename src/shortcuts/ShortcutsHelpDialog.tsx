@@ -2,7 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { IconButton } from "../components/IconButton";
 import { t } from "../lib/i18n";
 import { useUi } from "../state/ui";
-import { KEYMAP } from "./keymap";
+import { KEYMAP, shortcutLabel } from "./keymap";
 
 const keyLabel = (k: string) =>
   k === "Escape" ? "Esc" : k === "I" || k === "U" ? `Shift+${k}` : k;
@@ -43,8 +43,8 @@ export function ShortcutsHelpDialog() {
                       </kbd>
                     ))}
                   </td>
-                  <td className="py-1">{s.label}</td>
-                  <td className="py-1 text-ink-muted">{s.scope}</td>
+                  <td className="py-1">{shortcutLabel(s)}</td>
+                  <td className="py-1 text-ink-muted">{t.shortcutScopes[s.scope]}</td>
                 </tr>
               ))}
             </tbody>

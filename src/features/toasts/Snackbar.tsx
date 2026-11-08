@@ -3,7 +3,7 @@ import { IconButton } from "../../components/IconButton";
 import { t } from "../../lib/i18n";
 import { useToasts } from "../../state/toasts";
 
-/** "Wątek zarchiwizowany · Cofnij" (plan 6.3); announced politely to screen readers (plan 6.7). */
+/** "Conversation archived · Undo" (plan 6.3); announced politely to screen readers (plan 6.7). */
 export function Snackbar() {
   const current = useToasts((s) => s.current);
   const dismiss = useToasts((s) => s.dismiss);

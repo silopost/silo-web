@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { patchLabelIds } from "../api/mutations/cache";
 import { isValidEmail, parseAddresses } from "./addresses";
-import { formatListDate, formatSize } from "./format";
-import { t } from "./i18n";
+import { formatCount, formatListDate, formatSize } from "./format";
+import { setLocale, t } from "./i18n";
 import { sanitize } from "./messageHtml";
 import { sanitizePastedHtml } from "./pasteHtml";
 import { plural } from "./plural";
 
 describe("plural", () => {
-  it("uses Polish forms", () => {
-    const f = (n: number) => plural(n, "wątek", "wątki", "wątków");
-    expect([1, 2, 4, 5, 12, 14, 22, 25].map(f)).toEqual([
+  it("uses the CLDR forms of each language", () => {
+    const f = (n: number) =>
+      plural("pl", n, { one: "wątek", few: "wątki", many: "wątków", other: "wątku" });
+    expect([1, 2, 4, 5, 12, 14, 22, 25, 0].map(f)).toEqual([
       "wątek",
       "wątki",
       "wątki",
@@ -19,7 +20,13 @@ describe("plural", () => {
       "wątków",
       "wątki",
       "wątków",
+      "wątków",
     ]);
+    const e = (n: number) => plural("en", n, { one: "thread", other: "threads" });
+    expect([0, 1, 2, 21].map(e)).toEqual(["threads", "thread", "threads", "threads"]);
+    expect(t.done.archive(1)).toBe("Conversation archived");
+    expect(t.done.archive(3)).toBe("3 conversations archived");
+    setLocale("pl");
     expect(t.done.archive(1)).toBe("Wątek zarchiwizowany");
     expect(t.done.archive(3)).toBe("3 wątki zarchiwizowane");
     expect(t.done.archive(5)).toBe("5 wątków zarchiwizowanych");
@@ -29,15 +36,24 @@ describe("plural", () => {
 describe("format", () => {
   it("formats list dates as in Gmail", () => {
     const now = new Date(2026, 10, 5, 12, 0);
-    expect(formatListDate(new Date(2026, 10, 5, 9, 12).toISOString(), now)).toBe("09:12");
-    expect(formatListDate(new Date(2026, 10, 4, 9, 12).toISOString(), now)).toBe("4 lis");
-    expect(formatListDate(new Date(2025, 10, 4, 9, 12).toISOString(), now)).toBe("04.11.2025");
+    const list = (d: Date) => formatListDate(d.toISOString(), now);
+    expect(list(new Date(2026, 10, 5, 9, 12))).toBe("9:12 AM");
+    expect(list(new Date(2026, 10, 4, 9, 12))).toBe("Nov 4");
+    expect(list(new Date(2025, 10, 4, 9, 12))).toBe("11/4/25");
+    setLocale("pl");
+    expect(list(new Date(2026, 10, 5, 9, 12))).toBe("09:12");
+    expect(list(new Date(2026, 10, 4, 9, 12))).toBe("4 lis");
+    expect(list(new Date(2025, 10, 4, 9, 12))).toBe("04.11.2025");
   });
 
-  it("formats sizes", () => {
+  it("formats sizes and counts", () => {
     expect(formatSize(512)).toBe("512 B");
     expect(formatSize(284113)).toBe("277 KB");
+    expect(formatSize(3 * 1024 * 1024)).toBe("3.0 MB");
+    expect(formatCount(12345)).toBe("12,345");
+    setLocale("pl");
     expect(formatSize(3 * 1024 * 1024)).toBe("3,0 MB");
+    expect(formatCount(12345)).toBe("12 345");
   });
 });
 

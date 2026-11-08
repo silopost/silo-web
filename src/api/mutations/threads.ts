@@ -39,17 +39,17 @@ type Spec = {
 };
 
 const SPECS: Record<Exclude<ThreadAction, "labels">, Spec> = {
-  archive: { endpoint: "modify", remove: ["INBOX"], message: t.done.archive },
-  inbox: { endpoint: "modify", add: ["INBOX"], message: t.done.inbox },
-  trash: { endpoint: "trash", add: ["TRASH"], message: t.done.trash },
-  untrash: { endpoint: "untrash", remove: ["TRASH"], message: t.done.untrash },
-  spam: { endpoint: "modify", add: ["SPAM"], message: t.done.spam },
-  notSpam: { endpoint: "modify", remove: ["SPAM"], message: t.done.inbox },
-  read: { endpoint: "modify", remove: ["UNREAD"], message: t.done.read },
-  unread: { endpoint: "modify", add: ["UNREAD"], message: t.done.unread },
+  archive: { endpoint: "modify", remove: ["INBOX"], message: (n) => t.done.archive(n) },
+  inbox: { endpoint: "modify", add: ["INBOX"], message: (n) => t.done.inbox(n) },
+  trash: { endpoint: "trash", add: ["TRASH"], message: (n) => t.done.trash(n) },
+  untrash: { endpoint: "untrash", remove: ["TRASH"], message: (n) => t.done.untrash(n) },
+  spam: { endpoint: "modify", add: ["SPAM"], message: (n) => t.done.spam(n) },
+  notSpam: { endpoint: "modify", remove: ["SPAM"], message: (n) => t.done.inbox(n) },
+  read: { endpoint: "modify", remove: ["UNREAD"], message: (n) => t.done.read(n) },
+  unread: { endpoint: "modify", add: ["UNREAD"], message: (n) => t.done.unread(n) },
   star: { endpoint: "modify", add: ["STARRED"] },
   unstar: { endpoint: "modify", remove: ["STARRED"] },
-  deleteForever: { endpoint: "delete", message: t.done.deleted },
+  deleteForever: { endpoint: "delete", message: (n) => t.done.deleted(n) },
 };
 
 export type ThreadActionInput = {
@@ -116,7 +116,12 @@ export function runThreadAction(qc: QueryClient, input: ThreadActionInput): Prom
   const { accountId, ids } = input;
   const spec: Spec =
     input.action === "labels"
-      ? { endpoint: "modify", add: input.add, remove: input.remove, message: t.done.labels }
+      ? {
+          endpoint: "modify",
+          add: input.add,
+          remove: input.remove,
+          message: (n) => t.done.labels(n),
+        }
       : SPECS[input.action];
   const add = spec.add ?? [];
   const remove = spec.remove ?? [];

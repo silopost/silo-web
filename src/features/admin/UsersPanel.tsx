@@ -42,7 +42,7 @@ type Dialog =
   | { kind: "password" | "totp" | "remove"; user: AdminUser };
 
 /**
- * Administracja → Użytkownicy: every user with their accounts and states; add (mode local),
+ * Administration → Users: every user with their accounts and states; add (mode local),
  * block, admin rights, password and TOTP reset, removal.
  */
 export function UsersPanel() {

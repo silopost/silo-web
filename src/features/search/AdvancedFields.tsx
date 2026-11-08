@@ -3,16 +3,16 @@ import { useLabels } from "../../api/queries/labels";
 import { t } from "../../lib/i18n";
 import { quoteValue, type AdvancedFields, type SizeUnit } from "../../lib/searchText";
 
-/** "Szukaj w": text added to the query as is. */
-const SEARCH_IN: [string, string][] = [
+/** "Search" (in): text added to the query as is. */
+const searchIn = (): [string, string][] => [
   ["", t.adv.allMail],
-  ["in:inbox", "Odebrane"],
-  ["is:starred", "Oznaczone gwiazdką"],
-  ["in:sent", "Wysłane"],
-  ["in:drafts", "Wersje robocze"],
-  ["in:snoozed", "Odłożone"],
-  ["in:spam", "Spam"],
-  ["in:trash", "Kosz"],
+  ["in:inbox", t.views.inbox],
+  ["is:starred", t.views.starred],
+  ["in:sent", t.views.sent],
+  ["in:drafts", t.views.drafts],
+  ["in:snoozed", t.views.snoozed],
+  ["in:spam", t.views.spam],
+  ["in:trash", t.views.trash],
   ["in:anywhere", t.adv.anywhere],
 ];
 
@@ -127,7 +127,7 @@ export function AdvancedFieldsForm({ accountId, value: f, onChange }: Props) {
           onChange={(e) => set("searchIn", e.target.value)}
           className="rounded border border-line px-1 py-1"
         >
-          {SEARCH_IN.map(([value, label]) => (
+          {searchIn().map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>

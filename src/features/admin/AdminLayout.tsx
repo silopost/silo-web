@@ -10,7 +10,7 @@ const PATHS = {
   jobs: "/u/$account/admin/jobs",
 } as const;
 
-/** "Brak uprawnień": a user without isAdmin, or a 403 forbidden of /admin/*. */
+/** "Access denied": a user without isAdmin, or a 403 forbidden of /admin/*. */
 export function Forbidden() {
   return (
     <div role="alert" className="p-6">

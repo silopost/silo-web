@@ -22,7 +22,7 @@ export function actionsForLabels(labelIds: string[]): ThreadAction[] {
 export function actionsForView(filter: ListFilter): ThreadAction[] {
   if (filter.q !== undefined || filter.labelId === undefined) return ["archive", "trash", "spam"];
   if (filter.labelId === "ARCHIVE") return ["inbox", "trash", "spam"];
-  // Scheduled messages are not in a mailbox folder yet; their row offers "Anuluj wysyłkę".
+  // Scheduled messages are not in a mailbox folder yet; their row offers "Cancel send".
   if (filter.labelId === "SCHEDULED") return [];
   if (filter.labelId === "TRASH" || filter.labelId === "SPAM") {
     return actionsForLabels([filter.labelId]);

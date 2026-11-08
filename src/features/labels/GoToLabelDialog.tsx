@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useLabels } from "../../api/queries/labels";
 import { Icon, type IconName } from "../../components/Icon";
-import { t } from "../../lib/i18n";
+import { intlLocale, t } from "../../lib/i18n";
 import { SYSTEM_VIEWS } from "../../lib/labels";
 import { useUi } from "../../state/ui";
 import { useAccountIndex, useActiveAccount } from "../account";
@@ -44,9 +44,9 @@ function Picker({ onDone }: { onDone: () => void }) {
         icon: (l.type === "folder" ? "folder" : "label") as IconName,
       })),
   ];
-  const needle = q.trim().toLocaleLowerCase("pl");
+  const needle = q.trim().toLocaleLowerCase(intlLocale());
   const shown = needle
-    ? entries.filter((e) => e.name.toLocaleLowerCase("pl").includes(needle))
+    ? entries.filter((e) => e.name.toLocaleLowerCase(intlLocale()).includes(needle))
     : entries;
 
   const go = (slug: string) => {

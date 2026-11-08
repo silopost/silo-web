@@ -15,7 +15,7 @@ import { Banners } from "../features/sync/Banners";
 import { VersionBanner } from "../features/sync/VersionBanner";
 import { Snackbar } from "../features/toasts/Snackbar";
 import { TopBar } from "../features/topbar/TopBar";
-import { t } from "../lib/i18n";
+import { applyServerLocale, t, useLocale } from "../lib/i18n";
 import { GoToLabelDialog } from "../features/labels/GoToLabelDialog";
 import { ShortcutsHelpDialog } from "../shortcuts/ShortcutsHelpDialog";
 import { useGlobalShortcuts } from "../shortcuts/useShortcuts";
@@ -50,6 +50,7 @@ export const Route = createFileRoute("/_app")({
       const snapshot = isApiError(err) ? null : loadOfflineSession();
       if (!snapshot) throw err;
       context.queryClient.setQueryData(keys.session, snapshot);
+      applyServerLocale(snapshot.settings?.language);
       offlineSnapshot = true;
     }
   },
@@ -87,6 +88,12 @@ function useDensityAttribute() {
   }, [density]);
 }
 
+/** settings.language of the server (this tab, another device: settings.updated) wins. */
+function useServerLocale() {
+  const language = useSettings()?.language;
+  useEffect(() => applyServerLocale(language), [language]);
+}
+
 /** A click on a desktop notification opens its thread in this tab. */
 function useNotificationNavigator() {
   const router = useRouter();
@@ -101,20 +108,22 @@ function useNotificationNavigator() {
   }, [router]);
 }
 
-/** "Odebrane (3) – dev1@silo.test – Silo": the active account of the tab (label.counts). */
+/** "Inbox (3) – dev1@silo.test – Silo": the active account of the tab (label.counts). */
 function useDocumentTitle() {
   const account = useActiveAccount();
+  const locale = useLocale();
   const unread = useLabels(account?.id).find((l) => l.id === "INBOX")?.threadsUnread ?? 0;
   useEffect(() => {
     if (!account) return;
     document.title = `${t.inboxTitle}${unread > 0 ? ` (${unread})` : ""} – ${account.email} – ${t.appName}`;
-  }, [account, unread]);
+  }, [account, unread, locale]);
 }
 
 function AppLayout() {
   const qc = useQueryClient();
   useEffect(() => connectEvents(qc), [qc]);
   useDensityAttribute();
+  useServerLocale();
   useNotificationNavigator();
   useDocumentTitle();
   useGlobalShortcuts();

@@ -11,7 +11,7 @@ type Props = {
   onSubmit: (iso: string) => void;
 };
 
-/** "Wybierz datę i godzinę" of snooze and schedule send: a native datetime-local field. */
+/** "Pick date & time" of snooze and schedule send: a native datetime-local field. */
 export function DateTimeDialog({ open, onOpenChange, title, onSubmit }: Props) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>

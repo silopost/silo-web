@@ -4,6 +4,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, expect, it } from "vitest";
 import { getCsrfToken, setCsrfToken } from "../api/csrf";
+import { setLocale } from "../lib/i18n";
 import { createLocalMock } from "../test/mockLocal";
 import { createMockMail } from "../test/mockMail";
 import { renderApp } from "../test/renderApp";
@@ -26,25 +27,25 @@ function loggedOut() {
 it("redirects to the login page without a session and shows the server version", async () => {
   loggedOut();
   const { router } = renderApp("/u/0/inbox");
-  expect(await screen.findByRole("heading", { name: "Zaloguj się" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
   expect(router.state.location.pathname).toBe("/login");
-  expect(await screen.findByText("Silo · serwer 0.3.0")).toBeInTheDocument();
+  expect(await screen.findByText("Silo · server 0.3.0")).toBeInTheDocument();
 });
 
 it("shows that the server is unreachable", async () => {
   loggedOut();
   server.use(http.get("*/api/v1/meta", () => HttpResponse.error()));
   renderApp("/login");
-  expect(await screen.findByText("Nie można połączyć się z serwerem Silo.")).toBeInTheDocument();
+  expect(await screen.findByText("Can't connect to the Silo server.")).toBeInTheDocument();
 });
 
 it("signs in and opens the inbox", async () => {
   const mail = loggedOut();
   const user = userEvent.setup();
   const { router } = renderApp("/login");
-  await user.type(await screen.findByLabelText("Adres e-mail"), "dev1@silo.test");
-  await user.type(screen.getByLabelText("Hasło"), "devpass1");
-  await user.click(screen.getByRole("button", { name: "Zaloguj" }));
+  await user.type(await screen.findByLabelText("Email address"), "dev1@silo.test");
+  await user.type(screen.getByLabelText("Password"), "devpass1");
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
 
   expect(await screen.findByRole("row", { name: /Temat 1/ })).toBeInTheDocument();
   expect(router.state.location.pathname).toBe("/u/0/inbox");
@@ -56,13 +57,11 @@ it("shows one message for invalid_credentials", async () => {
   loggedOut();
   const user = userEvent.setup();
   const { router } = renderApp("/login");
-  await user.type(await screen.findByLabelText("Adres e-mail"), "dev1@silo.test");
-  await user.type(screen.getByLabelText("Hasło"), "wrong");
-  await user.click(screen.getByRole("button", { name: "Zaloguj" }));
+  await user.type(await screen.findByLabelText("Email address"), "dev1@silo.test");
+  await user.type(screen.getByLabelText("Password"), "wrong");
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "Nieprawidłowy adres e-mail lub hasło.",
-  );
+  expect(await screen.findByRole("alert")).toHaveTextContent("Wrong email address or password.");
   await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
 });
 
@@ -78,10 +77,10 @@ it("explains the rate limit with Retry-After", async () => {
   );
   const user = userEvent.setup();
   renderApp("/login");
-  await user.type(await screen.findByLabelText("Adres e-mail"), "dev1@silo.test");
-  await user.type(screen.getByLabelText("Hasło"), "devpass1");
-  await user.click(screen.getByRole("button", { name: "Zaloguj" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent("Spróbuj ponownie za 30 s.");
+  await user.type(await screen.findByLabelText("Email address"), "dev1@silo.test");
+  await user.type(screen.getByLabelText("Password"), "devpass1");
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Try again in 30 s.");
 });
 
 function localMode(totp: boolean) {
@@ -93,15 +92,15 @@ function localMode(totp: boolean) {
 }
 
 async function typePassword(user: ReturnType<typeof userEvent.setup>, password = "devpass1") {
-  await user.type(await screen.findByLabelText("Adres e-mail"), "dev1@silo.test");
-  await user.type(screen.getByLabelText("Hasło"), password);
-  await user.click(screen.getByRole("button", { name: "Zaloguj" }));
+  await user.type(await screen.findByLabelText("Email address"), "dev1@silo.test");
+  await user.type(screen.getByLabelText("Password"), password);
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
 }
 
 it("mode local: Silo heading without the mail server hint", async () => {
   localMode(false);
   renderApp("/login");
-  expect(await screen.findByRole("heading", { name: "Zaloguj się do Silo" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Sign in to Silo" })).toBeInTheDocument();
   expect(screen.queryByText(/skrzynki pocztowej/)).not.toBeInTheDocument();
 });
 
@@ -111,20 +110,18 @@ it("mode local: asks for the TOTP code after the password and signs in with it",
   const { router } = renderApp("/login");
   await typePassword(user);
 
-  const code = await screen.findByLabelText("Kod z aplikacji");
+  const code = await screen.findByLabelText("App code");
   expect(code).toHaveFocus();
   expect(code).toHaveAttribute("inputmode", "numeric");
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  expect(screen.queryByLabelText("Hasło")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
 
   // A wrong code: one message, the code step stays.
   await user.type(code, "000000");
-  await user.click(screen.getByRole("button", { name: "Potwierdź" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "Nieprawidłowy e-mail, hasło lub kod.",
-  );
-  await user.type(screen.getByLabelText("Kod z aplikacji"), "123456");
-  await user.click(screen.getByRole("button", { name: "Potwierdź" }));
+  await user.click(screen.getByRole("button", { name: "Verify" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Wrong email, password or code.");
+  await user.type(screen.getByLabelText("App code"), "123456");
+  await user.click(screen.getByRole("button", { name: "Verify" }));
 
   expect(await screen.findByRole("row", { name: /Temat 1/ })).toBeInTheDocument();
   expect(router.state.location.pathname).toBe("/u/0/inbox");
@@ -142,11 +139,11 @@ it("mode local: signs in with a backup code", async () => {
   const user = userEvent.setup();
   renderApp("/login");
   await typePassword(user);
-  await user.click(await screen.findByRole("button", { name: "Użyj kodu zapasowego" }));
-  const code = screen.getByLabelText("Kod zapasowy");
+  await user.click(await screen.findByRole("button", { name: "Use a backup code" }));
+  const code = screen.getByLabelText("Backup code");
   expect(code).toHaveFocus();
   await user.type(code, "abcde12345");
-  await user.click(screen.getByRole("button", { name: "Potwierdź" }));
+  await user.click(screen.getByRole("button", { name: "Verify" }));
   expect(await screen.findByRole("row", { name: /Temat 1/ })).toBeInTheDocument();
   expect(local.state.backupCodes).toEqual(["fghij67890"]);
 });
@@ -156,10 +153,8 @@ it("mode local: a wrong password gives the same message as a wrong code", async 
   const user = userEvent.setup();
   renderApp("/login");
   await typePassword(user, "wrong");
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "Nieprawidłowy e-mail, hasło lub kod.",
-  );
-  expect(screen.queryByLabelText("Kod z aplikacji")).not.toBeInTheDocument();
+  expect(await screen.findByRole("alert")).toHaveTextContent("Wrong email, password or code.");
+  expect(screen.queryByLabelText("App code")).not.toBeInTheDocument();
 });
 
 it("mode local: 429 on the code step shows Retry-After", async () => {
@@ -167,7 +162,7 @@ it("mode local: 429 on the code step shows Retry-After", async () => {
   const user = userEvent.setup();
   renderApp("/login");
   await typePassword(user);
-  await screen.findByLabelText("Kod z aplikacji");
+  await screen.findByLabelText("App code");
   server.use(
     http.post("*/api/v1/session", () =>
       HttpResponse.json(
@@ -176,9 +171,9 @@ it("mode local: 429 on the code step shows Retry-After", async () => {
       ),
     ),
   );
-  await user.type(screen.getByLabelText("Kod z aplikacji"), "123456");
-  await user.click(screen.getByRole("button", { name: "Potwierdź" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent("Spróbuj ponownie za 12 s.");
+  await user.type(screen.getByLabelText("App code"), "123456");
+  await user.click(screen.getByRole("button", { name: "Verify" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Try again in 12 s.");
 });
 
 it("mode local: a user without mail accounts is offered Dodaj konto", async () => {
@@ -188,9 +183,26 @@ it("mode local: a user without mail accounts is offered Dodaj konto", async () =
   const { router } = renderApp("/login");
   await typePassword(user);
   expect(
-    await screen.findByRole("heading", { name: "Nie masz jeszcze konta pocztowego w Silo" }),
+    await screen.findByRole("heading", { name: "You don't have a mail account in Silo yet" }),
   ).toBeInTheDocument();
-  await user.click(screen.getByRole("link", { name: "Dodaj konto" }));
-  expect(await screen.findByRole("dialog", { name: "Dodaj konto" })).toBeInTheDocument();
+  await user.click(screen.getByRole("link", { name: "Add account" }));
+  expect(await screen.findByRole("dialog", { name: "Add account" })).toBeInTheDocument();
   expect(router.state.location.pathname).toBe("/u/0/settings/accounts");
+});
+
+it("uses the last language of the browser and then the user's setting", async () => {
+  localStorage.setItem("silo.language", "pl");
+  setLocale("pl");
+  const mail = loggedOut();
+  mail.session.settings.language = "en";
+  const user = userEvent.setup();
+  renderApp("/login");
+  expect(await screen.findByRole("heading", { name: "Zaloguj się" })).toBeInTheDocument();
+  expect(document.documentElement.lang).toBe("pl");
+  await user.type(screen.getByLabelText("Adres e-mail"), "dev1@silo.test");
+  await user.type(screen.getByLabelText("Hasło"), "devpass1");
+  await user.click(screen.getByRole("button", { name: "Zaloguj" }));
+  expect(await screen.findByRole("link", { name: /Inbox/ })).toBeInTheDocument();
+  expect(localStorage.getItem("silo.language")).toBe("en");
+  expect(document.documentElement.lang).toBe("en");
 });

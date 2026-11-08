@@ -24,11 +24,11 @@ function setup(url = "/u/0/inbox", prepare?: (mail: Mail) => void) {
   return { mail, user, ...renderApp(url) };
 }
 
-const trigger = () => screen.findByRole("button", { name: /^Konto: / });
+const trigger = () => screen.findByRole("button", { name: /^Account: / });
 
 async function openMenu(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await trigger());
-  return screen.findByRole("menu", { name: /^Konto: / });
+  return screen.findByRole("menu", { name: /^Account: / });
 }
 
 describe("AccountSwitcher", () => {
@@ -39,7 +39,7 @@ describe("AccountSwitcher", () => {
       "4",
     );
     expect(await trigger()).toHaveAccessibleName(
-      "Konto: dev1@silo.test, 4 nieprzeczytane w innych kontach",
+      "Account: dev1@silo.test, 4 unread in other accounts",
     );
     // One GET /labels per account (['labels', accountId]).
     expect(new Set(mail.state.calls.labelsGet)).toEqual(new Set(["acc_1", "acc_2"]));
@@ -47,12 +47,12 @@ describe("AccountSwitcher", () => {
     const menu = await openMenu(user);
     const items = within(menu).getAllByRole("menuitemradio");
     expect(items.map((i) => i.getAttribute("aria-label"))).toEqual([
-      "dev1@silo.test, 1 nieprzeczytany",
-      "dev2@silo.test, 4 nieprzeczytane",
+      "dev1@silo.test, 1 unread",
+      "dev2@silo.test, 4 unread",
     ]);
     expect(items[0]).toHaveAttribute("aria-checked", "true");
-    expect(within(menu).getByRole("menuitem", { name: /Dodaj konto/ })).toBeInTheDocument();
-    expect(document.title).toBe("Odebrane (1) – dev1@silo.test – Silo");
+    expect(within(menu).getByRole("menuitem", { name: /Add account/ })).toBeInTheDocument();
+    expect(document.title).toBe("Inbox (1) – dev1@silo.test – Silo");
   });
 
   it("updates the count of the account named by label.counts, not only the active one", async () => {
@@ -66,14 +66,14 @@ describe("AccountSwitcher", () => {
     );
     await waitFor(() => expect(screen.getByTestId("switcher-badge")).toHaveTextContent("7"));
     // The active account's title is untouched by another account's counts.
-    expect(document.title).toBe("Odebrane (1) – dev1@silo.test – Silo");
+    expect(document.title).toBe("Inbox (1) – dev1@silo.test – Silo");
     act(() =>
       FakeEventSource.latest().emit("label.counts", {
         accountId: "acc_1",
         labels: [{ id: "INBOX", threadsUnread: 3, threadsTotal: 5 }],
       }),
     );
-    await waitFor(() => expect(document.title).toBe("Odebrane (3) – dev1@silo.test – Silo"));
+    await waitFor(() => expect(document.title).toBe("Inbox (3) – dev1@silo.test – Silo"));
   });
 
   it("switches to the chosen account keeping a system view and remembers it in the settings", async () => {
@@ -85,7 +85,7 @@ describe("AccountSwitcher", () => {
     // Now dev2 is active: the badge shows dev1's unread thread.
     await waitFor(async () =>
       expect(await trigger()).toHaveAccessibleName(
-        "Konto: dev2@silo.test, 1 nieprzeczytany w innych kontach",
+        "Account: dev2@silo.test, 1 unread in other accounts",
       ),
     );
   });
@@ -103,11 +103,11 @@ describe("AccountSwitcher", () => {
     const { user, router } = setup();
     (await trigger()).focus();
     await user.keyboard("{Enter}");
-    const menu = await screen.findByRole("menu", { name: /^Konto: / });
+    const menu = await screen.findByRole("menu", { name: /^Account: / });
     await user.keyboard("{Escape}");
     await waitFor(() => expect(menu).not.toBeInTheDocument());
     await user.keyboard("{Enter}");
-    await screen.findByRole("menu", { name: /^Konto: / });
+    await screen.findByRole("menu", { name: /^Account: / });
     await user.keyboard("{ArrowDown}");
     await waitFor(() =>
       expect(screen.getByRole("menuitemradio", { name: /^dev2@silo.test/ }).matches(":focus")).toBe(
@@ -125,7 +125,7 @@ describe("AccountSwitcher", () => {
     const menu = await openMenu(user);
     expect(
       within(menu).getByRole("menuitemradio", { name: /^dev2@silo.test/ }),
-    ).toHaveAccessibleName("dev2@silo.test, 4 nieprzeczytane, Błąd logowania do skrzynki");
+    ).toHaveAccessibleName("dev2@silo.test, 4 unread, Can't sign in to the mailbox");
   });
 
   it("g 2 switches to the account with position 1 and remembers it", async () => {
@@ -139,8 +139,8 @@ describe("AccountSwitcher", () => {
   it("opens Dodaj konto in the account settings", async () => {
     const { user, router } = setup();
     const menu = await openMenu(user);
-    await user.click(within(menu).getByRole("menuitem", { name: /Dodaj konto/ }));
+    await user.click(within(menu).getByRole("menuitem", { name: /Add account/ }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/u/0/settings/accounts"));
-    expect(await screen.findByRole("dialog", { name: "Dodaj konto" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Add account" })).toBeInTheDocument();
   });
 });

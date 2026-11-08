@@ -1,39 +1,52 @@
 import type { Label } from "../api/types";
 import type { IconName } from "../components/Icon";
+import { t } from "./i18n";
 
 export type SystemView = {
   /** URL segment: /u/0/<slug> */
   slug: string;
   /** API label id; undefined = all mail. */
   labelId: string | undefined;
-  name: string;
+  /** Display name in the UI language (t.views). */
+  readonly name: string;
   icon: IconName;
   /** Counter shown in LeftNav, as in Gmail. */
   count?: "unread" | "total";
-  /** Listed under "Więcej". */
+  /** Listed under "More". */
   more?: boolean;
 };
 
-/** System labels of plan 5.5 as LeftNav entries (plan 6.3). */
-export const SYSTEM_VIEWS: SystemView[] = [
-  { slug: "inbox", labelId: "INBOX", name: "Odebrane", icon: "inbox", count: "unread" },
-  { slug: "starred", labelId: "STARRED", name: "Oznaczone gwiazdką", icon: "star" },
-  { slug: "snoozed", labelId: "SNOOZED", name: "Odłożone", icon: "schedule", count: "total" },
-  { slug: "important", labelId: "IMPORTANT", name: "Ważne", icon: "important" },
-  { slug: "sent", labelId: "SENT", name: "Wysłane", icon: "send" },
-  {
-    slug: "scheduled",
-    labelId: "SCHEDULED",
-    name: "Zaplanowane",
-    icon: "scheduleSend",
-    count: "total",
+type ViewSlug = keyof typeof t.views;
+
+/** A system view whose name follows the UI language. */
+const view = (v: Omit<SystemView, "name"> & { slug: ViewSlug }): SystemView => ({
+  ...v,
+  get name() {
+    return t.views[v.slug];
   },
-  { slug: "drafts", labelId: "DRAFT", name: "Wersje robocze", icon: "draft", count: "total" },
-  { slug: "archive", labelId: "ARCHIVE", name: "Archiwum", icon: "archive", more: true },
-  { slug: "all", labelId: undefined, name: "Wszystkie", icon: "allMail", more: true },
-  { slug: "spam", labelId: "SPAM", name: "Spam", icon: "report", count: "unread", more: true },
-  { slug: "trash", labelId: "TRASH", name: "Kosz", icon: "delete", more: true },
-];
+});
+
+/** System labels of plan 5.5 as LeftNav entries (plan 6.3). */
+export const SYSTEM_VIEWS: SystemView[] = (
+  [
+    { slug: "inbox", labelId: "INBOX", icon: "inbox", count: "unread" },
+    { slug: "starred", labelId: "STARRED", icon: "star" },
+    { slug: "snoozed", labelId: "SNOOZED", icon: "schedule", count: "total" },
+    { slug: "important", labelId: "IMPORTANT", icon: "important" },
+    { slug: "sent", labelId: "SENT", icon: "send" },
+    {
+      slug: "scheduled",
+      labelId: "SCHEDULED",
+      icon: "scheduleSend",
+      count: "total",
+    },
+    { slug: "drafts", labelId: "DRAFT", icon: "draft", count: "total" },
+    { slug: "archive", labelId: "ARCHIVE", icon: "archive", more: true },
+    { slug: "all", labelId: undefined, icon: "allMail", more: true },
+    { slug: "spam", labelId: "SPAM", icon: "report", count: "unread", more: true },
+    { slug: "trash", labelId: "TRASH", icon: "delete", more: true },
+  ] satisfies (Omit<SystemView, "name"> & { slug: ViewSlug })[]
+).map(view);
 
 export type ResolvedLabel =
   { kind: "system"; view: SystemView } | { kind: "label"; labelId: string } | { kind: "unknown" };

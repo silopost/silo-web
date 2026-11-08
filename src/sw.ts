@@ -28,7 +28,7 @@ declare const self: ServiceWorkerGlobalScope;
 // Build assets and index.html, injected by vite-plugin-pwa (injectManifest).
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
-// The first install controls the open page at once (an update still waits for "Odśwież").
+// The first install controls the open page at once (an update still waits for "Refresh").
 clientsClaim();
 
 // Every SPA route opens index.html from the precache (offline too); /api/* is never a page.
@@ -52,7 +52,7 @@ registerRoute(
   }),
 );
 
-// registerType "prompt": the page asks the waiting worker to take over ("Odśwież").
+// registerType "prompt": the page asks the waiting worker to take over ("Refresh").
 self.addEventListener("message", (event) => {
   if ((event.data as { type?: string } | null)?.type === "SKIP_WAITING") void self.skipWaiting();
 });

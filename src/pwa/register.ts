@@ -3,7 +3,7 @@ import { usePwa } from "../state/pwa";
 
 /**
  * Registers the service worker of the production build (src/sw.ts). A newer build waiting
- * makes the version banner offer "Nowa wersja aplikacji gotowa · Odśwież"; the click activates
+ * makes the version banner offer "A new version of the app is ready · Refresh"; the click activates
  * it and reloads the page. Imported by main.tsx only (tests run without a service worker).
  */
 export function registerServiceWorker(): void {

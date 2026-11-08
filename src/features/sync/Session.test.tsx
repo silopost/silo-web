@@ -53,8 +53,8 @@ describe("version banner", () => {
     const { user } = setup("/u/0/inbox", (m) => {
       m.state.minWebVersion = "0.4.0";
     });
-    const banner = await screen.findByText("Dostępna nowa wersja");
-    await user.click(within(banner.parentElement!).getByRole("button", { name: "Odśwież" }));
+    const banner = await screen.findByText("A new version is available");
+    await user.click(within(banner.parentElement!).getByRole("button", { name: "Refresh" }));
     expect(reloads).toBe(1);
   });
 
@@ -62,8 +62,8 @@ describe("version banner", () => {
     versionConfig.appVersion = "0.3.0";
     setup();
     await screen.findByRole("grid");
-    expect(screen.queryByText("Dostępna nowa wersja")).toBeNull();
-    expect(screen.queryByText("Serwer został zaktualizowany")).toBeNull();
+    expect(screen.queryByText("A new version is available")).toBeNull();
+    expect(screen.queryByText("The server was updated")).toBeNull();
   });
 
   it("tells about a server upgrade noticed after an SSE reconnect", async () => {
@@ -75,7 +75,7 @@ describe("version banner", () => {
     // The stream drops and comes back (the server restarted): GET /meta again.
     act(() => FakeEventSource.latest().onopen?.(new Event("open")));
     await waitFor(() => expect(mail.state.calls.meta).toBeGreaterThan(before));
-    expect(await screen.findByText("Serwer został zaktualizowany")).toBeInTheDocument();
+    expect(await screen.findByText("The server was updated")).toBeInTheDocument();
   });
 });
 
@@ -87,7 +87,7 @@ describe("session.expired", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
     expect(router.state.location.search).toEqual({ redirect: "/u/0/starred" });
     expect(queryClient.getQueryData(keys.session)).toBeUndefined();
-    expect(await screen.findByRole("heading", { name: "Zaloguj się" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
   });
 });
 
@@ -107,7 +107,7 @@ describe("stream.limit", () => {
     const es = FakeEventSource.latest();
     act(() => es.emit("stream.limit", { retryAfter: 30 }));
     expect(es.readyState).toBe(2);
-    expect(await screen.findByText(/Zbyt wiele otwartych kart Silo/)).toBeInTheDocument();
+    expect(await screen.findByText(/Too many Silo tabs are open/)).toBeInTheDocument();
     await waitFor(() => expect(polls).toBeGreaterThan(2));
     expect(useConnection.getState()).toMatchObject({ state: "polling", tooManyStreams: true });
   });
@@ -126,12 +126,10 @@ describe("429", () => {
       ),
     );
     const row = await screen.findByRole("row", { name: /Temat 2/ });
-    await user.click(within(row).getByRole("button", { name: "Archiwizuj" }));
-    expect(
-      await screen.findByText("Zbyt wiele żądań. Spróbuj ponownie za 12 s."),
-    ).toBeInTheDocument();
+    await user.click(within(row).getByRole("button", { name: "Archive" }));
+    expect(await screen.findByText("Too many requests. Try again in 12 s.")).toBeInTheDocument();
     // The rolled back row is back; the generic snackbar did not replace the 429 one.
     expect(await screen.findByRole("row", { name: /Temat 2/ })).toBeInTheDocument();
-    expect(screen.queryByText("Nie udało się. Spróbuj ponownie.")).toBeNull();
+    expect(screen.queryByText("Something went wrong. Try again.")).toBeNull();
   });
 });

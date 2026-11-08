@@ -46,6 +46,6 @@ export const useToasts = create<Toasts>()((set) => ({
 
 export const toast = (message: string) => useToasts.getState().show({ message });
 
-/** 429 rate_limited of any request (plan 5.3): "Spróbuj ponownie za N s" from Retry-After. */
+/** 429 rate_limited of any request (plan 5.3): "Try again in N s" from Retry-After. */
 export const showRateLimited = (seconds?: number) =>
   useToasts.getState().show({ message: t.rateLimitedToast(seconds), rateLimited: true });

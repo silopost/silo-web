@@ -185,7 +185,7 @@ export function undoOperations(qc: QueryClient, input: UndoManyInput): Promise<v
   );
 }
 
-/** "Wybudź teraz": DELETE /threads/{id}/snooze, back to Inbox at once (no undo, plan 3.10). */
+/** "Unsnooze": DELETE /threads/{id}/snooze, back to Inbox at once (no undo, plan 3.10). */
 export function wakeThread(qc: QueryClient, accountId: string, id: string): Promise<void> {
   const mutation = qc.getMutationCache().build(qc, {
     mutationKey: MUTATION_KEY,

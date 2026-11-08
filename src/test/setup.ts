@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, configure } from "@testing-library/react";
 import { afterEach } from "vitest";
+import { DEFAULT_LOCALE, setLocale } from "../lib/i18n";
 import { FakeEventSource } from "./fakeEventSource";
 
 // The first render of the whole app in a test file can take over a second on a busy machine
@@ -10,6 +11,8 @@ configure({ asyncUtilTimeout: 3000 });
 afterEach(() => {
   cleanup();
   FakeEventSource.instances.length = 0;
+  // Every test starts in the default language (English), as a new user does.
+  setLocale(DEFAULT_LOCALE);
   localStorage.clear();
 });
 
