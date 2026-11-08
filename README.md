@@ -114,7 +114,8 @@ admin_self_change` has its own message and the admin's own row disables those ac
   IMAP server, `scripts/backup.sh metadata|full` run by the administrator, link to
   `docs/admin/backup.md`).
 - **PWA** (`vite-plugin-pwa`, `injectManifest` with `src/sw.ts`): `manifest.webmanifest` (Silo,
-  standalone, icons 192/512, maskable, SVG; drawn by `scripts/gen-icons.mjs`), precache of the
+  standalone, icons 192/512, maskable, SVG; the PNGs are rasterised from `public/icons/icon.svg` by
+  `npm run gen:icons`), precache of the
   build with `index.html` for every SPA route (never `/api/*`); runtime cache `silo-api-v1`,
   `NetworkFirst` with a 3 s timeout, 200 entries, 7 days, for `GET /threads`, `/threads/{id}`,
   `/labels` and `/messages/{id}/html` only (`src/pwa/cacheRules.ts`, unit-tested): never the

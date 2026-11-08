@@ -1,6 +1,7 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Link } from "@tanstack/react-router";
 import { usePatchSettings } from "../../api/queries/settings";
+import { Brand } from "../../components/Brand";
 import { Icon } from "../../components/Icon";
 import { IconButton } from "../../components/IconButton";
 import { t } from "../../lib/i18n";
@@ -63,7 +64,9 @@ export function TopBar() {
         onClick={toggleNav}
         size={24}
       />
-      <span className="w-[180px] pl-2 text-xl text-ink-muted">{t.appName}</span>
+      <span className="flex w-[180px] pl-2 text-xl text-ink">
+        <Brand />
+      </span>
       <SearchBox />
       <div className="ml-auto flex items-center gap-1">
         <SyncStatusIndicator />

@@ -1,9 +1,22 @@
 @import "tailwindcss";
 
+/* Brand wordmark font (src/components/Brand.tsx): Nunito, a rounded geometric sans that echoes the
+   rounded flat shapes of the icon. Bundled locally from @fontsource-variable/nunito (no Google
+   Fonts request); only the Latin subset, as it sets just the word "Silo". */
+@font-face {
+  font-family: "Nunito Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 1000;
+  src: url("@fontsource-variable/nunito/files/nunito-latin-wght-normal.woff2")
+    format("woff2-variations");
+}
+
 /* Gmail-like design tokens (plan 6.1). Text colours meet WCAG AA on their backgrounds:
    ink #1f1f1f and ink-muted #444746 on white/surface, white on primary #0b57d0. */
 @theme {
   --font-sans: "Google Sans Text", Roboto, "Segoe UI", Arial, sans-serif;
+  --font-brand: "Nunito Variable", "Nunito", var(--font-sans);
 
   --color-ink: #1f1f1f;
   --color-ink-muted: #444746;

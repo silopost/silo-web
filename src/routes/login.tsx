@@ -6,6 +6,7 @@ import { call, isApiError } from "../api/errors";
 import { keys } from "../api/keys";
 import { metaQuery } from "../api/queries/meta";
 import { adoptSession } from "../api/queries/session";
+import { Brand } from "../components/Brand";
 import { t } from "../lib/i18n";
 import { clearOfflineData } from "../pwa/offlineCache";
 
@@ -108,7 +109,9 @@ function LoginPage() {
         aria-labelledby="login-title"
       >
         <div>
-          <h1 className="text-2xl font-normal">{t.appName}</h1>
+          <h1 className="text-2xl">
+            <Brand />
+          </h1>
           <h2 id="login-title" className="mt-4 text-lg">
             {step === "code" ? t.login.codeTitle : local ? t.login.localTitle : t.loginTitle}
           </h2>
