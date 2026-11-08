@@ -52,7 +52,7 @@ test("service worker, manifest and offline reading from the cache", async ({ pag
   await expect(rowOf(page, subject)).toBeVisible({ timeout: 30_000 });
   await rowOf(page, subject).click();
   await expect(page.getByRole("heading", { name: subject })).toBeVisible();
-  const body = page.frameLocator("iframe[title^='Treść wiadomości'] >> nth=-1");
+  const body = page.frameLocator("iframe[title^='Message body'] >> nth=-1");
   await expect(body.getByText("Treść dostępna bez sieci.")).toBeVisible();
   const threadUrl = page.url();
   await page.goBack();
@@ -70,10 +70,10 @@ test("service worker, manifest and offline reading from the cache", async ({ pag
   await context.setOffline(true);
   const started = Date.now();
   await page.reload();
-  await expect(page.getByRole("button", { name: "Menu główne" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Main menu" })).toBeVisible();
   await expect(rowOf(page, subject)).toBeVisible({ timeout: 15_000 });
   console.log(`[measure] pwa: offline reload -> cached list: ${Date.now() - started} ms`);
-  await expect(page.getByText("Brak połączenia z Silo. Ponawiam…")).toBeVisible({
+  await expect(page.getByText("Can't connect to Silo. Retrying…")).toBeVisible({
     timeout: 30_000,
   });
   // The thread read before opens from the cache, body included.
@@ -85,7 +85,7 @@ test("service worker, manifest and offline reading from the cache", async ({ pag
   await context.setOffline(false);
   await page.goto("/u/0/inbox");
   await expect(rowOf(page, subject)).toBeVisible();
-  await expect(page.getByText("Brak połączenia z Silo. Ponawiam…")).toBeHidden({
+  await expect(page.getByText("Can't connect to Silo. Retrying…")).toBeHidden({
     timeout: 30_000,
   });
 });

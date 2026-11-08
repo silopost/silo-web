@@ -29,7 +29,7 @@ test.afterAll(async () => {
   await deleteLabelsNamed(dev1, labelName);
 });
 
-const box = (page: Page) => page.getByRole("combobox", { name: "Szukaj w poczcie" });
+const box = (page: Page) => page.getByRole("combobox", { name: "Search mail" });
 
 async function search(page: Page, q: string) {
   await box(page).fill(q);
@@ -87,8 +87,8 @@ test("operators, suggestions, chips, advanced search and invalid queries", async
   await search(page, uniq);
   await expectResults(page, ["a", "b", "c", "d"]);
   // The body index may still be catching up on a fresh stack: the banner is optional.
-  const indexing = page.getByText(/^Indeksowanie treści: \d+%/);
-  if (await indexing.count()) await expect(indexing).toContainText("wyniki mogą być niepełne");
+  const indexing = page.getByText(/^Indexing message text: \d+%/);
+  if (await indexing.count()) await expect(indexing).toContainText("results may be incomplete");
 
   await search(page, `${uniq} from:${anna}`);
   await expectResults(page, ["a", "c"]);
@@ -111,10 +111,10 @@ test("operators, suggestions, chips, advanced search and invalid queries", async
   await expectResults(page, ["d"]);
   await rowOf(page, subjects.d).focus();
   await page.keyboard.press("l");
-  const labels = page.getByRole("dialog", { name: "Etykiety" });
+  const labels = page.getByRole("dialog", { name: "Label as" });
   await expect(labels).toBeVisible();
-  await labels.getByRole("textbox", { name: "Nowa etykieta" }).fill(labelName);
-  await labels.getByRole("button", { name: "Utwórz" }).click();
+  await labels.getByRole("textbox", { name: "New label" }).fill(labelName);
+  await labels.getByRole("button", { name: "Create" }).click();
   await page.keyboard.press("Escape");
   await expect(rowOf(page, subjects.d).getByText(labelName)).toBeVisible();
   await search(page, `${uniq} label:${labelName}`);
@@ -123,11 +123,11 @@ test("operators, suggestions, chips, advanced search and invalid queries", async
   // Suggestions: the history (first page of a search saves the query) and contacts.
   await page.goto("/u/0/inbox");
   await box(page).click();
-  const list = page.getByRole("listbox", { name: "Podpowiedzi wyszukiwania" });
-  const recent = list.getByRole("group", { name: "Ostatnie" });
+  const list = page.getByRole("listbox", { name: "Search suggestions" });
+  const recent = list.getByRole("group", { name: "Recent" });
   await expect(recent.getByRole("option", { name: `${uniq} faktura`, exact: true })).toBeVisible();
   await box(page).fill(`from:anna.${uniq}`);
-  const contacts = list.getByRole("group", { name: "Kontakty" });
+  const contacts = list.getByRole("group", { name: "Contacts" });
   await expect(contacts.getByRole("option", { name: new RegExp(escapeRe(anna)) })).toBeVisible();
   // A history entry searches at once (the history lists only the 5 newest queries).
   await box(page).fill("");
@@ -138,26 +138,26 @@ test("operators, suggestions, chips, advanced search and invalid queries", async
   // Chips: removing one part removes that text from q.
   await search(page, `from:${anna} ${uniq}`);
   await expectResults(page, ["a", "c"]);
-  const chips = page.getByRole("list", { name: "Elementy zapytania" });
-  await chips.getByRole("button", { name: `Usuń z zapytania: from:${anna}` }).click();
+  const chips = page.getByRole("list", { name: "Query terms" });
+  await chips.getByRole("button", { name: `Remove from query: from:${anna}` }).click();
   await expectResults(page, ["a", "b", "c", "d"]);
   await expect(box(page)).toHaveValue(uniq);
 
   // The advanced search joins its fields into q.
-  await page.getByRole("button", { name: "Pokaż opcje wyszukiwania" }).click();
-  const form = page.getByRole("dialog", { name: "Wyszukiwanie zaawansowane" });
+  await page.getByRole("button", { name: "Show search options" }).click();
+  const form = page.getByRole("dialog", { name: "Advanced search" });
   await expect(form).toBeVisible();
-  await form.getByRole("textbox", { name: "Od" }).fill(anna);
-  await form.getByRole("textbox", { name: "Zawiera słowa" }).fill(uniq);
-  await form.getByRole("checkbox", { name: "Ma załącznik" }).check();
-  await form.getByRole("button", { name: "Szukaj" }).click();
+  await form.getByRole("textbox", { name: "From" }).fill(anna);
+  await form.getByRole("textbox", { name: "Has the words" }).fill(uniq);
+  await form.getByRole("checkbox", { name: "Has attachment" }).check();
+  await form.getByRole("button", { name: "Search" }).click();
   await expectResults(page, ["c"]);
   await expect(box(page)).toHaveValue(new RegExp(`from:${escapeRe(anna)}`));
   await expect(box(page)).toHaveValue(/has:attachment/);
 
   // 422 invalid_query: a closing bracket without its opening one, shown under the field.
   await search(page, `${uniq})`);
-  await expect(page.getByRole("alert")).toContainText("Nieprawidłowe zapytanie");
+  await expect(page.getByRole("alert")).toContainText("Invalid query");
   await expect(box(page)).toHaveAttribute("aria-invalid", "true");
-  await expect(page.getByText("Nie udało się wczytać listy.")).toHaveCount(0);
+  await expect(page.getByText("Couldn't load the list.")).toHaveCount(0);
 });

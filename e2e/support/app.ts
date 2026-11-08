@@ -5,13 +5,13 @@ import { e2eEnv, type DevAccount } from "./env";
 /** Signs in through the login page and waits for the Inbox list. */
 export async function login(page: Page, account: DevAccount): Promise<void> {
   await page.goto("/login");
-  await page.getByLabel("Adres e-mail").fill(account.email);
-  await page.getByLabel("Hasło").fill(account.password);
+  await page.getByLabel("Email address").fill(account.email);
+  await page.getByLabel("Password").fill(account.password);
   // The suite signs in often: the per-login throttle of silo-server (burst 8, one more every
   // 15 s) may answer 429; wait as the page says and try again.
-  const throttled = page.getByRole("alert").filter({ hasText: /Zbyt wiele prób logowania/ });
+  const throttled = page.getByRole("alert").filter({ hasText: /Too many sign-in attempts/ });
   for (let attempt = 0; attempt < 4; attempt++) {
-    await page.getByRole("button", { name: "Zaloguj", exact: true }).click();
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
     const outcome = await Promise.race([
       page.waitForURL(/\/u\/0\/inbox/, { timeout: 15_000 }).then(
         () => "in",
@@ -23,7 +23,7 @@ export async function login(page: Page, account: DevAccount): Promise<void> {
       ),
     ]);
     if (outcome !== "throttled") break;
-    const secs = Number(/za (\d+) s/.exec((await throttled.textContent()) ?? "")?.[1] ?? 15);
+    const secs = Number(/in (\d+) s/.exec((await throttled.textContent()) ?? "")?.[1] ?? 15);
     await page.waitForTimeout((secs + 1) * 1000);
   }
   await expect(page).toHaveURL(/\/u\/0\/inbox/);
@@ -38,12 +38,12 @@ export const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** Inbox counter in LeftNav (unread threads, as in Gmail); 0 when hidden. */
 export async function inboxCount(page: Page): Promise<number> {
-  const link = page.getByRole("navigation", { name: "Menu główne" }).getByRole("link", {
-    name: /^Odebrane/,
+  const link = page.getByRole("navigation", { name: "Main menu" }).getByRole("link", {
+    name: /^Inbox/,
   });
   const text = (await link.textContent()) ?? "";
-  // Thousands are grouped with a no-break space (pl-PL); \s matches it.
-  const m = /(\d[\d\s]*)$/.exec(text.trim());
+  // Thousands are grouped with a comma (en) or a no-break space (pl, matched by \s).
+  const m = /(\d[\d\s,]*)$/.exec(text.trim());
   return m ? Number(m[1]!.replace(/\D/g, "")) : 0;
 }
 
@@ -104,13 +104,13 @@ export async function minuteAhead(
   }, aheadMs);
 }
 
-/** "Wybierz datę i godzinę" of an open snooze / schedule-send menu: fills the dialog and saves. */
+/** "Pick date & time" of an open snooze / schedule-send menu: fills the dialog and saves. */
 export async function pickDateTime(page: Page, title: string, value: string): Promise<void> {
-  await page.getByRole("menuitem", { name: "Wybierz datę i godzinę" }).click();
+  await page.getByRole("menuitem", { name: "Pick date & time" }).click();
   const dialog = page.getByRole("dialog", { name: title });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel("Data i godzina").fill(value);
-  await dialog.getByRole("button", { name: "Zapisz" }).click();
+  await dialog.getByLabel("Date and time").fill(value);
+  await dialog.getByRole("button", { name: "Save" }).click();
   await expect(dialog).toBeHidden();
 }
 

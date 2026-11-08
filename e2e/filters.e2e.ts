@@ -34,10 +34,10 @@ test.afterAll(async () => {
 
 async function createLabel(page: Page, name: string) {
   await page.goto("/u/0/settings/labels");
-  await page.getByRole("button", { name: "Nowa etykieta" }).click();
-  const dialog = page.getByRole("dialog", { name: "Nowa etykieta" });
-  await dialog.getByRole("textbox", { name: "Nazwa" }).fill(name);
-  await dialog.getByRole("button", { name: "Utwórz" }).click();
+  await page.getByRole("button", { name: "New label" }).click();
+  const dialog = page.getByRole("dialog", { name: "New label" });
+  await dialog.getByRole("textbox", { name: "Name" }).fill(name);
+  await dialog.getByRole("button", { name: "Create" }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByRole("listitem", { name })).toBeVisible();
 }
@@ -53,17 +53,17 @@ test("from:x → skip the Inbox + label Y, for new mail and after apply", async 
   await createLabel(page, labelY);
 
   await page.goto("/u/0/settings/filters");
-  await page.getByRole("button", { name: "Utwórz nowy filtr" }).click();
-  let dialog = page.getByRole("dialog", { name: "Utwórz nowy filtr" });
-  await dialog.getByRole("textbox", { name: "Nazwa filtru" }).fill(filterName);
-  await dialog.getByRole("textbox", { name: "Od" }).fill(x);
-  await expect(dialog.locator(`p[aria-label="Kryteria"]`)).toContainText(`from:${x}`);
-  await dialog.getByRole("checkbox", { name: "Pomiń Odebrane (archiwizuj)" }).check();
+  await page.getByRole("button", { name: "Create a new filter" }).click();
+  let dialog = page.getByRole("dialog", { name: "Create a new filter" });
+  await dialog.getByRole("textbox", { name: "Filter name" }).fill(filterName);
+  await dialog.getByRole("textbox", { name: "From" }).fill(x);
+  await expect(dialog.locator(`p[aria-label="Criteria"]`)).toContainText(`from:${x}`);
+  await dialog.getByRole("checkbox", { name: "Skip the Inbox (archive it)" }).check();
   await dialog.getByRole("checkbox", { name: labelY }).check();
-  await dialog.getByRole("button", { name: "Zapisz filtr" }).click();
+  await dialog.getByRole("button", { name: "Save filter" }).click();
   await expect(dialog).toBeHidden();
   const item = page.getByRole("listitem", { name: filterName });
-  await expect(item).toContainText(`archiwizuj, etykieta ${labelY}`);
+  await expect(item).toContainText(`archive, label ${labelY}`);
 
   // New mail from x: archived with the keyword Y on the server, labelled Y in Silo.
   const fresh = `${tag} nowa`;
@@ -82,21 +82,21 @@ test("from:x → skip the Inbox + label Y, for new mail and after apply", async 
   await expect(rowOf(page, old)).toBeVisible();
   await expect(rowOf(page, fresh)).toHaveCount(0);
   await page
-    .getByRole("navigation", { name: "Menu główne" })
+    .getByRole("navigation", { name: "Main menu" })
     .getByRole("link", { name: new RegExp(`^${escapeRe(labelY)}`) })
     .click();
   await expect(rowOf(page, fresh)).toBeVisible({ timeout: 15_000 });
 
-  // Apply to existing mail: edit the filter and save it with "Zastosuj też do pasujących wątków".
+  // Apply to existing mail: edit the filter and save it with "Also apply to matching conversations".
   await page.goto("/u/0/settings/filters");
   await page
     .getByRole("listitem", { name: filterName })
-    .getByRole("button", { name: `Edytuj filtr ${filterName}` })
+    .getByRole("button", { name: `Edit the filter ${filterName}` })
     .click();
-  dialog = page.getByRole("dialog", { name: `Edytuj filtr ${filterName}` });
-  await dialog.getByRole("checkbox", { name: "Zastosuj też do pasujących wątków" }).check();
-  await dialog.getByRole("button", { name: "Zapisz filtr" }).click();
-  await expect(page.getByText(/^Filtr zastosowano do/)).toBeVisible({ timeout: 60_000 });
+  dialog = page.getByRole("dialog", { name: `Edit the filter ${filterName}` });
+  await dialog.getByRole("checkbox", { name: "Also apply to matching conversations" }).check();
+  await dialog.getByRole("button", { name: "Save filter" }).click();
+  await expect(page.getByText(/^Filter applied to/)).toBeVisible({ timeout: 60_000 });
   await waitForMessage(dev1, "archive", old, 60_000, (m) => hasKeyword(m.flags, labelY));
   expect(await findMessages(dev1, "inbox", old)).toHaveLength(0);
   await page.goto("/u/0/inbox");

@@ -22,7 +22,7 @@ test("5000 threads scroll without long tasks", async ({ page }) => {
 
   await login(page, dev3);
   // Initial sync of the corpus: the Inbox counter reaches the corpus' unread threads.
-  await expect(page.getByRole("progressbar", { name: /synchronizacj/i })).toBeHidden({
+  await expect(page.getByRole("progressbar", { name: /sync progress/i })).toBeHidden({
     timeout: 600_000,
   });
   const grid = page.getByRole("grid");

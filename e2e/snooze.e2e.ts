@@ -13,7 +13,7 @@ import {
 /**
  * DoD Faza 4, snooze: "Snooze »za 1 min« → wiadomość w folderze Snoozed na serwerze (Thunderbird
  * nie pokazuje jej w INBOX), po ≤ 90 s wraca do INBOX jako nieprzeczytana i wątek jest na górze
- * listy". Checked over IMAP as a second client. Plus: the Odłożone list with "Wybudź teraz" and
+ * listy". Checked over IMAP as a second client. Plus: the Odłożone list with "Unsnooze" and
  * undo of a snooze from the snackbar.
  *
  * "za 1 min" is the first full minute at least 60 s ahead, picked in the date/time dialog (the
@@ -32,8 +32,8 @@ test.afterAll(async () => {
 async function snoozeMenu(page: Page, subject: string) {
   const row = rowOf(page, subject);
   await row.hover();
-  await row.getByRole("button", { name: "Odłóż" }).click();
-  const menu = page.getByRole("menu", { name: "Odłóż do…" });
+  await row.getByRole("button", { name: "Snooze" }).click();
+  const menu = page.getByRole("menu", { name: "Snooze until…" });
   await expect(menu).toBeVisible();
   return menu;
 }
@@ -51,10 +51,10 @@ test("Cofnij undoes a snooze; Wybudź teraz brings a thread back", async ({ page
 
   // Snooze with a server preset, then Cofnij in the snackbar: the row is back, nothing moves.
   let menu = await snoozeMenu(page, subject);
-  await menu.getByRole("menuitem", { name: /^Jutro/ }).click();
+  await menu.getByRole("menuitem", { name: /^Tomorrow/ }).click();
   await expect(rowOf(page, subject)).toHaveCount(0);
-  const snackbar = page.getByRole("status").filter({ hasText: /Wątek odłożony do/ });
-  await snackbar.getByRole("button", { name: "Cofnij" }).click();
+  const snackbar = page.getByRole("status").filter({ hasText: /Conversation snoozed until/ });
+  await snackbar.getByRole("button", { name: "Undo" }).click();
   await expect(rowOf(page, subject)).toBeVisible();
   await page.waitForTimeout(env.undoWindowMs + 3_000);
   expect(await findMessages(dev1, "inbox", subject)).toHaveLength(1);
@@ -62,7 +62,7 @@ test("Cofnij undoes a snooze; Wybudź teraz brings a thread back", async ({ page
 
   // Snooze again (no undo): the message goes to Snoozed after the undo window.
   menu = await snoozeMenu(page, subject);
-  await menu.getByRole("menuitem", { name: /^Jutro/ }).click();
+  await menu.getByRole("menuitem", { name: /^Tomorrow/ }).click();
   await expect(rowOf(page, subject)).toHaveCount(0);
   await waitForMessage(dev1, "snoozed", subject, env.undoWindowMs + 20_000);
   expect(await findMessages(dev1, "inbox", subject)).toHaveLength(0);
@@ -71,12 +71,12 @@ test("Cofnij undoes a snooze; Wybudź teraz brings a thread back", async ({ page
   await page.goto("/u/0/snoozed");
   const row = rowOf(page, subject);
   await expect(row).toBeVisible();
-  await expect(row).toHaveAttribute("aria-label", /Odłożone do/);
+  await expect(row).toHaveAttribute("aria-label", /Snoozed until/);
   await row.hover();
-  await expect(row.getByRole("button", { name: "Zmień termin" })).toBeVisible();
-  await row.getByRole("button", { name: "Wybudź teraz" }).click();
+  await expect(row.getByRole("button", { name: "Change time" })).toBeVisible();
+  await row.getByRole("button", { name: "Unsnooze" }).click();
   await expect(row).toHaveCount(0);
-  await expect(page.getByText("Wątek przeniesiony do Odebranych")).toBeVisible();
+  await expect(page.getByText("Conversation moved to Inbox")).toBeVisible();
   await waitForMessage(dev1, "inbox", subject, 20_000);
   await page.goto("/u/0/inbox");
   await expect(rowOf(page, subject)).toBeVisible();
@@ -110,7 +110,7 @@ test(
     const menu = await snoozeMenu(page, subject);
     await expect(menu).toBeVisible();
     const { value, at: until } = await minuteAhead(page, 60_000);
-    await pickDateTime(page, "Odłóż do…", value);
+    await pickDateTime(page, "Snooze until…", value);
     await expect(rowOf(page, subject)).toHaveCount(0);
 
     // On the server: in Snoozed, not in INBOX (what Thunderbird shows), before the wake time.
@@ -136,7 +136,7 @@ test(
     await page.goto("/u/0/inbox");
     const row = rowOf(page, subject);
     await expect(row).toBeVisible({ timeout: 15_000 });
-    await expect(row).toHaveAttribute("aria-label", /Nieprzeczytane/);
+    await expect(row).toHaveAttribute("aria-label", /Unread/);
     const id = await row.getAttribute("data-thread-id");
     await waitUntil(async () => (await rowIds(page))[0] === id, 10_000);
   },

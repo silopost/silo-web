@@ -70,7 +70,7 @@ test("shortcuts from the real keyboard", async ({ page }) => {
   await expect(firstRow).toHaveAttribute("aria-selected", "false");
 
   // s stars, s again unstars.
-  const star = firstRow.getByRole("button", { name: /gwiazdk/i });
+  const star = firstRow.getByRole("button", { name: /star/i });
   await page.keyboard.press("s");
   await expect(star).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("s");
@@ -84,7 +84,7 @@ test("shortcuts from the real keyboard", async ({ page }) => {
   await firstRow.focus();
   await page.keyboard.press("#");
   await expect(firstRow).toHaveCount(0);
-  await expect(page.getByRole("status").getByText(/kosz/i)).toBeVisible();
+  await expect(page.getByRole("status").getByText(/trash/i)).toBeVisible();
   await page.keyboard.press("z");
   await expect(firstRow).toBeVisible();
 
@@ -100,7 +100,7 @@ test("shortcuts from the real keyboard", async ({ page }) => {
     await page.keyboard.press(key);
     const win = page.getByRole("dialog", { name: title });
     await expect(win).toBeVisible();
-    await win.getByRole("button", { name: "Zapisz i zamknij" }).click();
+    await win.getByRole("button", { name: "Save & close" }).click();
     await expect(win).toBeHidden();
   }
   await page.keyboard.press("u");
@@ -109,14 +109,14 @@ test("shortcuts from the real keyboard", async ({ page }) => {
 
   // c opens compose; ? the shortcuts dialog.
   await page.keyboard.press("c");
-  const compose = page.getByRole("dialog", { name: "Nowa wiadomość" });
+  const compose = page.getByRole("dialog", { name: "New message" });
   await expect(compose).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(compose).toBeHidden();
   await page.keyboard.press("?");
-  await expect(page.getByRole("dialog", { name: "Skróty klawiszowe" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: "Skróty klawiszowe" })).toBeHidden();
+  await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeHidden();
 });
 
 /**
@@ -177,31 +177,31 @@ test("the remaining shortcuts of plan 6.6", async ({ page }) => {
   // Shift+U / Shift+I on the cursor row.
   await movable.focus();
   await page.keyboard.press("Shift+U");
-  await expect(movable).toHaveAttribute("aria-label", /Nieprzeczytane/);
+  await expect(movable).toHaveAttribute("aria-label", /Unread/);
   await page.keyboard.press("Shift+I");
-  await expect(movable).not.toHaveAttribute("aria-label", /Nieprzeczytane/);
+  await expect(movable).not.toHaveAttribute("aria-label", /Unread/);
 
   // b opens the snooze picker; Esc closes it.
   await page.keyboard.press("b");
-  await expect(page.getByRole("menu", { name: "Odłóż do…" })).toBeVisible();
+  await expect(page.getByRole("menu", { name: "Snooze until…" })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("menu", { name: "Odłóż do…" })).toBeHidden();
+  await expect(page.getByRole("menu", { name: "Snooze until…" })).toBeHidden();
 
   // l: the labels popover for the cursor row; a new label is created and applied.
   const label = `${tag}-etykieta`;
   await movable.focus();
   await page.keyboard.press("l");
-  const labels = page.getByRole("dialog", { name: "Etykiety" });
+  const labels = page.getByRole("dialog", { name: "Label as" });
   await expect(labels).toBeVisible();
-  await labels.getByRole("textbox", { name: "Nowa etykieta" }).fill(label);
-  await labels.getByRole("button", { name: "Utwórz" }).click();
+  await labels.getByRole("textbox", { name: "New label" }).fill(label);
+  await labels.getByRole("button", { name: "Create" }).click();
   await page.keyboard.press("Escape");
   await expect(labels).toBeHidden();
 
   // g l: the picker goes to the label.
   await page.keyboard.press("g");
   await page.keyboard.press("l");
-  const picker = page.getByRole("dialog", { name: "Idź do etykiety" });
+  const picker = page.getByRole("dialog", { name: "Go to label" });
   await expect(picker).toBeVisible();
   await page.keyboard.type(label);
   await page.keyboard.press("Enter");
@@ -233,9 +233,9 @@ test("the remaining shortcuts of plan 6.6", async ({ page }) => {
   await expect(movable).toBeVisible();
   await movable.focus();
   await page.keyboard.press("v");
-  const move = page.getByRole("dialog", { name: "Przenieś do" });
+  const move = page.getByRole("dialog", { name: "Move to" });
   await expect(move).toBeVisible();
-  await move.getByRole("button", { name: "Archiwum" }).click();
+  await move.getByRole("button", { name: "Archive" }).click();
   await expect(movable).toHaveCount(0);
 
   // n / p move between the messages of a thread.
@@ -256,7 +256,7 @@ test("the remaining shortcuts of plan 6.6", async ({ page }) => {
   await expect(page).toHaveURL(/\/u\/0\/inbox$/);
   await expect(talk).toHaveCount(0);
   // z undoes the operation of the snackbar: wait for the server's operationId.
-  await expect(page.getByRole("status").getByRole("button", { name: "Cofnij" })).toBeVisible();
+  await expect(page.getByRole("status").getByRole("button", { name: "Undo" })).toBeVisible();
   await page.keyboard.press("z");
   // As in Gmail, undoing an action taken in the thread view opens that thread again.
   await expect(
@@ -267,11 +267,11 @@ test("the remaining shortcuts of plan 6.6", async ({ page }) => {
 
   // Shift+C: maximised compose. Letters in its fields are text; Esc closes it.
   await page.keyboard.press("Shift+C");
-  await expect(page.getByRole("dialog", { name: "Nowa wiadomość" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "New message" })).toBeVisible();
   // The window is named after its subject once one is typed: find it by its fields.
   const composeWin = () =>
-    page.getByRole("dialog").filter({ has: page.getByRole("textbox", { name: "Temat" }) });
-  const subject = composeWin().getByRole("textbox", { name: "Temat" });
+    page.getByRole("dialog").filter({ has: page.getByRole("textbox", { name: "Subject" }) });
+  const subject = composeWin().getByRole("textbox", { name: "Subject" });
   await subject.focus();
   await page.keyboard.type("e#cgi");
   await expect(subject).toHaveValue("e#cgi");
@@ -281,11 +281,11 @@ test("the remaining shortcuts of plan 6.6", async ({ page }) => {
 
   // Ctrl+Enter sends from the body of the compose window.
   await page.keyboard.press("c");
-  await expect(page.getByRole("dialog", { name: "Nowa wiadomość" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "New message" })).toBeVisible();
   const send = composeWin();
-  await send.getByRole("combobox", { name: "Do" }).fill(`${dev1.email},`);
-  await send.getByRole("textbox", { name: "Temat" }).fill(`${tag} wysłane skrótem`);
-  await send.getByRole("textbox", { name: "Treść wiadomości" }).click();
+  await send.getByRole("combobox", { name: "To" }).fill(`${dev1.email},`);
+  await send.getByRole("textbox", { name: "Subject" }).fill(`${tag} wysłane skrótem`);
+  await send.getByRole("textbox", { name: "Message body" }).click();
   await page.keyboard.press("Control+Enter");
-  await expect(page.getByText("Wiadomość wysłana")).toBeVisible();
+  await expect(page.getByText("Message sent")).toBeVisible();
 });

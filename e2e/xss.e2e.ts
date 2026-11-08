@@ -53,9 +53,9 @@ test("hostile HTML renders without running JS and without the form", async ({ pa
   await login(page, dev1);
   await rowOf(page, subject).click({ timeout: 15_000 });
   await expect(page.getByRole("heading", { name: subject })).toBeVisible();
-  const iframe = page.locator("iframe[title^='Treść wiadomości']").last();
+  const iframe = page.locator("iframe[title^='Message body']").last();
   await expect(iframe).toBeVisible();
-  const frame = page.frameLocator("iframe[title^='Treść wiadomości'] >> nth=-1");
+  const frame = page.frameLocator("iframe[title^='Message body'] >> nth=-1");
   await expect(frame.getByText("Zwykła treść wiadomości.")).toBeVisible();
 
   // The sandbox has no allow-scripts; the sanitised document has no script, handler or form.

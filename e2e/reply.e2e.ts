@@ -26,12 +26,12 @@ test.afterAll(async () => {
 test("reads a seed thread", async ({ page }) => {
   await login(page, dev1);
   // seed/mail of silo: "Plan sprintu 47" (a thread of six messages).
-  await page.getByRole("combobox", { name: "Szukaj w poczcie" }).fill("Plan sprintu 47");
+  await page.getByRole("combobox", { name: "Search mail" }).fill("Plan sprintu 47");
   await page.keyboard.press("Enter");
   const row = page.getByRole("row", { name: /Plan sprintu 47/ }).first();
   await row.click();
   await expect(page.getByRole("heading", { name: /Plan sprintu 47/ })).toBeVisible();
-  const frame = page.locator("iframe[title^='Treść wiadomości']").last();
+  const frame = page.locator("iframe[title^='Message body']").last();
   await expect(frame).toBeVisible();
   await expect
     .poll(async () => (await frame.getAttribute("srcdoc"))?.length ?? 0)
@@ -59,14 +59,14 @@ test("replies; delivery, headers, Sent copy and \\Answered checked over IMAP", a
   await page.keyboard.press("r");
   const win = page.getByRole("dialog", { name: `Re: ${subject}` });
   await expect(win).toBeVisible();
-  await expect(win.getByRole("list", { name: "Odbiorcy: Do" })).toContainText(
+  await expect(win.getByRole("list", { name: "Recipients: To" })).toContainText(
     /Dev Two|dev2@silo\.test/,
   );
-  const body = win.getByRole("textbox", { name: "Treść wiadomości" });
+  const body = win.getByRole("textbox", { name: "Message body" });
   await body.click();
   await page.keyboard.type("Tak, piątek jest aktualny.");
-  await win.getByRole("button", { name: "Wyślij" }).click();
-  await expect(page.getByRole("status").getByText("Wiadomość wysłana")).toBeVisible();
+  await win.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(page.getByRole("status").getByText("Message sent")).toBeVisible();
 
   // Delivered to dev2@ after the undo-send window, with the threading headers.
   const t0 = Date.now();

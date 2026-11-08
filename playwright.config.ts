@@ -24,7 +24,7 @@ export default defineConfig({
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : [["list"]],
   use: {
     baseURL: env.webUrl,
-    locale: "pl-PL",
+    locale: "en-US",
     timezoneId: "Europe/Warsaw",
     trace: "retain-on-failure",
     viewport: { width: 1440, height: 900 },

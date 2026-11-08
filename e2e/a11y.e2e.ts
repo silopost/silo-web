@@ -11,7 +11,7 @@ async function audit(page: Page, name: string) {
   // Message bodies (sandboxed srcdoc iframes) are mail content, not the app; axe's frame
   // handling also fails on them (Target.createTarget), so they are left out.
   const result = await new AxeBuilder({ page })
-    .exclude("iframe[title^='Treść wiadomości']")
+    .exclude("iframe[title^='Message body']")
     .setLegacyMode(true)
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();
@@ -32,7 +32,7 @@ async function audit(page: Page, name: string) {
 
 test("axe: login, list, thread, compose", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByRole("button", { name: "Zaloguj", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
   await audit(page, "login");
 
   await login(page, accounts.dev1);
@@ -41,12 +41,12 @@ test("axe: login, list, thread, compose", async ({ page }) => {
 
   await page.getByRole("row").first().click();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.locator("iframe[title^='Treść wiadomości']").first()).toBeVisible();
+  await expect(page.locator("iframe[title^='Message body']").first()).toBeVisible();
   await audit(page, "thread");
 
   await page.keyboard.press("c");
-  const win = page.getByRole("dialog", { name: "Nowa wiadomość" });
+  const win = page.getByRole("dialog", { name: "New message" });
   await expect(win).toBeVisible();
   await audit(page, "compose");
-  await win.getByRole("button", { name: "Zapisz i zamknij" }).click();
+  await win.getByRole("button", { name: "Save & close" }).click();
 });

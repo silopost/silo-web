@@ -22,12 +22,12 @@ test("draft reaches Drafts ≤ 35 s, one version after edits, close syncs at onc
   const subject = `${tag} szkic`;
   await page.keyboard.press("c");
   await page
-    .getByRole("dialog", { name: "Nowa wiadomość" })
-    .getByRole("textbox", { name: "Temat" })
+    .getByRole("dialog", { name: "New message" })
+    .getByRole("textbox", { name: "Subject" })
     .fill(subject);
   // The window is named after its subject from now on.
   const win = page.getByRole("dialog", { name: subject });
-  const body = win.getByRole("textbox", { name: "Treść wiadomości" });
+  const body = win.getByRole("textbox", { name: "Message body" });
   await body.click();
   await page.keyboard.type("Pierwsza wersja.");
   const typed = Date.now();

@@ -49,10 +49,10 @@ test("a label from Silo is a keyword on the server", async ({ page }) => {
 
   await row.focus();
   await page.keyboard.press("l");
-  const labels = page.getByRole("dialog", { name: "Etykiety" });
+  const labels = page.getByRole("dialog", { name: "Label as" });
   await expect(labels).toBeVisible();
-  await labels.getByRole("textbox", { name: "Nowa etykieta" }).fill(fromSilo);
-  await labels.getByRole("button", { name: "Utwórz" }).click();
+  await labels.getByRole("textbox", { name: "New label" }).fill(fromSilo);
+  await labels.getByRole("button", { name: "Create" }).click();
   await page.keyboard.press("Escape");
   await expect(row.getByText(fromSilo)).toBeVisible();
 
@@ -87,7 +87,7 @@ test("a tag from another client becomes a label in Silo within 5 s (INBOX)", asy
   // It is an ordinary label of Silo now: in LeftNav and in Settings.
   await expect(
     page
-      .getByRole("navigation", { name: "Menu główne" })
+      .getByRole("navigation", { name: "Main menu" })
       .getByRole("link", { name: new RegExp(`^${escapeRe(fromOther)}`) }),
   ).toBeVisible();
   await page.goto("/u/0/settings/labels");

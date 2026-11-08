@@ -6,7 +6,7 @@ import { freshTotp } from "./support/totp";
 /**
  * Mode local (plan 3.15, 7 Faza 5) on silo-server with SILO_AUTH_MODE=local
  * (silo/docker-compose.local-auth.yml over the silo-bt stack) and an admin created with
- * `silo-server user add --admin --password-stdin`: the admin turns TOTP on in Bezpieczeństwo,
+ * `silo-server user add --admin --password-stdin`: the admin turns TOTP on in Security,
  * signs in again with a code computed here (RFC 6238), creates a user in Administracja whose
  * temporary password is shown once; that user signs in in a second browser context, adds the
  * mailbox dev1@silo.test (mailserver:143 without TLS) and sees its INBOX. At the end the admin
@@ -41,10 +41,10 @@ const axe = async (page: Page, name: string) => {
 
 async function signIn(page: Page, email: string, password: string) {
   await page.goto("/login");
-  await expect(page.getByRole("heading", { name: "Zaloguj się do Silo" })).toBeVisible();
-  await page.getByLabel("Adres e-mail").fill(email);
-  await page.getByLabel("Hasło").fill(password);
-  await page.getByRole("button", { name: "Zaloguj", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Sign in to Silo" })).toBeVisible();
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
 
 /** Cleanup through the API when the UI part did not finish (bearer session of the admin). */
@@ -88,58 +88,56 @@ test("mode local: TOTP, admin creates a user, the user adds a mailbox", async ({
   await signIn(page, admin.email, admin.password);
   await expect(page).toHaveURL(/\/u\/0\/inbox$/);
   await expect(
-    page.getByRole("heading", { name: "Nie masz jeszcze konta pocztowego w Silo" }),
+    page.getByRole("heading", { name: "You don't have a mail account in Silo yet" }),
   ).toBeVisible();
 
   await page.goto("/u/0/settings/security");
-  await page.getByRole("button", { name: "Włącz weryfikację dwuetapową" }).click();
-  await expect(
-    page.getByRole("img", { name: "Kod QR do aplikacji uwierzytelniającej" }),
-  ).toBeVisible();
+  await page.getByRole("button", { name: "Turn on 2-Step Verification" }).click();
+  await expect(page.getByRole("img", { name: "QR code for the authenticator app" })).toBeVisible();
   const secret = ((await page.getByTestId("totp-secret").textContent()) ?? "").replace(/\s/g, "");
   expect(secret).toMatch(/^[A-Z2-7]{16,}$/);
   await axe(page, "security");
   const enableCode = await freshTotp(secret);
-  await page.getByLabel("Kod z aplikacji").fill(enableCode.code);
-  await page.getByRole("button", { name: "Włącz", exact: true }).click();
+  await page.getByLabel("App code").fill(enableCode.code);
+  await page.getByRole("button", { name: "Turn on", exact: true }).click();
   leftovers.secret = secret;
   leftovers.usedStep = enableCode.step;
 
-  const codesDialog = page.getByRole("dialog", { name: "Kody zapasowe" });
+  const codesDialog = page.getByRole("dialog", { name: "Backup codes" });
   await expect(codesDialog).toBeVisible();
   const backup = await codesDialog.getByRole("listitem").allTextContents();
   expect(backup).toHaveLength(10);
   leftovers.backup = [...backup];
-  await codesDialog.getByRole("checkbox", { name: "Zapisałem kody" }).check();
-  await codesDialog.getByRole("button", { name: "Gotowe" }).click();
-  await expect(page.getByTestId("totp-state")).toHaveText("Włączona");
+  await codesDialog.getByRole("checkbox", { name: "I saved the codes" }).check();
+  await codesDialog.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByTestId("totp-state")).toHaveText("On");
 
   // 2. Sign out and in again: password, then the app code.
-  await page.getByRole("button", { name: new RegExp(`^Konto: ${admin.email}`) }).click();
-  await page.getByRole("menuitem", { name: "Wyloguj" }).click();
+  await page.getByRole("button", { name: new RegExp(`^Account: ${admin.email}`) }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/login/);
   await signIn(page, admin.email, admin.password);
-  const codeField = page.getByLabel("Kod z aplikacji");
+  const codeField = page.getByLabel("App code");
   await expect(codeField).toBeFocused();
   const loginCode = await freshTotp(secret, leftovers.usedStep);
   leftovers.usedStep = loginCode.step;
   await codeField.fill(loginCode.code);
-  await page.getByRole("button", { name: "Potwierdź" }).click();
+  await page.getByRole("button", { name: "Verify" }).click();
   await expect(page).toHaveURL(/\/u\/0\/inbox$/);
 
-  // 3. Administracja → Dodaj użytkownika: the temporary password is shown once.
-  await page.getByRole("button", { name: new RegExp(`^Konto: ${admin.email}`) }).click();
-  await page.getByRole("menuitem", { name: "Administracja" }).click();
-  await expect(page.getByRole("table", { name: "Użytkownicy" })).toBeVisible();
-  await page.getByRole("button", { name: "Dodaj użytkownika" }).click();
-  const add = page.getByRole("dialog", { name: "Dodaj użytkownika" });
-  await add.getByLabel("E-mail").fill(newUser);
-  await add.getByLabel("Nazwa wyświetlana (opcjonalnie)").fill("Użytkownik e2e");
-  await add.getByRole("button", { name: "Dodaj", exact: true }).click();
-  const temp = page.getByRole("dialog", { name: "Hasło tymczasowe" });
-  const tempPassword = ((await temp.getByLabel("Hasło tymczasowe").textContent()) ?? "").trim();
+  // 3. Administration → Add user: the temporary password is shown once.
+  await page.getByRole("button", { name: new RegExp(`^Account: ${admin.email}`) }).click();
+  await page.getByRole("menuitem", { name: "Administration" }).click();
+  await expect(page.getByRole("table", { name: "Users" })).toBeVisible();
+  await page.getByRole("button", { name: "Add user" }).click();
+  const add = page.getByRole("dialog", { name: "Add user" });
+  await add.getByLabel("Email").fill(newUser);
+  await add.getByLabel("Display name (optional)").fill("Użytkownik e2e");
+  await add.getByRole("button", { name: "Add", exact: true }).click();
+  const temp = page.getByRole("dialog", { name: "Temporary password" });
+  const tempPassword = ((await temp.getByLabel("Temporary password").textContent()) ?? "").trim();
   expect(tempPassword.length).toBeGreaterThanOrEqual(10);
-  await temp.getByRole("button", { name: "Gotowe" }).click();
+  await temp.getByRole("button", { name: "Done" }).click();
   await expect(temp).toBeHidden();
   await expect(page.getByRole("row", { name: new RegExp(newUser) })).toBeVisible();
   await axe(page, "admin users");
@@ -149,28 +147,28 @@ test("mode local: TOTP, admin creates a user, the user adds a mailbox", async ({
   const page2 = await other.newPage();
   await signIn(page2, newUser, tempPassword);
   await expect(page2).toHaveURL(/\/u\/0\/inbox$/);
-  await page2.getByRole("link", { name: "Dodaj konto" }).click();
-  const dialog = page2.getByRole("dialog", { name: "Dodaj konto" });
-  await dialog.getByLabel("Adres e-mail").fill(dev1.email);
-  await dialog.getByLabel("Hasło").fill(dev1.password);
-  await dialog.getByRole("button", { name: "Dalej" }).click();
+  await page2.getByRole("link", { name: "Add account" }).click();
+  const dialog = page2.getByRole("dialog", { name: "Add account" });
+  await dialog.getByLabel("Email address").fill(dev1.email);
+  await dialog.getByLabel("Password").fill(dev1.password);
+  await dialog.getByRole("button", { name: "Next" }).click();
   // Mode local runs the full discovery; silo.test has no public settings.
-  await expect(dialog.getByText(/Ustawienia znalezione|Nie znaleziono ustawień/)).toBeVisible({
+  await expect(dialog.getByText(/Settings found|No server settings found/)).toBeVisible({
     timeout: 20_000,
   });
-  const advanced = dialog.getByRole("button", { name: /Zaawansowane/ });
+  const advanced = dialog.getByRole("button", { name: /Advanced/ });
   if ((await advanced.getAttribute("aria-expanded")) !== "true") await advanced.click();
   for (const [proto, port] of [
-    ["IMAP (odbieranie)", "143"],
-    ["SMTP (wysyłanie)", "587"],
+    ["IMAP (incoming)", "143"],
+    ["SMTP (outgoing)", "587"],
   ] as const) {
     await dialog.getByLabel(`${proto}: Serwer`).fill("mailserver");
     await dialog.getByLabel(`${proto}: Port`).fill(port);
     await dialog.getByLabel(`${proto}: Szyfrowanie`).selectOption("none");
   }
-  await dialog.getByRole("button", { name: "Sprawdź połączenie" }).click();
-  await expect(dialog.getByText("Połączenie działa.")).toBeVisible({ timeout: 30_000 });
-  await dialog.getByRole("button", { name: "Dodaj", exact: true }).click();
+  await dialog.getByRole("button", { name: "Test connection" }).click();
+  await expect(dialog.getByText("The connection works.")).toBeVisible({ timeout: 30_000 });
+  await dialog.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page2).toHaveURL(/\/u\/0\/inbox$/, { timeout: 30_000 });
   await expect(page2.getByRole("grid")).toBeVisible();
   await expect(page2.getByRole("row").nth(1)).toBeVisible({ timeout: 60_000 });
@@ -178,24 +176,24 @@ test("mode local: TOTP, admin creates a user, the user adds a mailbox", async ({
   await other.close();
 
   // 5. Administracja → Konta lists the new account; the admin removes the user.
-  await page.getByRole("link", { name: "Konta" }).click();
+  await page.getByRole("link", { name: "Accounts" }).click();
   await expect(page.getByRole("row", { name: new RegExp(newUser) })).toBeVisible();
-  await page.getByRole("link", { name: "Użytkownicy" }).click();
-  await page.getByRole("button", { name: `Akcje: ${newUser}` }).click();
-  await page.getByRole("menuitem", { name: "Usuń" }).click();
-  const del = page.getByRole("dialog", { name: `Usunąć użytkownika ${newUser}?` });
-  await del.getByLabel(`Wpisz ${newUser}, aby potwierdzić`).fill(newUser);
-  await del.getByRole("button", { name: "Usuń", exact: true }).click();
+  await page.getByRole("link", { name: "Users" }).click();
+  await page.getByRole("button", { name: `Actions: ${newUser}` }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  const del = page.getByRole("dialog", { name: `Delete the user ${newUser}?` });
+  await del.getByLabel(`Type ${newUser} to confirm`).fill(newUser);
+  await del.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(page.getByRole("row", { name: new RegExp(newUser) })).toHaveCount(0);
 
   // 6. TOTP off again with a backup code (the run can be repeated on the same stack).
   await page.goto("/u/0/settings/security");
-  await page.getByRole("button", { name: "Wyłącz", exact: true }).click();
-  const off = page.getByRole("dialog", { name: "Wyłączyć weryfikację dwuetapową?" });
-  await off.getByLabel("Hasło").fill(admin.password);
-  await off.getByLabel("Kod z aplikacji lub zapasowy").fill(leftovers.backup.shift()!);
-  await off.getByRole("button", { name: "Wyłącz", exact: true }).click();
-  await expect(page.getByTestId("totp-state")).toHaveText("Wyłączona");
+  await page.getByRole("button", { name: "Turn off", exact: true }).click();
+  const off = page.getByRole("dialog", { name: "Turn off 2-Step Verification?" });
+  await off.getByLabel("Password").fill(admin.password);
+  await off.getByLabel("App or backup code").fill(leftovers.backup.shift()!);
+  await off.getByRole("button", { name: "Turn off", exact: true }).click();
+  await expect(page.getByTestId("totp-state")).toHaveText("Off");
   leftovers.secret = undefined;
   leftovers.backup = [];
 });

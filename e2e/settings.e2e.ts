@@ -6,7 +6,8 @@ import { appendMessage, deleteTagged, runTag } from "./support/imap";
 
 /**
  * Faza 4, settings (PATCH /settings, plan 6.3): density, the undo-send period, the time zone and
- * the signature survive a reload; turning keyboard shortcuts off stops `e` from archiving.
+ * the signature survive a reload; turning keyboard shortcuts off stops `e` from archiving; the
+ * language switches at once and stays after a reload, a sign-out and a new sign-in.
  * The settings of dev1@ are put back as they were afterwards.
  */
 const tag = runTag("settings");
@@ -17,6 +18,7 @@ const keys = [
   "timezone",
   "signature",
   "keyboardShortcutsEnabled",
+  "language",
 ] as const;
 let original: Record<string, unknown> = {};
 
@@ -52,7 +54,7 @@ async function openGeneral(page: Page) {
     .catch(() => undefined);
   await page.goto("/u/0/settings/general");
   await loaded;
-  await expect(page.getByRole("checkbox", { name: "Skróty klawiszowe włączone" })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Keyboard shortcuts on" })).toBeVisible();
 }
 
 /** Opens the Inbox and waits for the list, so that shortcuts are live. */
@@ -66,7 +68,7 @@ test("general settings are saved and survive a reload", async ({ page }) => {
   await openGeneral(page);
 
   const compact = original.density !== "compact";
-  const density = compact ? "Kompaktowa" : "Wygodna";
+  const density = compact ? "Compact" : "Comfortable";
   const undo = original.undoSendSeconds === 20 ? "30" : "20";
   const zone = original.timezone === "Asia/Tokyo" ? "America/New_York" : "Asia/Tokyo";
   const signatureText = `Pozdrawiam ${tag}`;
@@ -77,16 +79,14 @@ test("general settings are saved and survive a reload", async ({ page }) => {
     compact ? "compact" : "comfortable",
   );
   await saved(page, () =>
-    page.getByRole("combobox", { name: "Okres anulowania wysyłania" }).selectOption(undo),
+    page.getByRole("combobox", { name: "Send cancellation period" }).selectOption(undo),
   );
-  await saved(page, () =>
-    page.getByRole("combobox", { name: "Strefa czasowa" }).selectOption(zone),
-  );
-  const signature = page.getByRole("textbox", { name: "Podpis" });
+  await saved(page, () => page.getByRole("combobox", { name: "Time zone" }).selectOption(zone));
+  const signature = page.getByRole("textbox", { name: "Signature" });
   await signature.click();
   await page.keyboard.press("Control+A");
   await page.keyboard.type(signatureText);
-  await saved(page, () => page.getByRole("button", { name: "Zapisz podpis" }).click());
+  await saved(page, () => page.getByRole("button", { name: "Save signature" }).click());
 
   await page.reload();
   await expect(page.getByRole("radio", { name: density })).toBeChecked();
@@ -94,18 +94,16 @@ test("general settings are saved and survive a reload", async ({ page }) => {
     "data-density",
     compact ? "compact" : "comfortable",
   );
-  await expect(page.getByRole("combobox", { name: "Okres anulowania wysyłania" })).toHaveValue(
-    undo,
-  );
-  await expect(page.getByRole("combobox", { name: "Strefa czasowa" })).toHaveValue(zone);
-  await expect(page.getByRole("textbox", { name: "Podpis" })).toContainText(signatureText);
+  await expect(page.getByRole("combobox", { name: "Send cancellation period" })).toHaveValue(undo);
+  await expect(page.getByRole("combobox", { name: "Time zone" })).toHaveValue(zone);
+  await expect(page.getByRole("textbox", { name: "Signature" })).toContainText(signatureText);
 
   // The signature goes into a new message.
   await openInbox(page);
   await page.keyboard.press("c");
-  const win = page.getByRole("dialog", { name: "Nowa wiadomość" });
-  await expect(win.getByRole("textbox", { name: "Treść wiadomości" })).toContainText(signatureText);
-  await win.getByRole("button", { name: "Odrzuć wersję roboczą" }).click();
+  const win = page.getByRole("dialog", { name: "New message" });
+  await expect(win.getByRole("textbox", { name: "Message body" })).toContainText(signatureText);
+  await win.getByRole("button", { name: "Discard draft" }).click();
 });
 
 test("with keyboard shortcuts off, e does not archive", async ({ page }) => {
@@ -118,7 +116,7 @@ test("with keyboard shortcuts off, e does not archive", async ({ page }) => {
   });
   await login(page, dev1);
   await openGeneral(page);
-  const box = page.getByRole("checkbox", { name: "Skróty klawiszowe włączone" });
+  const box = page.getByRole("checkbox", { name: "Keyboard shortcuts on" });
   // click() + expect instead of check()/uncheck(): the controlled box shows the new state one
   // tick later (optimistic update of the settings query), which check() reads as "no change".
   if (!(await box.isChecked())) {
@@ -136,11 +134,11 @@ test("with keyboard shortcuts off, e does not archive", async ({ page }) => {
   await page.waitForTimeout(1_000);
   await expect(row).toBeVisible();
   await page.keyboard.press("?");
-  await expect(page.getByRole("dialog", { name: "Skróty klawiszowe" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toHaveCount(0);
 
   // Back on: e archives again (undone at once with z).
   await openGeneral(page);
-  const on = page.getByRole("checkbox", { name: "Skróty klawiszowe włączone" });
+  const on = page.getByRole("checkbox", { name: "Keyboard shortcuts on" });
   await saved(page, () => on.click());
   await expect(on).toBeChecked();
   await openInbox(page);
@@ -148,7 +146,43 @@ test("with keyboard shortcuts off, e does not archive", async ({ page }) => {
   await page.keyboard.press("e");
   await expect(row).toHaveCount(0);
   // z undoes the operation of the snackbar: wait for the server's operationId.
-  await expect(page.getByRole("status").getByRole("button", { name: "Cofnij" })).toBeVisible();
+  await expect(page.getByRole("status").getByRole("button", { name: "Undo" })).toBeVisible();
   await page.keyboard.press("z");
   await expect(row).toBeVisible();
+});
+
+test("Polski switches the UI at once and stays after a reload and a new login", async ({
+  page,
+}) => {
+  await login(page, dev1);
+  await openGeneral(page);
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await saved(page, () => page.getByRole("combobox", { name: "Language" }).selectOption("pl"));
+  // No reload: the same page is in Polish at once.
+  await expect(page.getByRole("combobox", { name: "Język" })).toHaveValue("pl");
+  await expect(page.getByRole("checkbox", { name: "Skróty klawiszowe włączone" })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "pl");
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Ustawienia" })).toBeVisible();
+
+  // Sign out: the login screen keeps the last language of the browser.
+  await page.getByRole("button", { name: new RegExp(`^Konto: ${dev1.email}`) }).click();
+  await page.getByRole("menuitem", { name: "Wyloguj" }).click();
+  await expect(page).toHaveURL(/\/login/);
+  await expect(page.getByRole("heading", { name: "Zaloguj się" })).toBeVisible();
+
+  // A browser without that memory starts in English and takes the setting at sign-in.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  await page.getByLabel("Email address").fill(dev1.email);
+  await page.getByLabel("Password").fill(dev1.password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByRole("navigation", { name: "Menu główne" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Odebrane/ })).toBeVisible();
+
+  await page.goto("/u/0/settings/general");
+  await saved(page, () => page.getByRole("combobox", { name: "Język" }).selectOption("en"));
+  await expect(page.getByRole("combobox", { name: "Language" })).toHaveValue("en");
 });

@@ -53,14 +53,14 @@ test("two accounts: add, switch, counts, send from the second", async ({ page })
 
   // Ustawienia → Konta → Dodaj konto.
   await page.goto("/u/0/settings/accounts");
-  await page.getByRole("button", { name: "Dodaj konto" }).click();
-  const dialog = page.getByRole("dialog", { name: "Dodaj konto" });
+  await page.getByRole("button", { name: "Add account" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add account" });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel("Adres e-mail").fill(dev2.email);
-  await dialog.getByLabel("Hasło").fill(dev2.password);
-  await dialog.getByRole("button", { name: "Dalej" }).click();
+  await dialog.getByLabel("Email address").fill(dev2.email);
+  await dialog.getByLabel("Password").fill(dev2.password);
+  await dialog.getByRole("button", { name: "Next" }).click();
   // Mode imap without custom servers: the default server of the instance, no network lookups.
-  await expect(dialog.getByText("Ustawienia znalezione: serwer domyślny")).toBeVisible();
+  await expect(dialog.getByText("Settings found: default server")).toBeVisible();
 
   const axe = await new AxeBuilder({ page })
     .include("[role=dialog]")
@@ -73,23 +73,23 @@ test("two accounts: add, switch, counts, send from the second", async ({ page })
   );
   expect(serious.map((v) => v.id)).toEqual([]);
 
-  await dialog.getByRole("button", { name: "Sprawdź połączenie" }).click();
-  await expect(dialog.getByText("Połączenie działa.")).toBeVisible({ timeout: 30_000 });
-  await expect(dialog.getByRole("listitem", { name: /^Logowanie, udany/ }).first()).toBeVisible();
+  await dialog.getByRole("button", { name: "Test connection" }).click();
+  await expect(dialog.getByText("The connection works.")).toBeVisible({ timeout: 30_000 });
+  await expect(dialog.getByRole("listitem", { name: /^Sign-in, passed/ }).first()).toBeVisible();
 
-  await dialog.getByRole("button", { name: "Dodaj", exact: true }).click();
+  await dialog.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page).toHaveURL(/\/u\/1\/inbox$/, { timeout: 30_000 });
   await expect(dialog).toBeHidden();
   // dev2's initial sync brings its inbox, with the message of this run.
   await expect(rowOf(page, `${tag} do dev2`)).toBeVisible({ timeout: 60_000 });
 
   // AccountSwitcher: both accounts with their own unread counts.
-  await page.getByRole("button", { name: /^Konto: dev2@silo\.test/ }).click();
+  await page.getByRole("button", { name: /^Account: dev2@silo\.test/ }).click();
   const menu = page.getByRole("menu");
   const item1 = menu.getByRole("menuitemradio", { name: /^dev1@silo\.test, / });
   const item2 = menu.getByRole("menuitemradio", { name: /^dev2@silo\.test, / });
   await expect(item1).toBeVisible();
-  await expect(item2).toHaveAttribute("aria-label", /\d+ nieprzeczytan/);
+  await expect(item2).toHaveAttribute("aria-label", /\d+ unread/);
   await expect(item2).toHaveAttribute("aria-checked", "true");
   console.log(
     `[measure] switcher: ${await item1.getAttribute("aria-label")} | ${await item2.getAttribute("aria-label")}`,
@@ -103,7 +103,7 @@ test("two accounts: add, switch, counts, send from the second", async ({ page })
   await expect(page).toHaveURL(/\/u\/0\/inbox$/);
   await expect(rowOf(page, `${tag} do dev2`)).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: /^Konto: dev1@silo\.test, .*w innych kontach/ }),
+    page.getByRole("button", { name: /^Account: dev1@silo\.test, .*in other accounts/ }),
   ).toBeVisible();
   await page.keyboard.press("g");
   await page.keyboard.press("2");
@@ -112,9 +112,9 @@ test("two accounts: add, switch, counts, send from the second", async ({ page })
 
   // Compose in dev2's tab: Od is dev2; switching it away and back moves the draft (new ids).
   await page.keyboard.press("c");
-  const win = page.getByRole("dialog", { name: "Nowa wiadomość" });
+  const win = page.getByRole("dialog", { name: "New message" });
   await expect(win).toBeVisible();
-  const from = win.getByRole("combobox", { name: "Od" });
+  const from = win.getByRole("combobox", { name: "From" });
   await expect(from).toHaveValue(/^acc_/);
   await expect(from.locator("option:checked")).toHaveText(new RegExp(dev2.email));
   const moved = page.waitForResponse(
@@ -135,13 +135,13 @@ test("two accounts: add, switch, counts, send from the second", async ({ page })
   await expect(from.locator("option:checked")).toHaveText(new RegExp(dev2.email));
 
   const subject = `${tag} z dev2`;
-  await win.getByRole("combobox", { name: "Do" }).fill(`${dev3.email},`);
-  await win.getByRole("textbox", { name: "Temat" }).fill(subject);
+  await win.getByRole("combobox", { name: "To" }).fill(`${dev3.email},`);
+  await win.getByRole("textbox", { name: "Subject" }).fill(subject);
   const named = page.getByRole("dialog", { name: subject });
-  await named.getByRole("textbox", { name: "Treść wiadomości" }).click();
+  await named.getByRole("textbox", { name: "Message body" }).click();
   await page.keyboard.type("Wysłane z drugiego konta.");
   const sent = page.waitForResponse((r) => /\/api\/v1\/drafts\/[^/]+\/send$/.test(r.url()));
-  await named.getByRole("button", { name: "Wyślij" }).click();
+  await named.getByRole("button", { name: "Send", exact: true }).click();
   expect((await sent).status()).toBe(200);
   await expect(named).toBeHidden();
 

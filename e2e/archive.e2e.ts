@@ -5,7 +5,7 @@ import { appendMessage, deleteTagged, findMessages, runTag, waitForMessage } fro
 
 /**
  * DoD Faza 3: "Archiwizacja w Silo widoczna w Thunderbirdzie" – the row leaves the list at once,
- * the message is in Archive on the server within SILO_UNDO_WINDOW + 2 s, and "Cofnij" inside the
+ * the message is in Archive on the server within SILO_UNDO_WINDOW + 2 s, and "Undo" inside the
  * window keeps it in INBOX without any MOVE (same UID, nothing in Archive) and puts the row back
  * at its position.
  */
@@ -24,8 +24,8 @@ async function watchInboxCounter(page: Page) {
     w.__counter = [];
     const nav = document.querySelector("nav")!;
     const read = () => {
-      const a = [...nav.querySelectorAll("a")].find((x) => x.textContent?.startsWith("Odebrane"));
-      const v = a?.textContent?.replace("Odebrane", "").trim() ?? "";
+      const a = [...nav.querySelectorAll("a")].find((x) => x.textContent?.startsWith("Inbox"));
+      const v = a?.textContent?.replace("Inbox", "").trim() ?? "";
       if (w.__counter.at(-1) !== v) w.__counter.push(v);
     };
     read();
@@ -93,7 +93,7 @@ async function freshThread(page: Page, name: string) {
 
 test("e archives at once and the message reaches Archive on the server", async ({ page }) => {
   await login(page, dev1);
-  const { subject, row, id } = await freshThread(page, "archiwizuj");
+  const { subject, row, id } = await freshThread(page, "archive");
   const counter = await watchInboxCounter(page);
   const before = await stableInboxCount(page);
   await row.hover();
@@ -106,7 +106,7 @@ test("e archives at once and the message reaches Archive on the server", async (
   test.info().annotations.push({ type: "archive-dom-ms", description: t.dom.toFixed(1) });
   test.info().annotations.push({ type: "archive-frame-ms", description: t.frame.toFixed(1) });
   expect(t.dom).toBeLessThan(100);
-  await expect(page.getByRole("status").getByText("Wątek zarchiwizowany")).toBeVisible();
+  await expect(page.getByRole("status").getByText("Conversation archived")).toBeVisible();
 
   const t0 = Date.now();
   const { at } = await waitForMessage(dev1, "archive", subject, env.undoWindowMs + 2_000 + 3_000);
@@ -139,7 +139,7 @@ test("Cofnij within the window: no MOVE on the server, the row returns to its pl
   await target.row.focus();
   await archiveWithE(page, target.id);
   await expect(target.row).toHaveCount(0);
-  await page.getByRole("status").getByRole("button", { name: "Cofnij" }).click();
+  await page.getByRole("status").getByRole("button", { name: "Undo" }).click();
   await expect(target.row).toBeVisible();
   expect(await rowIndex(target.row)).toBe(index);
   await expect.poll(() => inboxCount(page)).toBe(before);
@@ -185,10 +185,10 @@ test("counter stays consistent when an unread multi-message thread is archived f
   // Opening marks it read: one unread thread less.
   await expect.poll(() => inboxCount(page)).toBe(before - 1);
   await page.keyboard.press("e");
-  await expect(page.getByRole("status").getByText("Wątek zarchiwizowany")).toBeVisible();
+  await expect(page.getByRole("status").getByText("Conversation archived")).toBeVisible();
   await page.waitForTimeout(1_500);
   expect(await inboxCount(page)).toBe(before - 1);
-  await page.getByRole("status").getByRole("button", { name: "Cofnij" }).click();
+  await page.getByRole("status").getByRole("button", { name: "Undo" }).click();
   await page.waitForTimeout(1_500);
   expect(await inboxCount(page)).toBe(before - 1);
   const seen = await counter();
