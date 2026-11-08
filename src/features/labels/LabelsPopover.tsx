@@ -8,6 +8,7 @@ import { useLabels } from "../../api/queries/labels";
 import { IconButton } from "../../components/IconButton";
 import { t } from "../../lib/i18n";
 import { toast } from "../../state/toasts";
+import { labelState, labelToggle } from "./labelState";
 
 type Props = {
   accountId: string;
@@ -57,18 +58,17 @@ export function LabelsPopover({ accountId, threads, onChange, open, onOpenChange
           <p className="px-2 pb-1 font-medium">{t.labelAs}</p>
           <ul className="max-h-64 overflow-auto">
             {labels.map((l) => {
-              const count = threads.filter((th) => th.labelIds.includes(l.id)).length;
-              const all = count === threads.length && count > 0;
+              const state = labelState(threads, l.id);
               return (
                 <li key={l.id}>
                   <label className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-hover">
                     <input
                       type="checkbox"
-                      checked={all}
+                      checked={state === "all"}
                       ref={(el) => {
-                        if (el) el.indeterminate = count > 0 && !all;
+                        if (el) el.indeterminate = state === "some";
                       }}
-                      onChange={() => (all ? onChange([], [l.id]) : onChange([l.id], []))}
+                      onChange={() => onChange(...labelToggle(state, l.id))}
                       className="size-4 accent-primary"
                     />
                     <span className="truncate">{l.name}</span>

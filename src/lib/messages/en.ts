@@ -149,6 +149,7 @@ export const en = {
 
   // list
   threadList: "Thread list",
+  threadActionsMenu: "Conversation actions",
   select: "Select",
   selectMenu: "Selection options",
   selectAll: "All",

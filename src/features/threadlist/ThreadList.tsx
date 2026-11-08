@@ -15,7 +15,11 @@ import { SearchHeader } from "../search/SearchHeader";
 import { SnoozeMenu } from "../snooze/PresetTimeMenu";
 import { useResync } from "../sync/useSync";
 import { actionsForView, canSnoozeView, type ListContext } from "./listContext";
+import { ACTION_META } from "./actionMeta";
+import { labelState, labelToggle } from "../labels/labelState";
+import { moveCommand, SYSTEM_TARGETS, systemTargetName, type MoveCommand } from "../labels/move";
 import { ListToolbar } from "./ListToolbar";
+import { RowContextMenu, type ContextMenuItem } from "./RowContextMenu";
 import { selectIds, type SelectKind } from "./selection";
 import { ThreadRow } from "./ThreadRow";
 import { useThreadCommands } from "./useThreadCommands";
@@ -158,6 +162,114 @@ export function ThreadList({ ctx }: { ctx: ListContext }) {
     void snoozeThreads(qc, { accountId: ctx.accountId, ids, until });
     if (ids.length > 1) setSelection([]);
   };
+  // Right-click menu (Gmail): a selected row acts on the whole selection, any other row on
+  // itself alone, leaving the selection as it is.
+  const [menu, setMenu] = useState<{
+    ids: string[];
+    x: number;
+    y: number;
+    fromSelection: boolean;
+  } | null>(null);
+  // Set when a pick opens another popup, which then takes the focus instead of the row.
+  const menuHandoff = useRef(false);
+  const menuRow = useRef<string | null>(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
+  const onRowContextMenu = useCallback(
+    (id: string, x: number, y: number) => {
+      const sel = useUi.getState().selection;
+      const fromSelection = sel.has(id);
+      const ids = fromSelection ? rows.filter((r) => sel.has(r.id)).map((r) => r.id) : [id];
+      menuHandoff.current = false;
+      menuRow.current = id;
+      setMenu({ ids, x, y, fromSelection });
+    },
+    [rows],
+  );
+  const menuItems = (): ContextMenuItem[] => {
+    if (!menu) return [];
+    const { ids, fromSelection } = menu;
+    const targets = rows.filter((r) => ids.includes(r.id));
+    if (targets.length === 0) return [];
+    const exec = (a: ThreadAction) => () => {
+      if (fromSelection) onAction(a, ids);
+      else run(a, ids);
+    };
+    const meta = (a: ThreadAction) => ACTION_META[a as keyof typeof ACTION_META];
+    const anyUnread = targets.some(
+      (r) => r.unreadCount > 0 || (r.labelIds ?? []).includes("UNREAD"),
+    );
+    const allStarred = targets.every((r) => (r.labelIds ?? []).includes("STARRED"));
+    const handoff = (open: () => void) => () => {
+      menuHandoff.current = true;
+      open();
+    };
+    const items: ContextMenuItem[] = actions.map((a) => ({ key: a, ...meta(a), run: exec(a) }));
+    for (const a of [anyUnread ? "read" : "unread", allStarred ? "unstar" : "star"] as const) {
+      items.push({ key: a, ...meta(a), run: exec(a) });
+    }
+    if (snoozable) {
+      items.push({
+        key: "snooze",
+        icon: "schedule",
+        label: t.snooze,
+        run: handoff(() => {
+          setSnooze({ ids, rect: { left: menu.x, top: menu.y, width: 0, height: 0 } });
+          setSnoozeOpen(true);
+        }),
+      });
+    }
+    // "Move to" and "Label as" are the toolbar popovers as submenus: same targets, same
+    // commands (moveCommand, labelToggle), the same mutation with undo and toast.
+    const threads = targets.map((r) => ({ labelIds: r.labelIds ?? [] }));
+    const move = (c: MoveCommand) => () => {
+      if (fromSelection) onAction(c.action, ids, c.add, c.remove);
+      else run(c.action, ids, { add: c.add, remove: c.remove });
+    };
+    if (actions.length > 0) {
+      const folders = labels.filter((l) => l.type === "folder");
+      items.push({
+        kind: "submenu",
+        key: "move",
+        icon: "moveTo",
+        label: t.moveTo,
+        items: [
+          ...SYSTEM_TARGETS.map((s) => ({
+            key: s.id,
+            icon: s.icon,
+            label: systemTargetName(s.id),
+            run: move(moveCommand(s.id, threads, folders)),
+          })),
+          ...folders.map((f) => ({
+            key: f.id,
+            icon: "folder" as const,
+            label: f.name,
+            run: move(moveCommand(f, threads, folders)),
+          })),
+        ],
+      });
+    }
+    items.push({
+      kind: "submenu",
+      key: "labels",
+      icon: "label",
+      label: t.labelAs,
+      empty: t.noLabels,
+      items: labels
+        .filter((l) => l.type === "user")
+        .map((l) => {
+          const state = labelState(threads, l.id);
+          const [add, remove] = labelToggle(state, l.id);
+          return {
+            kind: "check" as const,
+            key: l.id,
+            label: l.name,
+            checked: state === "some" ? ("indeterminate" as const) : state === "all",
+            run: () => run("labels", ids, { add, remove }),
+          };
+        }),
+    });
+    return items;
+  };
   const onSelect = (kind: SelectKind) => setSelection(selectIds(rows, kind));
   // l / v open the toolbar's popovers; without a selection they act on the cursor row.
   const [popover, setPopover] = useState<"labels" | "move" | null>(null);
@@ -295,6 +407,7 @@ export function ThreadList({ ctx }: { ctx: ListContext }) {
                   onToggleSelect={toggleSelected}
                   onFocus={setFocused}
                   onAction={onRowAction}
+                  onContextMenu={onRowContextMenu}
                   onHoverIntent={onHoverIntent}
                   onHoverEnd={onHoverEnd}
                 />
@@ -305,6 +418,19 @@ export function ThreadList({ ctx }: { ctx: ListContext }) {
         {list.isFetchingNextPage && <p className="p-3 text-center text-ink-muted">{t.loading}</p>}
       </div>
       {dialog}
+      <RowContextMenu
+        at={menu && { x: menu.x, y: menu.y }}
+        items={menuItems()}
+        onClose={closeMenu}
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+          if (menuHandoff.current) return;
+          // The keyboard cursor goes to the row that was right-clicked.
+          const id = menuRow.current;
+          if (!id) return;
+          scrollRef.current?.querySelector<HTMLElement>(`[data-thread-id="${id}"]`)?.focus();
+        }}
+      />
       <SnoozeMenu
         open={snoozeOpen}
         onOpenChange={setSnoozeOpen}

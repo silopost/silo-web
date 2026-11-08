@@ -94,6 +94,8 @@ const PATHS = {
   openInFull: "M21 11V3h-8l3.29 3.29-10 10L3 13v8h8l-3.29-3.29 10-10z",
   closeFullscreen:
     "M22 3.41L16.71 8.7 20 12h-8V4l3.29 3.29L20.59 2 22 3.41zM3.41 22l5.29-5.29L12 20v-8H4l3.29 3.29L2 20.59 3.41 22z",
+  check: "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
+  remove: "M19 13H5v-2h14v2z",
 } as const;
 
 export type IconName = keyof typeof PATHS;

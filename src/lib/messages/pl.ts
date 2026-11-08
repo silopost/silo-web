@@ -148,6 +148,7 @@ export const pl: Messages = {
 
   // list
   threadList: "Lista wątków",
+  threadActionsMenu: "Działania na wątku",
   select: "Zaznacz",
   selectMenu: "Opcje zaznaczania",
   selectAll: "Wszystkie",

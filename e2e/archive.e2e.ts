@@ -195,3 +195,20 @@ test("counter stays consistent when an unread multi-message thread is archived f
   console.log(`[measure] Inbox counter, thread view (open, e, Cofnij): ${seen.join(" -> ")}`);
   expect(seen.every((v) => v === before || v === before - 1)).toBe(true);
 });
+
+test("right click → Move to → Archive moves the row like e", async ({ page }) => {
+  await login(page, dev1);
+  const { subject, row } = await freshThread(page, "menu");
+  await row.click({ button: "right" });
+  const menu = page.getByRole("menu", { name: "Conversation actions" });
+  await menu.getByRole("menuitem", { name: "Move to" }).hover();
+  await page
+    .getByRole("menu", { name: "Move to" })
+    .getByRole("menuitem", { name: "Archive" })
+    .click();
+  await expect(row).toHaveCount(0);
+  await expect(menu).toHaveCount(0);
+  await expect(page.getByRole("status").getByText("Conversation archived")).toBeVisible();
+  await waitForMessage(dev1, "archive", subject, env.undoWindowMs + 2_000 + 3_000);
+  expect(await findMessages(dev1, "inbox", subject)).toHaveLength(0);
+});

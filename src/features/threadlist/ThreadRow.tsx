@@ -39,6 +39,8 @@ type Props = {
   onWake: (id: string) => void;
   /** "Cancel send" of a scheduled message (outboundId of the row). */
   onCancelSend: (thread: Thread) => void;
+  /** Right click (or the context menu key) on the row: Gmail-style action menu at x/y. */
+  onContextMenu: (id: string, x: number, y: number) => void;
 };
 
 function rowLabel(th: Thread, unread: boolean, names: string, date: string): string {
@@ -81,6 +83,18 @@ export const ThreadRow = memo(function ThreadRow(p: Props) {
       data-thread-id={th.id}
       style={{ transform: `translateY(${p.start}px)` }}
       onClick={() => p.onOpen(th.id)}
+      onContextMenu={(e) => {
+        // Only the rows replace the browser menu.
+        e.preventDefault();
+        let { clientX: x, clientY: y } = e;
+        if (x === 0 && y === 0) {
+          // Keyboard (context menu key, Shift+F10): below the start of the row.
+          const r = e.currentTarget.getBoundingClientRect();
+          x = r.left + 48;
+          y = r.bottom;
+        }
+        p.onContextMenu(th.id, x, y);
+      }}
       onFocus={(e) => e.target === e.currentTarget && p.onFocus(th.id)}
       onMouseEnter={() => p.onHoverIntent(th.id)}
       onMouseLeave={p.onHoverEnd}

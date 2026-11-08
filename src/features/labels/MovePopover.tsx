@@ -1,17 +1,15 @@
 import * as Popover from "@radix-ui/react-popover";
 import { useLabels } from "../../api/queries/labels";
-import { Icon, type IconName } from "../../components/Icon";
+import { Icon } from "../../components/Icon";
 import { IconButton } from "../../components/IconButton";
 import { t } from "../../lib/i18n";
-import { SYSTEM_VIEWS } from "../../lib/labels";
-import { moveCommand, type MoveCommand, type MoveTarget } from "./move";
-
-const SYSTEM_TARGETS: { id: "INBOX" | "ARCHIVE" | "TRASH" | "SPAM"; icon: IconName }[] = [
-  { id: "INBOX", icon: "inbox" },
-  { id: "ARCHIVE", icon: "archive" },
-  { id: "SPAM", icon: "report" },
-  { id: "TRASH", icon: "delete" },
-];
+import {
+  moveCommand,
+  SYSTEM_TARGETS,
+  systemTargetName,
+  type MoveCommand,
+  type MoveTarget,
+} from "./move";
 
 type Props = {
   accountId: string;
@@ -50,7 +48,7 @@ export function MovePopover({ accountId, threads, onMove, open, onOpenChange }: 
               <li key={s.id}>
                 <button type="button" className={item} onClick={() => pick(s.id)}>
                   <Icon name={s.icon} size={18} />
-                  {SYSTEM_VIEWS.find((v) => v.labelId === s.id)?.name ?? s.id}
+                  {systemTargetName(s.id)}
                 </button>
               </li>
             ))}
