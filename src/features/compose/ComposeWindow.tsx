@@ -54,10 +54,16 @@ const sendPresetLabel = (preset: SnoozePreset) => t.sendPresets[preset.key];
 /** Esc in the editor closes the window too (ProseMirror marks the key as handled). */
 const isEditor = (target: EventTarget) => target instanceof HTMLElement && target.isContentEditable;
 
+/**
+ * Position and size per mode. Docked windows are `relative` (anchor of the drop overlay); the
+ * maximised one is `fixed` to the viewport, centred above its backdrop. Never combine the two
+ * position utilities: Tailwind emits `.relative` after `.fixed`, so `relative` would win and
+ * the insets would push the window off screen instead of placing it.
+ */
 const SIZE: Record<WindowMode, string> = {
-  normal: "h-[min(36rem,85vh)] w-[min(34rem,95vw)]",
-  minimized: "w-64",
-  maximized: "fixed inset-x-[8vw] top-[5vh] bottom-[5vh] z-40",
+  normal: "relative rounded-t-xl h-[min(36rem,85vh)] w-[min(34rem,95vw)]",
+  minimized: "relative rounded-t-xl w-64",
+  maximized: "fixed inset-x-[8vw] top-[5vh] bottom-[5vh] z-40 rounded-xl",
 };
 
 /**
@@ -173,9 +179,7 @@ export function ComposeWindow({ draftId, mode }: { draftId: string; mode: Window
           e.preventDefault();
           session.addFiles(Array.from(e.dataTransfer.files));
         }}
-        className={`relative flex flex-col overflow-hidden rounded-t-xl bg-panel shadow-2xl ${
-          maximized ? "rounded-xl" : ""
-        } ${SIZE[mode]}`}
+        className={`flex flex-col overflow-hidden bg-panel shadow-2xl ${SIZE[mode]}`}
       >
         <header
           className="flex h-10 shrink-0 cursor-pointer items-center rounded-t-xl bg-surface pl-4"

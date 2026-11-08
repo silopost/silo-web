@@ -422,3 +422,39 @@ it("Shift+C opens a maximised window; Ctrl+Shift+C/B reveal DW and UDW", async (
   await user.click(within(win).getByRole("button", { name: "Minimize" }));
   expect(within(win).queryByRole("combobox")).toBeNull();
 });
+
+it("maximise keeps the window editable and fixed to the viewport, and restores it", async () => {
+  const { user } = setup();
+  const win = await openCompose(user);
+  const docked = win.className;
+  expect(win).toHaveClass("relative");
+
+  await user.click(within(win).getByRole("button", { name: "Full screen" }));
+  // Fixed and centred by its insets only: no `relative` (it wins over `fixed` in the CSS and
+  // pushed the window off screen) and no offset of its own.
+  expect(win).toHaveClass("fixed", "inset-x-[8vw]", "top-[5vh]", "bottom-[5vh]", "z-40");
+  expect(win).not.toHaveClass("relative");
+  expect(win.getAttribute("style")).toBeNull();
+  // The backdrop lies below the window.
+  const backdrop = win.previousElementSibling as HTMLElement;
+  expect(backdrop).toHaveClass("fixed", "inset-0", "z-30");
+
+  const subject = within(win).getByRole("textbox", { name: "Subject" });
+  await user.click(subject);
+  await user.keyboard("Pełny ekran działa");
+  expect(subject).toHaveValue("Pełny ekran działa");
+  expect(within(win).getByRole("textbox", { name: "Message body" })).toBeInTheDocument();
+
+  await user.click(within(win).getByRole("button", { name: "Exit full screen" }));
+  expect(win.className).toBe(docked);
+  expect(win.previousElementSibling).toBeNull();
+
+  // Minimise straight from full screen, then restore to the docked size.
+  await user.click(within(win).getByRole("button", { name: "Full screen" }));
+  await user.click(within(win).getByRole("button", { name: "Minimize" }));
+  expect(win).toHaveClass("relative", "w-64");
+  expect(win.previousElementSibling).toBeNull();
+  await user.click(within(win).getByRole("button", { name: "Restore" }));
+  expect(win.className).toBe(docked);
+  expect(within(win).getByRole("textbox", { name: "Subject" })).toHaveValue("Pełny ekran działa");
+});
