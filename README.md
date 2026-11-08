@@ -35,7 +35,7 @@ The layout follows section 6.2 of the plan (`ARCHITECTURE_AND_PLAN.md` in `silo`
 | `src/shortcuts/`              | `keymap.ts`, `useShortcuts.ts`, `ShortcutsHelpDialog.tsx`                                                                                                                                                                                                                |
 | `src/features/`               | `account`, `admin`, `security`, `nav`, `topbar`, `search`, `snooze`, `settings`, `labels`, `notifications`, `sync`, `threadlist`, `thread`, `compose`, `toasts`                                                                                                          |
 | `src/pwa/`, `src/sw.ts`       | manifest, service worker and its cache rules, offline session snapshot, registration                                                                                                                                                                                     |
-| `src/components/`, `src/lib/` | icons, buttons, avatar; dates, Polish strings (`i18n.ts`), message HTML sanitising                                                                                                                                                                                       |
+| `src/components/`, `src/lib/` | icons, buttons, avatar; dates, UI strings (English source `messages/en.ts`, Polish `messages/pl.ts`; `i18n.ts` follows the language setting), message HTML sanitising                                                                                                    |
 
 URLs are Gmail-like: `/u/<account index>/<label>` with system slugs (`inbox`, `starred`,
 `snoozed`, `important`, `sent`, `scheduled`, `drafts`, `archive`, `all`, `spam`, `trash`) or a
@@ -70,7 +70,7 @@ What phase 5 of the plan adds to the web client (silo-server `faza-5` contract):
   with ✓/✗) → "Dodaj" (`POST /accounts`; `422 account_test_failed` shows the steps, other codes
   a message) → the new account's inbox. "Zaloguj przez Google / Microsoft" for
   `meta.oauthProviders` (`POST /oauth/{provider}/start {returnTo}`, then the provider); back on
-  `?oauth=ok|error&…` a snackbar or the Polish text of the code, and the URL is cleaned. The list
+  `?oauth=ok|error&…` a snackbar or the localised text of the code, and the URL is cleaned. The list
   shows OAuth accounts, "Zaloguj ponownie" for OAuth accounts in `auth_failed` (also in the
   account banner), "Zmień hasło" (`PATCH /accounts/{id}`) and "Usuń konto" (`DELETE`, confirmed).
 - **Version banner** (`VersionBanner.tsx`): `__APP_VERSION__` (from `package.json`, Vite
