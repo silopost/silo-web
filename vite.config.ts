@@ -30,6 +30,9 @@ export default defineConfig({
     }),
   ],
   server: {
+    // Docker Desktop on Windows does not forward file events through a bind mount, so the dev
+    // stack (silo/docker-compose.dev.yml) sets VITE_USE_POLLING=1 to make HMR see host edits.
+    watch: process.env.VITE_USE_POLLING ? { usePolling: true, interval: 500 } : undefined,
     proxy: {
       "/api": {
         target: process.env.VITE_API_PROXY ?? "http://localhost:8080",
