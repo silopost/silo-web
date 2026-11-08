@@ -871,7 +871,7 @@ export interface paths {
         head?: never;
         /**
          * Change settings
-         * @description JSON merge: only the fields sent change; activeAccountId null clears it. The answer is the whole settings object with updatedAt; the other sessions of the user get settings.updated {updatedAt} and reload GET /settings. 422 invalid_setting (density, undoSendSeconds, signature over 32 KiB, an activeAccountId that is not the user's) or invalid_timezone.
+         * @description JSON merge: only the fields sent change; activeAccountId null clears it. The answer is the whole settings object with updatedAt; the other sessions of the user get settings.updated {updatedAt} and reload GET /settings. 422 invalid_setting (density, undoSendSeconds, signature over 32 KiB, an activeAccountId that is not the user's, an unsupported language) or invalid_timezone.
          */
         patch: operations["updateSettings"];
         trace?: never;
@@ -2008,6 +2008,11 @@ export interface components {
             /** @description Whether the user wants desktop/system notifications of new mail; each client asks the system for its own permission. */
             desktopNotifications: boolean;
             keyboardShortcutsEnabled: boolean;
+            /**
+             * @description UI language shared by every client of the user (BCP 47 code of a supported language); en until the user chooses one.
+             * @enum {string}
+             */
+            language: "en" | "pl";
             signature: string;
             /**
              * @description IANA time zone name.
@@ -2036,6 +2041,11 @@ export interface components {
             density?: string;
             desktopNotifications?: boolean;
             keyboardShortcutsEnabled?: boolean;
+            /**
+             * @description UI language: en or pl; else 422 invalid_setting.
+             * @example pl
+             */
+            language?: string;
             /** @description HTML, at most 32 KiB (else 422 invalid_setting); stored sanitized like message HTML. */
             signature?: string;
             /**

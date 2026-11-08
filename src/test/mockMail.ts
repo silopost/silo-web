@@ -58,6 +58,7 @@ export function createMockMail() {
       conversationView: true,
       density: "default",
       keyboardShortcutsEnabled: true,
+      language: "en",
       signature: "",
       timezone: "Europe/Warsaw",
       undoSendSeconds: 5,
