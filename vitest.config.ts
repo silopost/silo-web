@@ -2,6 +2,10 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 import pkg from "./package.json" with { type: "json" };
 
+// The component tests assert rendered local times ("Nov 10, 8:00 AM" for a
+// 07:00Z fixture), so the tests run in one time zone whatever the machine uses.
+process.env.TZ = "Europe/Warsaw";
+
 export default defineConfig({
   plugins: [react()],
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
