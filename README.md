@@ -64,12 +64,12 @@ that server's disk. The overview, the Gmail comparison and the deployment stack 
 
 ## Repositories
 
-| Repository | License | Contents |
-|---|---|---|
-| [`silo`](https://github.com/silopost/silo) | MIT | Orchestration (Docker Compose, Caddy, scripts), documentation, ADRs |
-| [`silo-server`](https://github.com/silopost/silo-server) | AGPL-3.0 | Go backend: API, SSE, IMAP sync, SMTP, workers |
-| [`silo-web`](https://github.com/silopost/silo-web) (this one) | AGPL-3.0 | React/TypeScript web client and PWA |
-| [`silo-mobile`](https://github.com/silopost/silo-mobile) | AGPL-3.0 | React Native/Expo Android client |
+| Repository                                                    | License  | Contents                                                            |
+| ------------------------------------------------------------- | -------- | ------------------------------------------------------------------- |
+| [`silo`](https://github.com/silopost/silo)                    | MIT      | Orchestration (Docker Compose, Caddy, scripts), documentation, ADRs |
+| [`silo-server`](https://github.com/silopost/silo-server)      | AGPL-3.0 | Go backend: API, SSE, IMAP sync, SMTP, workers                      |
+| [`silo-web`](https://github.com/silopost/silo-web) (this one) | AGPL-3.0 | React/TypeScript web client and PWA                                 |
+| [`silo-mobile`](https://github.com/silopost/silo-mobile)      | AGPL-3.0 | React Native/Expo Android client                                    |
 
 `silo-web` 0.4.0 requires `silo-server` 0.5.0 or newer (see the
 [compatibility matrix](https://github.com/silopost/silo/blob/main/docs/compat-matrix.md)).
@@ -116,10 +116,10 @@ silo-web has no runtime configuration file: everything instance-specific (server
 
 Build and dev-time environment variables:
 
-| Variable | Default | Description |
-|---|---|---|
-| `VITE_API_PROXY` | `http://localhost:8080` | Target of the `/api` proxy of `npm run dev` and `vite preview`. The browser's `Host` is kept, so silo-server accepts the `Origin` on any port. |
-| `VITE_USE_POLLING` | unset | Any value makes Vite poll for file changes (the dev Compose stack sets it: Docker Desktop on Windows does not forward file events through bind mounts). |
+| Variable           | Default                 | Description                                                                                                                                             |
+| ------------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_API_PROXY`   | `http://localhost:8080` | Target of the `/api` proxy of `npm run dev` and `vite preview`. The browser's `Host` is kept, so silo-server accepts the `Origin` on any port.          |
+| `VITE_USE_POLLING` | unset                   | Any value makes Vite poll for file changes (the dev Compose stack sets it: Docker Desktop on Windows does not forward file events through bind mounts). |
 
 `package.json` declares the targeted server release as `silo.serverRef` (currently `v0.5.0`), see
 [API contract](#api-contract). The variables of the end-to-end tests are listed under
@@ -127,18 +127,18 @@ Build and dev-time environment variables:
 
 ## Scripts
 
-| Script | Description |
-|---|---|
-| `npm run dev` | Vite dev server on port 5173 with HMR and the `/api` proxy |
-| `npm run build` | Type check, then production build into `dist/` (with the service worker) |
-| `npm run preview` | Serve `dist/` with `vite preview` (the PWA works here: HTTPS or `localhost`) |
-| `npm run typecheck` | `tsc --noEmit` for the app and for `e2e/` |
-| `npm run lint` / `lint:fix` | ESLint |
-| `npm run format` / `format:check` | Prettier |
-| `npm test` / `test:watch` | Vitest unit and component tests |
-| `npm run e2e` | Playwright end-to-end tests against a running backend |
-| `npm run gen:api` | Regenerate `src/api/schema.d.ts` from silo-server's OpenAPI document |
-| `npm run gen:icons` | Rasterise the PWA icons from `public/icons/icon.svg` |
+| Script                            | Description                                                                  |
+| --------------------------------- | ---------------------------------------------------------------------------- |
+| `npm run dev`                     | Vite dev server on port 5173 with HMR and the `/api` proxy                   |
+| `npm run build`                   | Type check, then production build into `dist/` (with the service worker)     |
+| `npm run preview`                 | Serve `dist/` with `vite preview` (the PWA works here: HTTPS or `localhost`) |
+| `npm run typecheck`               | `tsc --noEmit` for the app and for `e2e/`                                    |
+| `npm run lint` / `lint:fix`       | ESLint                                                                       |
+| `npm run format` / `format:check` | Prettier                                                                     |
+| `npm test` / `test:watch`         | Vitest unit and component tests                                              |
+| `npm run e2e`                     | Playwright end-to-end tests against a running backend                        |
+| `npm run gen:api`                 | Regenerate `src/api/schema.d.ts` from silo-server's OpenAPI document         |
+| `npm run gen:icons`               | Rasterise the PWA icons from `public/icons/icon.svg`                         |
 
 ## Running in production
 
@@ -171,18 +171,18 @@ otherwise an anonymous `docker pull` fails.
 
 ### Structure
 
-| Path | Contents |
-| --- | --- |
-| `src/routes/` | TanStack Router file routes: `login`, `_app` (session guard, AppShell), `_app.u.$account.$label[.$threadId]`, `_app.u.$account.search[.$threadId]`, `_app.u.$account.settings.{general,labels,filters,accounts,security}`, `_app.u.$account.admin.{users,accounts,jobs}` |
-| `src/routeTree.gen.ts` | generated by `@tanstack/router-plugin` on `dev`/`build`; committed so that `typecheck` works without a build |
-| `src/api/` | `client.ts` (openapi-fetch, CSRF, `X-Silo-Client` per tab), `queries/`, `mutations/` (optimistic thread actions and undo), `events.ts` (SSE with polling fallback), `schema.d.ts` (generated) |
-| `src/state/` | zustand: UI state, preferences in localStorage, snackbar, connection |
-| `src/shortcuts/` | `keymap.ts`, `useShortcuts.ts`, `ShortcutsHelpDialog.tsx` |
-| `src/features/` | `account`, `admin`, `security`, `nav`, `topbar`, `search`, `snooze`, `settings`, `labels`, `notifications`, `sync`, `threadlist`, `thread`, `compose`, `toasts` |
-| `src/pwa/`, `src/sw.ts` | manifest, service worker and its cache rules, offline session snapshot, registration |
-| `src/components/`, `src/lib/` | icons, buttons, avatar; dates, UI strings, message HTML sanitising |
-| `src/test/` | msw fake server, fake `EventSource`, fake upload `XMLHttpRequest`, render helpers |
-| `e2e/` | Playwright tests and their support code |
+| Path                          | Contents                                                                                                                                                                                                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/routes/`                 | TanStack Router file routes: `login`, `_app` (session guard, AppShell), `_app.u.$account.$label[.$threadId]`, `_app.u.$account.search[.$threadId]`, `_app.u.$account.settings.{general,labels,filters,accounts,security}`, `_app.u.$account.admin.{users,accounts,jobs}` |
+| `src/routeTree.gen.ts`        | generated by `@tanstack/router-plugin` on `dev`/`build`; committed so that `typecheck` works without a build                                                                                                                                                             |
+| `src/api/`                    | `client.ts` (openapi-fetch, CSRF, `X-Silo-Client` per tab), `queries/`, `mutations/` (optimistic thread actions and undo), `events.ts` (SSE with polling fallback), `schema.d.ts` (generated)                                                                            |
+| `src/state/`                  | zustand: UI state, preferences in localStorage, snackbar, connection                                                                                                                                                                                                     |
+| `src/shortcuts/`              | `keymap.ts`, `useShortcuts.ts`, `ShortcutsHelpDialog.tsx`                                                                                                                                                                                                                |
+| `src/features/`               | `account`, `admin`, `security`, `nav`, `topbar`, `search`, `snooze`, `settings`, `labels`, `notifications`, `sync`, `threadlist`, `thread`, `compose`, `toasts`                                                                                                          |
+| `src/pwa/`, `src/sw.ts`       | manifest, service worker and its cache rules, offline session snapshot, registration                                                                                                                                                                                     |
+| `src/components/`, `src/lib/` | icons, buttons, avatar; dates, UI strings, message HTML sanitising                                                                                                                                                                                                       |
+| `src/test/`                   | msw fake server, fake `EventSource`, fake upload `XMLHttpRequest`, render helpers                                                                                                                                                                                        |
+| `e2e/`                        | Playwright tests and their support code                                                                                                                                                                                                                                  |
 
 ### URLs
 
@@ -295,7 +295,7 @@ and in `api/openapi.yaml`.
   label list and counts. Create is `POST /labels` (`type: user` or `folder`), rename / colour /
   visibility `PATCH /labels/{id}`, delete `DELETE /labels/{id}` (a folder only when empty). The
   parent of a user label (Nest under) is set at creation and changed with `PATCH /labels/{id}
-  {parentId}` (`null` = top level; the label itself and its descendants are not offered, and
+{parentId}` (`null` = top level; the label itself and its descendants are not offered, and
   `422 invalid_parent` is shown under the field). `keywordState` `local_only` / `partial` shows a
   warning next to the label, in the settings and in the navigation. Threads are labelled from the
   toolbar or with `l`, moved with Move to or `v` (a folder label is a folder change in the Gmail
@@ -343,7 +343,7 @@ and in `api/openapi.yaml`.
 - **Mode `local` sign-in** (`src/routes/login.tsx`, `GET /meta authMode`): a user with TOTP gets
   `401 totp_required` after the right password; the page then asks for the 6-digit app code
   (`one-time-code`, autofocus) or a backup code and posts `POST /session {email, password,
-  totpCode}` again (the password stays in component state only). Every `401` shows one generic
+totpCode}` again (the password stays in component state only). Every `401` shows one generic
   message; `429` shows `Retry-After`. A user without mail accounts is offered Add account.
 - **Session and limits**: SSE `session.expired` is handled like a `401` (session dropped,
   `/login?redirect=<page>`). With more than 8 open streams per user, `GET /events` answers with a
@@ -393,35 +393,35 @@ have their own keys), during IME composition and with Ctrl/Alt/Meta. Sequences (
 (`keyboardShortcutsEnabled`) turns the dispatcher off; the keys handled by components themselves
 (Esc, Ctrl/⌘+Enter in compose, the keys of fields and menus) keep working.
 
-| Keys | Action | Scope |
-| --- | --- | --- |
-| `c` | New message | global |
-| `Shift+C` | New message in full screen | global |
-| `/` | Search | global |
-| `?` | List of shortcuts | global |
-| `z` | Undo the last action | global |
-| `j` / `k` | Next / previous conversation | list, thread |
-| `o`, `Enter` | Open conversation | list |
-| `u` | Back to list | thread |
-| `x` | Select conversation | list |
-| `s` | Star | list, thread |
-| `e` | Archive | list, thread |
-| `#` | Move to Trash | list, thread |
-| `!` | Report spam | list, thread |
-| `Shift+I` / `Shift+U` | Mark as read / unread | list, thread |
-| `n` / `p` | Next / previous message in the conversation | thread |
-| `l` | Label as | list, thread |
-| `v` | Move to folder | list, thread |
-| `b` | Snooze | list, thread |
-| `r` / `a` / `f` | Reply / Reply all / Forward | thread |
-| `g i` / `g s` / `g t` / `g d` / `g a` | Go to: Inbox / Starred / Sent / Drafts / All Mail | global |
-| `g l` | Go to: label or folder (picker) | global |
-| `g 1` … `g 9` | Go to account number n (`position` order, `/u/<position>/inbox`) | global |
-| `* a` / `* n` | Select all / deselect all | list |
-| `* r` / `* u` | Select read / unread | list |
-| `* s` / `* t` | Select starred / unstarred | list |
-| `Ctrl+Enter` (`⌘+Enter`) | Send | compose (also in fields) |
-| `Esc` | Close the window or menu, leave the search box | everywhere (also in fields) |
+| Keys                                  | Action                                                           | Scope                       |
+| ------------------------------------- | ---------------------------------------------------------------- | --------------------------- |
+| `c`                                   | New message                                                      | global                      |
+| `Shift+C`                             | New message in full screen                                       | global                      |
+| `/`                                   | Search                                                           | global                      |
+| `?`                                   | List of shortcuts                                                | global                      |
+| `z`                                   | Undo the last action                                             | global                      |
+| `j` / `k`                             | Next / previous conversation                                     | list, thread                |
+| `o`, `Enter`                          | Open conversation                                                | list                        |
+| `u`                                   | Back to list                                                     | thread                      |
+| `x`                                   | Select conversation                                              | list                        |
+| `s`                                   | Star                                                             | list, thread                |
+| `e`                                   | Archive                                                          | list, thread                |
+| `#`                                   | Move to Trash                                                    | list, thread                |
+| `!`                                   | Report spam                                                      | list, thread                |
+| `Shift+I` / `Shift+U`                 | Mark as read / unread                                            | list, thread                |
+| `n` / `p`                             | Next / previous message in the conversation                      | thread                      |
+| `l`                                   | Label as                                                         | list, thread                |
+| `v`                                   | Move to folder                                                   | list, thread                |
+| `b`                                   | Snooze                                                           | list, thread                |
+| `r` / `a` / `f`                       | Reply / Reply all / Forward                                      | thread                      |
+| `g i` / `g s` / `g t` / `g d` / `g a` | Go to: Inbox / Starred / Sent / Drafts / All Mail                | global                      |
+| `g l`                                 | Go to: label or folder (picker)                                  | global                      |
+| `g 1` … `g 9`                         | Go to account number n (`position` order, `/u/<position>/inbox`) | global                      |
+| `* a` / `* n`                         | Select all / deselect all                                        | list                        |
+| `* r` / `* u`                         | Select read / unread                                             | list                        |
+| `* s` / `* t`                         | Select starred / unstarred                                       | list                        |
+| `Ctrl+Enter` (`⌘+Enter`)              | Send                                                             | compose (also in fields)    |
+| `Esc`                                 | Close the window or menu, leave the search box                   | everywhere (also in fields) |
 
 In the list, `l` and `v` act on the selection or, without one, on the row under the cursor.
 
@@ -462,33 +462,33 @@ removed or restored afterwards through the API (`e2e/support/api.ts`, a bearer s
 Measurements are printed as `[measure]` lines. In CI the `e2e` job runs on demand
 (`workflow_dispatch`).
 
-| Variable | Default | Description |
-|---|---|---|
-| `SILO_E2E_WEB_PORT` | `5180` | Port of `vite preview` |
-| `SILO_E2E_WEB_URL` | `http://localhost:$SILO_E2E_WEB_PORT` | Test an already running instance instead of building one |
-| `SILO_E2E_API` | `http://localhost:$SILO_DEV_SERVER_PORT` | silo-server URL for the proxy and the API helpers |
-| `SILO_DIR` | `../silo` | Checkout of the `silo` repository; `SILO_DEV_*` ports are read from its `.env` |
-| `SILO_DEV_SERVER_PORT`, `SILO_DEV_IMAP_PORT` | from `silo/.env` (`8080`, `1143`) | Ports of the dev stack |
-| `SILO_E2E_IMAP_HOST` | `localhost` | IMAP host for the server-side checks |
-| `SILO_UNDO_WINDOW` | `10s` | Must match the server's undo window (set `1s` on a server started with it) |
-| `SILO_E2E_BULK_THREADS` | `5000` | Size of the large-list corpus appended once to `dev3@silo.test` |
-| `SILO_E2E_ADMIN_EMAIL`, `SILO_E2E_ADMIN_PASSWORD` | `admin@silo.test`, `admin-e2e-password` | First admin for `local-auth.e2e.ts` |
+| Variable                                          | Default                                  | Description                                                                    |
+| ------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------ |
+| `SILO_E2E_WEB_PORT`                               | `5180`                                   | Port of `vite preview`                                                         |
+| `SILO_E2E_WEB_URL`                                | `http://localhost:$SILO_E2E_WEB_PORT`    | Test an already running instance instead of building one                       |
+| `SILO_E2E_API`                                    | `http://localhost:$SILO_DEV_SERVER_PORT` | silo-server URL for the proxy and the API helpers                              |
+| `SILO_DIR`                                        | `../silo`                                | Checkout of the `silo` repository; `SILO_DEV_*` ports are read from its `.env` |
+| `SILO_DEV_SERVER_PORT`, `SILO_DEV_IMAP_PORT`      | from `silo/.env` (`8080`, `1143`)        | Ports of the dev stack                                                         |
+| `SILO_E2E_IMAP_HOST`                              | `localhost`                              | IMAP host for the server-side checks                                           |
+| `SILO_UNDO_WINDOW`                                | `10s`                                    | Must match the server's undo window (set `1s` on a server started with it)     |
+| `SILO_E2E_BULK_THREADS`                           | `5000`                                   | Size of the large-list corpus appended once to `dev3@silo.test`                |
+| `SILO_E2E_ADMIN_EMAIL`, `SILO_E2E_ADMIN_PASSWORD` | `admin@silo.test`, `admin-e2e-password`  | First admin for `local-auth.e2e.ts`                                            |
 
-| File | Checks |
-| --- | --- |
-| `reply.e2e.ts`, `archive.e2e.ts`, `undo-send.e2e.ts`, `drafts.e2e.ts` | reply delivered with `In-Reply-To`/`References`; archive and its undo; undo send; drafts in the server's Drafts folder |
-| `offline.e2e.ts` | the mail server going offline (stops and starts the `mailserver` container) |
-| `large-list.e2e.ts` | a 5000-thread list without long tasks |
-| `xss.e2e.ts`, `a11y.e2e.ts`, `shortcuts.e2e.ts` | hostile HTML, axe (`@axe-core/playwright`), keyboard shortcuts |
-| `search.e2e.ts` | `from:`, `has:attachment`, `is:unread`, `subject:`, words, `-word`, `OR`, `label:` on mail seeded over IMAP; history and contact suggestions, chips, the advanced search, `422` for a stray `)`, the indexing banner when shown |
-| `snooze.e2e.ts` | snooze "in a minute": in `Snoozed` on the server and not in INBOX, back in INBOX without `\Seen` within 90 s and on top of the list (`@slow`); undo, the Snoozed view and wake now |
-| `filters.e2e.ts` | `from:x` → skip the Inbox + label Y: a new message lands in Archive with the keyword Y; an older one only after saving with apply |
-| `schedule-send.e2e.ts` | a message scheduled about 2 minutes ahead is in no folder of the sender nor in the recipient's INBOX before its time and arrives within ±30 s (`@slow`); the Scheduled view and cancel send |
-| `labels-keywords.e2e.ts` | a label from Silo is a keyword on the server; a keyword stored by another client is a label on the row within 5 s |
-| `settings.e2e.ts` | density, undo-send period, time zone and signature survive a reload; shortcuts off stop `e` |
-| `multi-account.e2e.ts` | dev1 adds `dev2@silo.test` (discovery, connection test, axe on the dialog); the switcher shows both accounts with unread counts; `g 1`/`g 2`; a message from dev2 reaches `dev3@` with `From: dev2@` and its copy is in dev2's Sent only |
-| `pwa.e2e.ts` | service worker and manifest; after going offline, a reload shows the shell, the cached list and thread body and the offline banner |
-| `local-auth.e2e.ts` | mode `local`: TOTP on, sign-in with a code, a user created in Administration signs in with the temporary password, adds `dev1@silo.test` and sees its INBOX; cleanup with a backup code |
+| File                                                                  | Checks                                                                                                                                                                                                                                   |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reply.e2e.ts`, `archive.e2e.ts`, `undo-send.e2e.ts`, `drafts.e2e.ts` | reply delivered with `In-Reply-To`/`References`; archive and its undo; undo send; drafts in the server's Drafts folder                                                                                                                   |
+| `offline.e2e.ts`                                                      | the mail server going offline (stops and starts the `mailserver` container)                                                                                                                                                              |
+| `large-list.e2e.ts`                                                   | a 5000-thread list without long tasks                                                                                                                                                                                                    |
+| `xss.e2e.ts`, `a11y.e2e.ts`, `shortcuts.e2e.ts`                       | hostile HTML, axe (`@axe-core/playwright`), keyboard shortcuts                                                                                                                                                                           |
+| `search.e2e.ts`                                                       | `from:`, `has:attachment`, `is:unread`, `subject:`, words, `-word`, `OR`, `label:` on mail seeded over IMAP; history and contact suggestions, chips, the advanced search, `422` for a stray `)`, the indexing banner when shown          |
+| `snooze.e2e.ts`                                                       | snooze "in a minute": in `Snoozed` on the server and not in INBOX, back in INBOX without `\Seen` within 90 s and on top of the list (`@slow`); undo, the Snoozed view and wake now                                                       |
+| `filters.e2e.ts`                                                      | `from:x` → skip the Inbox + label Y: a new message lands in Archive with the keyword Y; an older one only after saving with apply                                                                                                        |
+| `schedule-send.e2e.ts`                                                | a message scheduled about 2 minutes ahead is in no folder of the sender nor in the recipient's INBOX before its time and arrives within ±30 s (`@slow`); the Scheduled view and cancel send                                              |
+| `labels-keywords.e2e.ts`                                              | a label from Silo is a keyword on the server; a keyword stored by another client is a label on the row within 5 s                                                                                                                        |
+| `settings.e2e.ts`                                                     | density, undo-send period, time zone and signature survive a reload; shortcuts off stop `e`                                                                                                                                              |
+| `multi-account.e2e.ts`                                                | dev1 adds `dev2@silo.test` (discovery, connection test, axe on the dialog); the switcher shows both accounts with unread counts; `g 1`/`g 2`; a message from dev2 reaches `dev3@` with `From: dev2@` and its copy is in dev2's Sent only |
+| `pwa.e2e.ts`                                                          | service worker and manifest; after going offline, a reload shows the shell, the cached list and thread body and the offline banner                                                                                                       |
+| `local-auth.e2e.ts`                                                   | mode `local`: TOTP on, sign-in with a code, a user created in Administration signs in with the temporary password, adds `dev1@silo.test` and sees its INBOX; cleanup with a backup code                                                  |
 
 `multi-account` and `pwa` run on the dev stack or on the `silo-bt` stack of the `silo` repository:
 
