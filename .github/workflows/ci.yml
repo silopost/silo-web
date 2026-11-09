@@ -103,6 +103,7 @@ jobs:
       - if: failure()
         run: docker compose -f silo/docker-compose.dev.yml logs --tail=300 silo-server mailserver
 
+  # Publishes :edge on main; versioned images come from release.yml (tags v*).
   image:
     needs: check
     runs-on: ubuntu-latest
