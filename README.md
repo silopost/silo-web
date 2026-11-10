@@ -198,6 +198,27 @@ UI strings live in typed dictionaries: English is the source (`src/lib/messages/
 follows `settings.language` of the server (`en` until the user chooses), switches without a
 reload and remembers the last language in the browser for the sign-in page.
 
+### Colour themes
+
+The design tokens (plan 6.1) are the `--color-*` custom properties of `src/styles/theme.css`:
+`@theme` holds the default (light) theme, and every other theme is a block of overrides selected by
+`<html data-theme>`: `default`, `dark`, `soft-gray`, `blue`, `lavender`, `rose`, `mint`,
+`seafoam`. Components use only the token utilities (`bg-panel`, `bg-raised` for menus, dialogs
+and compose windows, `bg-scrim`, `text-ink`, `text-on-primary`...), never fixed colours; label
+colours are data and keep their own pairs. The dark theme sets `color-scheme: dark` for native
+controls and scroll bars. HTML from senders is always shown on a light paper (`--color-paper`,
+padded in the dark theme) and is never recoloured; the compose editor shows the theme through CSS
+only, so no theme colour reaches the recipients. `src/lib/theme.test.ts` reads `theme.css` and
+checks that the default theme equals `@theme` and that every theme meets WCAG AA contrast (ink
+and ink-muted on surfaces and rows, text on primary, warnings, errors, tooltips and snackbars).
+
+`src/lib/theme.ts` follows `settings.theme` of the server (`default` until the user chooses;
+`settings.updated` brings a change from another session), sets `data-theme` and
+`<meta name="theme-color">` without a reload and remembers the last theme in localStorage
+(`silo.theme`). `public/theme-boot.js`, a classic script in `<head>` (the CSP allows no inline
+scripts), applies it before the first paint, on the sign-in page too. An older server without
+`settings.theme` leaves the local choice as it is.
+
 ### Thin client
 
 The server owns the domain logic: it parses search queries, computes snooze presets, autosaves
@@ -285,7 +306,8 @@ and in `api/openapi.yaml`.
 
 `/u/<n>/settings/…` (`src/features/settings`), each tab its own route:
 
-- **General** (`GeneralSettings`): language, density, undo-send seconds, signature, time zone,
+- **General** (`GeneralSettings`): language, theme (`ThemePicker`: a radio group of preview tiles
+  drawn with each theme's own tokens), density, undo-send seconds, signature, time zone,
   keyboard shortcuts on/off, conversation view and desktop notifications. Every change is one
   `PATCH /settings` with one field (JSON merge); the answer replaces the cache and the session's
   copy, `422 invalid_setting` / `invalid_timezone` show a snackbar. Desktop notifications ask for
@@ -486,6 +508,7 @@ Measurements are printed as `[measure]` lines. In CI the `e2e` job runs on deman
 | `schedule-send.e2e.ts`                                                | a message scheduled about 2 minutes ahead is in no folder of the sender nor in the recipient's INBOX before its time and arrives within ±30 s (`@slow`); the Scheduled view and cancel send                                              |
 | `labels-keywords.e2e.ts`                                              | a label from Silo is a keyword on the server; a keyword stored by another client is a label on the row within 5 s                                                                                                                        |
 | `settings.e2e.ts`                                                     | density, undo-send period, time zone and signature survive a reload; shortcuts off stop `e`                                                                                                                                              |
+| `theme.e2e.ts`                                                        | a theme tile applies at once, survives a reload and a sign-out (the sign-in page keeps it) and reaches a second session through `settings.updated`                                                                                       |
 | `multi-account.e2e.ts`                                                | dev1 adds `dev2@silo.test` (discovery, connection test, axe on the dialog); the switcher shows both accounts with unread counts; `g 1`/`g 2`; a message from dev2 reaches `dev3@` with `From: dev2@` and its copy is in dev2's Sent only |
 | `pwa.e2e.ts`                                                          | service worker and manifest; after going offline, a reload shows the shell, the cached list and thread body and the offline banner                                                                                                       |
 | `local-auth.e2e.ts`                                                   | mode `local`: TOTP on, sign-in with a code, a user created in Administration signs in with the temporary password, adds `dev1@silo.test` and sees its INBOX; cleanup with a backup code                                                  |
