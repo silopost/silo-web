@@ -240,7 +240,7 @@ for progress, three at a time. Sending is `POST /drafts/{id}/send` after the las
 deduplication and the send queue; the browser keeps no copy of drafts and only warns on leaving
 the page with unsaved edits.
 
-Like Gmail, a thread row shows a red `Draft` / `Drafts (n)` after the senders while the thread has
+Like Gmail, a thread row shows a red `Draft` / `Drafts (n)` (token `--color-draft`) after the senders while the thread has
 unsent drafts (`Thread.draftCount`, kept current by `thread.updated`: a reply started, discarded,
 sent or unsent, or an empty draft the server purged).
 
@@ -506,6 +506,7 @@ Measurements are printed as `[measure]` lines. In CI the `e2e` job runs on deman
 | File                                                                  | Checks                                                                                                                                                                                                                                   |
 | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `reply.e2e.ts`, `archive.e2e.ts`, `undo-send.e2e.ts`, `drafts.e2e.ts` | reply delivered with `In-Reply-To`/`References`; archive and its undo; undo send; drafts in the server's Drafts folder                                                                                                                   |
+| `draft-marker.e2e.ts`                                                 | a started reply shows a red `Draft` on its row until it is discarded; the favicon carries the unread badge                                                                                                                               |
 | `offline.e2e.ts`                                                      | the mail server going offline (stops and starts the `mailserver` container)                                                                                                                                                              |
 | `large-list.e2e.ts`                                                   | a 5000-thread list without long tasks                                                                                                                                                                                                    |
 | `xss.e2e.ts`, `a11y.e2e.ts`, `shortcuts.e2e.ts`                       | hostile HTML, axe (`@axe-core/playwright`), keyboard shortcuts                                                                                                                                                                           |
