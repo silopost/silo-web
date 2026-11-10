@@ -68,6 +68,17 @@ body {
   @apply bg-surface font-sans text-sm text-ink antialiased;
 }
 
+/* Tailwind v4's preflight leaves buttons with the default arrow cursor; the app's buttons and menu
+   items (the Compose button, icon buttons, Radix menus...) show the hand, as links do. A cursor-* utility still
+   wins (utilities come after the base layer). */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role^="menuitem"]:not([data-disabled]) {
+    cursor: pointer;
+  }
+}
+
 :focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 1px;

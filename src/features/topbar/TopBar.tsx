@@ -49,7 +49,7 @@ function DensityMenu() {
   );
 }
 
-/** TopBar (plan 6.3): menu, logo, search, sync status, density, help, AccountSwitcher. */
+/** TopBar (plan 6.3): menu, logo (link to the Inbox), search, sync status, density, help, AccountSwitcher. */
 export function TopBar() {
   const toggleNav = usePrefs((s) => s.toggleNav);
   const collapsed = usePrefs((s) => s.navCollapsed);
@@ -65,7 +65,16 @@ export function TopBar() {
         size={24}
       />
       <span className="flex w-[180px] pl-2 text-xl text-ink">
-        <Brand />
+        {/* The logo leads home: the Inbox of the current account (as / redirects). */}
+        <Link
+          to="/u/$account/$label"
+          params={{ account, label: "inbox" }}
+          aria-label={t.homeLink}
+          title={t.homeLink}
+          className="inline-flex rounded focus-visible:outline-2 focus-visible:outline-focus"
+        >
+          <Brand />
+        </Link>
       </span>
       <SearchBox />
       <div className="ml-auto flex items-center gap-1">

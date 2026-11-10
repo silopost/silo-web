@@ -60,6 +60,7 @@ export const pl: Messages = {
 
   // shell
   mainMenu: "Menu główne",
+  homeLink: "Silo – strona główna",
   compose: "Utwórz",
   more: "Więcej",
   less: "Mniej",

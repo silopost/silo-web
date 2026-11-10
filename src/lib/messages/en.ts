@@ -61,6 +61,7 @@ export const en = {
 
   // shell
   mainMenu: "Main menu",
+  homeLink: "Silo home",
   compose: "Compose",
   more: "More",
   less: "Less",
