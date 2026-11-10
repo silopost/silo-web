@@ -145,7 +145,7 @@ export const ThreadRow = memo(function ThreadRow(p: Props) {
         )}
         {th.draftCount > 0 && (
           // Gmail's red "Draft" / "Drafts (n)" after the senders: unsent drafts in the thread.
-          <span className="ml-1 shrink-0 font-normal text-error-ink">
+          <span className="ml-1 shrink-0 font-normal text-draft">
             {t.draftsMarker(th.draftCount)}
           </span>
         )}

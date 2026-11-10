@@ -102,9 +102,13 @@ const PAIRS: [string, string, number][] = [
   ["warn-ink", "warn-bg", TEXT],
   ["error-ink", "error-bg", TEXT],
   ["error-ink", "panel", TEXT],
-  // Red text in the rows of the list (scheduled time, the "Draft" marker), read and selected.
+  // Red text in the rows of the list: the scheduled time and the "Draft" marker, on unread,
+  // read and selected rows.
   ["error-ink", "row-read", TEXT],
   ["error-ink", "row-selected", TEXT],
+  ["draft", "panel", TEXT],
+  ["draft", "row-read", TEXT],
+  ["draft", "row-selected", TEXT],
   ["primary", "raised", TEXT],
   ["error-bg", "error-ink", TEXT],
   ["success-ink", "success-bg", TEXT],

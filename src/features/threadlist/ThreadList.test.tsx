@@ -364,11 +364,11 @@ it.each([
   const r3 = await row("Temat 3");
   for (const marker of [one, two]) expect(within(r1).queryByText(marker)).toBeNull();
   const m1 = within(r2).getByText(one);
-  expect(m1).toHaveClass("text-error-ink");
+  expect(m1).toHaveClass("text-draft");
   // In the cell of the senders, after the names; read out as part of the row.
   expect(m1.closest('[role="gridcell"]')).toHaveTextContent(new RegExp(`Osoba 2.*${one}$`));
   expect(r2).toHaveAttribute("aria-label", expect.stringContaining(`Osoba 2, ${one}, Temat 2`));
-  expect(within(r3).getByText(two)).toHaveClass("text-error-ink");
+  expect(within(r3).getByText(two)).toHaveClass("text-draft");
   expect(r3).toHaveAttribute("aria-label", expect.stringContaining(two));
   expect(r1.getAttribute("aria-label")).not.toContain(one);
 });
