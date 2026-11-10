@@ -299,6 +299,8 @@ export const pl: Messages = {
   contentLoading: "Pobieranie treści z serwera poczty…",
   contentError: "Nie udało się pobrać treści wiadomości.",
   showImages: "Wyświetl obrazy",
+  copyAddress: "Kopiuj adres",
+  copied: "Skopiowano",
   imagesBlocked: "Obrazy zewnętrzne są ukryte.",
   messageMenu: "Więcej opcji wiadomości",
   showOriginal: "Pokaż oryginał",

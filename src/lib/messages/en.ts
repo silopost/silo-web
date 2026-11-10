@@ -293,6 +293,8 @@ export const en = {
   contentLoading: "Fetching the message from the mail server…",
   contentError: "Couldn't fetch the message.",
   showImages: "Display images",
+  copyAddress: "Copy address",
+  copied: "Copied",
   imagesBlocked: "External images are hidden.",
   messageMenu: "More message options",
   showOriginal: "Show original",

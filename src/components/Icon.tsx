@@ -96,6 +96,8 @@ const PATHS = {
     "M22 3.41L16.71 8.7 20 12h-8V4l3.29 3.29L20.59 2 22 3.41zM3.41 22l5.29-5.29L12 20v-8H4l3.29 3.29L2 20.59 3.41 22z",
   check: "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
   remove: "M19 13H5v-2h14v2z",
+  contentCopy:
+    "M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z",
   verticalSplit: "M3 15h8v-2H3v2zm0 4h8v-2H3v2zm0-8h8V9H3v2zm0-6v2h8V5H3zm10 0h8v14h-8V5z",
   horizontalSplit: "M3 19h18v-6H3v6zm0-8h18V9H3v2zm0-6v2h18V5H3z",
 } as const;

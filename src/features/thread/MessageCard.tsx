@@ -7,6 +7,7 @@ import { Icon } from "../../components/Icon";
 import { IconButton } from "../../components/IconButton";
 import { displayName, formatFullDate, formatListDate } from "../../lib/format";
 import { t } from "../../lib/i18n";
+import { toast } from "../../state/toasts";
 import { PendingIcon } from "../sync/PendingIcon";
 import { AttachmentChips } from "./AttachmentChips";
 import { MessageHtmlFrame } from "./MessageHtmlFrame";
@@ -67,6 +68,18 @@ function Recipients({ message, me }: { message: Message; me: string }) {
   );
 }
 
+/** Whether the user has selected text (dragging over the sender to copy it): not a click. */
+const selecting = () => (window.getSelection()?.toString() ?? "") !== "";
+
+async function copyAddress(email: string) {
+  try {
+    await navigator.clipboard.writeText(email);
+    toast(t.copied);
+  } catch {
+    toast(t.genericError);
+  }
+}
+
 /** One message of a thread: collapsed to a line, or expanded with header, body and files. */
 export function MessageCard({ message, expanded, me, onToggle, onStar, onReply }: Props) {
   const sending = (message.labelIds ?? []).includes("SCHEDULED");
@@ -105,11 +118,45 @@ export function MessageCard({ message, expanded, me, onToggle, onStar, onReply }
     >
       <header className="flex items-start gap-3">
         <Avatar address={message.from} />
-        <div className="min-w-0 flex-1 cursor-pointer" onClick={onToggle}>
-          <button type="button" aria-expanded className="text-left">
-            <span className="font-bold">{displayName(message.from)}</span>{" "}
-            <span className="text-xs text-ink-muted">&lt;{message.from.email}&gt;</span>
-          </button>
+        {/* A click collapses the message, but not the end of a drag that selects the sender's
+            name or address to copy them: a div with role=button, as a <button> keeps its text
+            from being selected. */}
+        <div
+          className="min-w-0 flex-1 cursor-pointer"
+          onClick={() => {
+            if (!selecting()) onToggle();
+          }}
+        >
+          <div className="flex min-w-0 items-center gap-1">
+            <div
+              role="button"
+              tabIndex={0}
+              aria-expanded
+              onKeyDown={(e) => {
+                if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
+                e.preventDefault();
+                onToggle();
+              }}
+              className="min-w-0 select-text truncate rounded text-left"
+            >
+              <span className="font-bold">{displayName(message.from)}</span>{" "}
+              {message.from.email && (
+                <span className="text-xs text-ink-muted">&lt;{message.from.email}&gt;</span>
+              )}
+            </div>
+            {message.from.email && (
+              <IconButton
+                icon="contentCopy"
+                label={t.copyAddress}
+                size={16}
+                className="size-7"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void copyAddress(message.from.email);
+                }}
+              />
+            )}
+          </div>
           <Recipients message={message} me={me} />
         </div>
         <div className="flex shrink-0 items-center gap-1">

@@ -1,8 +1,8 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
-import { afterAll, afterEach, beforeAll, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, expect, it, vi } from "vitest";
 import { createMockMail } from "../../test/mockMail";
 import { renderApp } from "../../test/renderApp";
 
@@ -177,4 +177,48 @@ it("shows external images at once for a trusted sender (any case)", async () => 
   expect(frame.getAttribute("srcdoc")).toContain("img-src 'self' data: https: http:");
   expect(screen.queryByRole("button", { name: "Display images" })).toBeNull();
   expect(mail.state.calls.settings).toEqual([]);
+});
+
+it("copies the sender's address with the copy button", async () => {
+  const { user } = setup();
+  await screen.findByRole("heading", { name: "Temat 1" });
+  const writeText = vi.fn(() => Promise.resolve());
+  Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+  const message = card("m_t_1_2");
+  await user.click(within(message).getByRole("button", { name: "Copy address" }));
+  expect(writeText).toHaveBeenCalledWith("osoba@firma.pl");
+  expect(await screen.findByText("Copied")).toBeInTheDocument();
+  // The click did not collapse the message.
+  expect(within(card("m_t_1_2")).getByRole("button", { name: /Nadawca 2/ })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+});
+
+it("does not collapse a message when the sender's name is selected, and toggles from the keyboard", async () => {
+  const { user } = setup();
+  await screen.findByRole("heading", { name: "Temat 1" });
+  const header = within(card("m_t_1_2")).getByRole("button", { name: /Nadawca 2/ });
+  expect(header).toHaveAttribute("aria-expanded", "true");
+  // The end of a drag over the name: a click with text selected.
+  const range = document.createRange();
+  range.selectNodeContents(within(header).getByText("Nadawca 2"));
+  window.getSelection()!.removeAllRanges();
+  window.getSelection()!.addRange(range);
+  fireEvent.click(header);
+  expect(within(card("m_t_1_2")).getByRole("button", { name: /Nadawca 2/ })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  window.getSelection()!.removeAllRanges();
+
+  // Enter on the focused header collapses it; a plain click expands it again.
+  header.focus();
+  await user.keyboard("{Enter}");
+  const collapsed = await within(card("m_t_1_2")).findByRole("button", { name: "Nadawca 2" });
+  expect(collapsed).toHaveAttribute("aria-expanded", "false");
+  await user.click(collapsed);
+  expect(
+    await within(card("m_t_1_2")).findByRole("button", { name: /Nadawca 2/, expanded: true }),
+  ).toBeInTheDocument();
 });
