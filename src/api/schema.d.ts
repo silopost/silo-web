@@ -2195,6 +2195,11 @@ export interface components {
             /** @example acc_1 */
             accountId: string;
             /**
+             * Format: int64
+             * @description Number of drafts in the thread (messages with the DRAFT label; a queued or sending message is SCHEDULED, not a draft); 0 without one. The list shows it as Draft / Drafts (n).
+             */
+            draftCount: number;
+            /**
              * @description d_ id of the newest draft in the thread (a message with the DRAFT label), for opening it in compose; null without one.
              * @example d_4k2
              */
@@ -4231,7 +4236,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description A Server-Sent Events stream. Each event has id (sequence number), event (type) and data (JSON); types: message.new, thread.updated, thread.deleted, thread.merged, label.counts, label.changed, operation.failed, filter.applied ({filterId, accountId, messages, threads}: POST /filters/{id}/apply is done), settings.updated ({updatedAt}: reload GET /settings), account.status, account.sync_progress, account.error, resync, session.expired (the session was signed out, revoked, expired or its user disabled: the stream ends; sign in again), stream.limit ({retryAfter}: too many open streams of the user, the stream ends; fall back to /events/poll). Events caused by a request that carried X-Silo-Client have origin set to that id. */
+            /** @description A Server-Sent Events stream. Each event has id (sequence number), event (type) and data (JSON); types: message.new, thread.updated (draftId and draftCount as in the thread list), thread.deleted, thread.merged, label.counts, label.changed, operation.failed, filter.applied ({filterId, accountId, messages, threads}: POST /filters/{id}/apply is done), settings.updated ({updatedAt}: reload GET /settings), account.status, account.sync_progress, account.error, resync, session.expired (the session was signed out, revoked, expired or its user disabled: the stream ends; sign in again), stream.limit ({retryAfter}: too many open streams of the user, the stream ends; fall back to /events/poll). Events caused by a request that carried X-Silo-Client have origin set to that id. */
             200: {
                 headers: {
                     [name: string]: unknown;

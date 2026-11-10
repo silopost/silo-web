@@ -106,6 +106,7 @@ export function createMockMail() {
     outboundId: null,
     pendingSync: false,
     draftId: null,
+    draftCount: 0,
     ...extra,
   });
 
@@ -439,7 +440,9 @@ export function createMockMail() {
   /** A thread in Drafts whose second message is a draft (Thread.draftId, Message.draftId). */
   const addDraftThread = (n: number, extra: Partial<Draft> = {}) => {
     const id = `d_t_${n}_2`;
-    state.threads.push(thread(n, { labelIds: ["DRAFT"], subject: `Szkic ${n}`, draftId: id }));
+    state.threads.push(
+      thread(n, { labelIds: ["DRAFT"], subject: `Szkic ${n}`, draftId: id, draftCount: 1 }),
+    );
     const d = newDraft({});
     state.drafts.delete(d.id);
     state.drafts.set(id, {
