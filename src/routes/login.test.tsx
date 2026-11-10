@@ -5,6 +5,7 @@ import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, expect, it } from "vitest";
 import { getCsrfToken, setCsrfToken } from "../api/csrf";
 import { setLocale } from "../lib/i18n";
+import { setTheme } from "../lib/theme";
 import { createLocalMock } from "../test/mockLocal";
 import { createMockMail } from "../test/mockMail";
 import { renderApp } from "../test/renderApp";
@@ -205,4 +206,20 @@ it("uses the last language of the browser and then the user's setting", async ()
   expect(await screen.findByRole("link", { name: /Inbox/ })).toBeInTheDocument();
   expect(localStorage.getItem("silo.language")).toBe("en");
   expect(document.documentElement.lang).toBe("en");
+});
+
+it("shows the login screen in the last theme of the browser, then the user's theme", async () => {
+  setTheme("dark");
+  const mail = loggedOut();
+  mail.session.settings.theme = "rose";
+  const user = userEvent.setup();
+  renderApp("/login");
+  expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+  expect(document.documentElement.dataset.theme).toBe("dark");
+  await user.type(screen.getByLabelText("Email address"), "dev1@silo.test");
+  await user.type(screen.getByLabelText("Password"), "devpass1");
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  expect(await screen.findByRole("link", { name: /Inbox/ })).toBeInTheDocument();
+  expect(document.documentElement.dataset.theme).toBe("rose");
+  expect(localStorage.getItem("silo.theme")).toBe("rose");
 });

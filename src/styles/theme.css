@@ -60,6 +60,171 @@
   --color-paper: #ffffff;
 }
 
+/* Colour themes (Settings > General > Theme, settings.theme): <html data-theme> overrides the
+   tokens above, so every utility (bg-panel, text-ink...) follows. The selectors match any element,
+   so the theme tiles of the picker preview a theme by setting data-theme on themselves; the light
+   themes therefore first restore the default values (inside a dark page). Keep the ids in step
+   with src/lib/theme.ts and the enum of settings.theme (silo-server). */
+[data-theme="default"],
+[data-theme="soft-gray"],
+[data-theme="blue"],
+[data-theme="lavender"],
+[data-theme="rose"],
+[data-theme="mint"],
+[data-theme="seafoam"] {
+  color-scheme: light;
+  --color-ink: #1f1f1f;
+  --color-ink-muted: #444746;
+  --color-surface: #f6f8fc;
+  --color-panel: #ffffff;
+  --color-raised: #ffffff;
+  --color-line: #e0e3e7;
+  --color-line-strong: #747775;
+  --color-hover: rgb(31 31 31 / 0.08);
+  --color-primary: #0b57d0;
+  --color-focus: #0b57d0;
+  --color-nav-active: #d3e3fd;
+  --color-compose: #c2e7ff;
+  --color-row-read: #f2f6fc;
+  --color-row-selected: #c2dbff;
+  --color-star: #b06000;
+  --color-snooze: #b06000;
+  --color-warn-bg: #fef7e0;
+  --color-warn-ink: #3c2c00;
+  --color-error-bg: #fce8e6;
+  --color-error-ink: #8c1d18;
+  --color-tooltip: #3c4043;
+  --color-snackbar: #303030;
+  --color-scrim: rgb(0 0 0 / 0.4);
+  --color-on-primary: #ffffff;
+  --color-on-tooltip: #ffffff;
+  --color-on-snackbar: #ffffff;
+  --color-snackbar-action: #a8c7fa;
+  --color-search: #e9eef6;
+  --color-success-bg: #e6f4ea;
+  --color-success-ink: #0d652d;
+  --color-row-edge: #dadce0;
+  --color-row-shadow: rgb(60 64 67 / 0.3);
+  --color-quote-line: #cccccc;
+  --color-quote-hover: #c4c7c5;
+  --color-paper: #ffffff;
+  --paper-pad: 0px;
+}
+
+/* Gmail-like solid colour themes: a tinted background, navigation, compose button and rows; the
+   reading panel stays white. */
+[data-theme="soft-gray"],
+[data-theme="blue"],
+[data-theme="lavender"],
+[data-theme="rose"],
+[data-theme="mint"],
+[data-theme="seafoam"] {
+  /* The snooze time on a read row: darker than the default #b06000 (4.3:1 on its read row). */
+  --color-snooze: #994f00;
+}
+[data-theme="soft-gray"] {
+  --color-surface: #eceff1;
+  --color-primary: #3f4f63;
+  --color-focus: #3f4f63;
+  --color-nav-active: #d5dbe1;
+  --color-compose: #dde2e7;
+  --color-row-read: #f3f5f7;
+  --color-row-selected: #d2dae2;
+  --color-search: #e1e5e9;
+}
+[data-theme="blue"] {
+  --color-surface: #dde8fb;
+  --color-primary: #174ea6;
+  --color-focus: #174ea6;
+  --color-nav-active: #bed4fa;
+  --color-compose: #aecbf7;
+  --color-row-read: #eef3fd;
+  --color-row-selected: #b9d0f7;
+  --color-search: #ccdcf7;
+}
+[data-theme="lavender"] {
+  --color-surface: #efe9f9;
+  --color-primary: #643bb0;
+  --color-focus: #643bb0;
+  --color-nav-active: #e0d3f6;
+  --color-compose: #d6c4f4;
+  --color-row-read: #f6f2fc;
+  --color-row-selected: #d9c9f3;
+  --color-search: #e4dbf4;
+}
+[data-theme="rose"] {
+  --color-surface: #faeaee;
+  --color-primary: #a0304f;
+  --color-focus: #a0304f;
+  --color-nav-active: #f5d3db;
+  --color-compose: #f2c3cf;
+  --color-row-read: #fcf3f5;
+  --color-row-selected: #f1c6d1;
+  --color-search: #f3dce2;
+}
+[data-theme="mint"] {
+  --color-surface: #e6f4ec;
+  --color-primary: #1b6a40;
+  --color-focus: #1b6a40;
+  --color-nav-active: #c9e9d6;
+  --color-compose: #b9e2ca;
+  --color-row-read: #f0f8f3;
+  --color-row-selected: #c0e2cd;
+  --color-search: #d6ecdf;
+}
+[data-theme="seafoam"] {
+  --color-surface: #e1f3f2;
+  --color-primary: #00676a;
+  --color-focus: #00676a;
+  --color-nav-active: #c2e8e5;
+  --color-compose: #ade0dc;
+  --color-row-read: #edf8f7;
+  --color-row-selected: #b5dfdb;
+  --color-search: #cfeae8;
+}
+
+/* Dark: light text on near-black surfaces, light primary with dark text on it. Messages from
+   senders keep their light paper (--color-paper), padded so that it reads as a page. */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-ink: #e3e3e3;
+  --color-ink-muted: #c4c7c5;
+  --color-surface: #131314;
+  --color-panel: #1e1f20;
+  --color-raised: #2b2c2e;
+  --color-line: #3c4043;
+  --color-line-strong: #8e918f;
+  --color-hover: rgb(227 227 227 / 0.08);
+  --color-primary: #a8c7fa;
+  --color-focus: #a8c7fa;
+  --color-nav-active: #004a77;
+  --color-compose: #004a77;
+  --color-row-read: #18191a;
+  --color-row-selected: #0b3b66;
+  --color-star: #fdd663;
+  --color-snooze: #fdd663;
+  --color-warn-bg: #3f3300;
+  --color-warn-ink: #ffe08a;
+  --color-error-bg: #5c1410;
+  --color-error-ink: #f9dedc;
+  --color-tooltip: #e3e3e3;
+  --color-snackbar: #e3e3e3;
+  --color-scrim: rgb(0 0 0 / 0.6);
+  --color-on-primary: #062e6f;
+  --color-on-tooltip: #1f1f1f;
+  --color-on-snackbar: #1f1f1f;
+  --color-snackbar-action: #0b57d0;
+  --color-search: #2a2b2d;
+  --color-success-bg: #0f3d20;
+  --color-success-ink: #a8dab5;
+  --color-row-edge: #3c4043;
+  --color-row-shadow: rgb(0 0 0 / 0.6);
+  --color-quote-line: #5f6368;
+  --color-quote-hover: #5f6368;
+  --color-paper: #ffffff;
+  --paper-pad: 16px;
+}
+
 /* Density (plan 6.3): <html data-density>; ThreadList uses the same row heights (state/ui.ts). */
 :root,
 :root[data-density="default"] {

@@ -3,10 +3,12 @@ import { usePatchSettings, useSettings } from "../../api/queries/settings";
 import type { Settings } from "../../api/types";
 import { IconButton } from "../../components/IconButton";
 import { isLocale, LOCALE_NAMES, LOCALES, setLocale, t, useLocale } from "../../lib/i18n";
+import { setTheme, useTheme } from "../../lib/theme";
 import { toast } from "../../state/toasts";
 import { READING_PANES, usePrefs, type Density } from "../../state/ui";
 import { Editor } from "../compose/Editor";
 import { requestNotificationPermission } from "../notifications/desktop";
+import { ThemePicker } from "./ThemePicker";
 
 const UNDO_SECONDS = [5, 10, 20, 30];
 
@@ -107,8 +109,8 @@ function TrustedSenders({
 
 /**
  * "General" (plan 5.1 /settings): every change is its own PATCH of that one field; the server
- * validates (422 → snackbar). The density and the language are applied at once, before the
- * answer (a refused language comes back with the settings and switches the UI back).
+ * validates (422 → snackbar). The density, the language and the theme are applied at once, before
+ * the answer (a refused language or theme comes back with the settings and switches the UI back).
  */
 export function GeneralSettings() {
   const settings = useSettings();
@@ -129,6 +131,7 @@ function GeneralForm({ settings }: { settings: Settings }) {
 
   const save = (p: Partial<Settings>) => patch.mutate(p);
   const locale = useLocale();
+  const theme = useTheme();
 
   const toggleNotifications = async (on: boolean) => {
     if (!on) return save({ desktopNotifications: false });
@@ -158,6 +161,15 @@ function GeneralForm({ settings }: { settings: Settings }) {
             </option>
           ))}
         </select>
+      </Row>
+      <Row title={t.settings.theme} hint={t.settings.themeHint}>
+        <ThemePicker
+          value={theme}
+          onChange={(next) => {
+            setTheme(next);
+            save({ theme: next });
+          }}
+        />
       </Row>
       <Row title={t.settings.density}>
         <div role="radiogroup" aria-label={t.settings.density} className="flex gap-4">

@@ -3,6 +3,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, expect, it, vi } from "vitest";
+import { setTheme } from "../../lib/theme";
 import { FakeEventSource } from "../../test/fakeEventSource";
 import { FakeUploadXhr } from "../../test/fakeUploadXhr";
 import { createMockMail } from "../../test/mockMail";
@@ -161,6 +162,24 @@ it("a reply hides the quote behind ⋯, opens it on click and always sends it", 
     "quote-collapsed",
   );
   expect(within(again).queryByRole("button", { name: "Show trimmed content" })).toBeNull();
+});
+
+it("sends no colours of the dark theme to the recipients", async () => {
+  setTheme("dark");
+  const { mail, user } = setup("/u/0/inbox/t_2");
+  await screen.findByRole("heading", { name: "Temat 2" });
+  await user.keyboard("r");
+  const win = await screen.findByRole("region", { name: "Re: Temat 2" });
+  const body = within(win).getByRole("textbox", { name: "Message body" });
+  await waitFor(() => expect(body).toHaveFocus());
+  // The editor shows the theme colours through CSS only.
+  expect(body).toHaveClass("compose-body");
+  expect(body.closest("[style*=color]")).toBeNull();
+  await user.click(within(win).getByRole("button", { name: "Send" }));
+  expect(await screen.findByText("Message sent")).toBeInTheDocument();
+  const sent = mail.state.calls.putDraft.at(-1)!.bodyHtml ?? "";
+  expect(sent).toContain("Cytowana treść");
+  expect(sent).not.toMatch(/style=|color|var\(--|#e3e3e3|#1e1f20/i);
 });
 
 it("RecipientInput makes chips, marks invalid ones and removes with Backspace", async () => {

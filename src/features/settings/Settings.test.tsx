@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { setTheme } from "../../lib/theme";
 import { FakeEventSource } from "../../test/fakeEventSource";
 import { createMockMail } from "../../test/mockMail";
 import { renderApp } from "../../test/renderApp";
@@ -108,6 +109,82 @@ describe("general settings", () => {
     await user.selectOptions(select, "en");
     expect(await screen.findByText("Serwer odrzucił tę wartość ustawienia.")).toBeInTheDocument();
     expect(await screen.findByRole("combobox", { name: "Język" })).toHaveValue("pl");
+  });
+
+  it("offers the themes as radio tiles, applies one at once and PATCHes it", async () => {
+    const { mail, user } = setup("/u/0/settings/general");
+    const group = await screen.findByRole("radiogroup", { name: "Theme" });
+    const tiles = within(group).getAllByRole("radio");
+    expect(tiles.map((r) => r.closest("label")?.textContent)).toEqual([
+      "✓ Default",
+      "Dark",
+      "Soft gray",
+      "Blue",
+      "Lavender",
+      "Rose",
+      "Mint",
+      "Seafoam",
+    ]);
+    expect(within(group).getByRole("radio", { name: "Default" })).toBeChecked();
+    // Every tile previews its own theme with the real tokens.
+    expect(group.querySelectorAll("[data-theme]")).toHaveLength(8);
+
+    await user.click(within(group).getByRole("radio", { name: "Dark" }));
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute(
+      "content",
+      "#131314",
+    );
+    expect(localStorage.getItem("silo.theme")).toBe("dark");
+    expect(within(group).getByRole("radio", { name: "Dark" })).toBeChecked();
+    await waitFor(() => expect(mail.state.calls.settings).toEqual([{ theme: "dark" }]));
+    expect(mail.session.settings.theme).toBe("dark");
+
+    // Arrow keys move between the tiles (one radio group), each step applies its theme.
+    await user.keyboard("{ArrowRight}");
+    expect(within(group).getByRole("radio", { name: "Soft gray" })).toHaveFocus();
+    expect(document.documentElement.dataset.theme).toBe("soft-gray");
+    await waitFor(() =>
+      expect(mail.state.calls.settings).toEqual([{ theme: "dark" }, { theme: "soft-gray" }]),
+    );
+  });
+
+  it("follows settings.theme of the server and goes back when the PATCH is refused", async () => {
+    const { user } = setup("/u/0/settings/general", (m) => {
+      m.session.settings.theme = "mint";
+      m.state.settingsProblem.theme = { status: 422, code: "invalid_setting" };
+    });
+    const group = await screen.findByRole("radiogroup", { name: "Theme" });
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe("mint"));
+    expect(within(group).getByRole("radio", { name: "Mint" })).toBeChecked();
+    expect(localStorage.getItem("silo.theme")).toBe("mint");
+    await user.click(within(group).getByRole("radio", { name: "Rose" }));
+    expect(await screen.findByText("The server rejected this value.")).toBeInTheDocument();
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe("mint"));
+    expect(within(group).getByRole("radio", { name: "Mint" })).toBeChecked();
+  });
+
+  it("switches the theme on settings.updated from another session", async () => {
+    const { mail } = setup("/u/0/settings/general");
+    await screen.findByRole("radiogroup", { name: "Theme" });
+    expect(document.documentElement.dataset.theme).toBe("default");
+    mail.session.settings = { ...mail.session.settings, theme: "dark" };
+    act(() =>
+      FakeEventSource.latest().emit("settings.updated", { updatedAt: "2026-11-05T10:00:00Z" }),
+    );
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe("dark"));
+    expect(localStorage.getItem("silo.theme")).toBe("dark");
+  });
+
+  it("keeps the local theme when an older server sends no settings.theme", async () => {
+    localStorage.setItem("silo.theme", "blue");
+    setTheme("blue");
+    setup("/u/0/settings/general", (m) => {
+      delete (m.session.settings as { theme?: string }).theme;
+    });
+    const group = await screen.findByRole("radiogroup", { name: "Theme" });
+    expect(within(group).getByRole("radio", { name: "Blue" })).toBeChecked();
+    expect(document.documentElement.dataset.theme).toBe("blue");
   });
 
   it("sends the undo send period alone", async () => {

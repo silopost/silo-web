@@ -16,6 +16,7 @@ import { VersionBanner } from "../features/sync/VersionBanner";
 import { Snackbar } from "../features/toasts/Snackbar";
 import { TopBar } from "../features/topbar/TopBar";
 import { applyServerLocale, t, useLocale } from "../lib/i18n";
+import { applyServerTheme } from "../lib/theme";
 import { GoToLabelDialog } from "../features/labels/GoToLabelDialog";
 import { ShortcutsHelpDialog } from "../shortcuts/ShortcutsHelpDialog";
 import { useGlobalShortcuts } from "../shortcuts/useShortcuts";
@@ -51,6 +52,7 @@ export const Route = createFileRoute("/_app")({
       if (!snapshot) throw err;
       context.queryClient.setQueryData(keys.session, snapshot);
       applyServerLocale(snapshot.settings?.language);
+      applyServerTheme(snapshot.settings?.theme);
       offlineSnapshot = true;
     }
   },
@@ -94,6 +96,12 @@ function useServerLocale() {
   useEffect(() => applyServerLocale(language), [language]);
 }
 
+/** settings.theme of the server (this tab, another device: settings.updated) wins. */
+function useServerTheme() {
+  const theme = useSettings()?.theme;
+  useEffect(() => applyServerTheme(theme), [theme]);
+}
+
 /** A click on a desktop notification opens its thread in this tab. */
 function useNotificationNavigator() {
   const router = useRouter();
@@ -124,6 +132,7 @@ function AppLayout() {
   useEffect(() => connectEvents(qc), [qc]);
   useDensityAttribute();
   useServerLocale();
+  useServerTheme();
   useNotificationNavigator();
   useDocumentTitle();
   useGlobalShortcuts();
