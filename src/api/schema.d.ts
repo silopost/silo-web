@@ -871,7 +871,7 @@ export interface paths {
         head?: never;
         /**
          * Change settings
-         * @description JSON merge: only the fields sent change; activeAccountId null clears it. The answer is the whole settings object with updatedAt; the other sessions of the user get settings.updated {updatedAt} and reload GET /settings. 422 invalid_setting (density, undoSendSeconds, signature over 32 KiB, an activeAccountId that is not the user's, an unsupported language, over 1000 trustedImageSenders) or invalid_timezone.
+         * @description JSON merge: only the fields sent change; activeAccountId null clears it. The answer is the whole settings object with updatedAt; the other sessions of the user get settings.updated {updatedAt} and reload GET /settings. 422 invalid_setting (density, undoSendSeconds, signature over 32 KiB, an activeAccountId that is not the user's, an unsupported language or theme, over 1000 trustedImageSenders) or invalid_timezone.
          */
         patch: operations["updateSettings"];
         trace?: never;
@@ -2015,6 +2015,11 @@ export interface components {
             language: "en" | "pl";
             signature: string;
             /**
+             * @description Colour theme of the silo-web client; other clients may ignore it. default until the user chooses one.
+             * @enum {string}
+             */
+            theme: "default" | "dark" | "soft-gray" | "blue" | "lavender" | "rose" | "mint" | "seafoam";
+            /**
              * @description IANA time zone name.
              * @example Europe/Warsaw
              */
@@ -2050,6 +2055,11 @@ export interface components {
             language?: string;
             /** @description HTML, at most 32 KiB (else 422 invalid_setting); stored sanitized like message HTML. */
             signature?: string;
+            /**
+             * @description Colour theme of silo-web: default, dark, soft-gray, blue, lavender, rose, mint or seafoam; else 422 invalid_setting.
+             * @example dark
+             */
+            theme?: string;
             /**
              * @description IANA time zone name; else 422 invalid_timezone. Used by before:/after: of search and filters and by GET /snooze/presets.
              * @example Europe/Warsaw
