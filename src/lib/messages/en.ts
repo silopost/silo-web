@@ -305,6 +305,8 @@ export const en = {
   messageBody: "Message body",
   attachments: "Attachments",
   draftLabel: "Draft",
+  /** The red marker of a thread with unsent drafts in the list (Thread.draftCount), as in Gmail. */
+  draftsMarker: (n: number) => plural("en", n, { one: "Draft", other: `Drafts (${num(n)})` }),
   scheduledLabel: "Message waiting to be sent",
 
   // compose

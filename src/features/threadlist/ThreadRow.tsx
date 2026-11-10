@@ -50,7 +50,8 @@ function rowLabel(th: Thread, unread: boolean, names: string, date: string): str
     : th.scheduledAt
       ? t.scheduledFor(formatSnoozeTime(th.scheduledAt))
       : date;
-  const parts = [unread ? t.unread : null, names, th.subject || t.noSubject, when];
+  const drafts = th.draftCount > 0 ? t.draftsMarker(th.draftCount) : null;
+  const parts = [unread ? t.unread : null, names, drafts, th.subject || t.noSubject, when];
   if (th.hasAttachments) parts.push(t.hasAttachment);
   if (th.labelIds?.includes("SCHEDULED")) parts.push(t.scheduledLabel);
   if (th.pendingSync) parts.push(t.pendingSync);
@@ -125,15 +126,28 @@ export const ThreadRow = memo(function ThreadRow(p: Props) {
           <Icon name={starred ? "star" : "starBorder"} size={18} />
         </button>
       </div>
-      <div role="gridcell" className={`w-48 shrink-0 truncate ${unread ? "font-bold" : ""}`}>
-        {names.map((n, i) => (
-          <span key={i} className={n.unread ? "font-bold" : unread ? "" : "font-normal"}>
-            {i > 0 && ", "}
-            {n.name}
-          </span>
-        ))}
+      <div
+        role="gridcell"
+        className={`flex w-48 shrink-0 items-baseline whitespace-nowrap ${unread ? "font-bold" : ""}`}
+      >
+        <span className="min-w-0 truncate">
+          {names.map((n, i) => (
+            <span key={i} className={n.unread ? "font-bold" : unread ? "" : "font-normal"}>
+              {i > 0 && ", "}
+              {n.name}
+            </span>
+          ))}
+        </span>
         {th.messageCount > 1 && (
-          <span className="ml-1 text-xs font-normal text-ink-muted">{th.messageCount}</span>
+          <span className="ml-1 shrink-0 text-xs font-normal text-ink-muted">
+            {th.messageCount}
+          </span>
+        )}
+        {th.draftCount > 0 && (
+          // Gmail's red "Draft" / "Drafts (n)" after the senders: unsent drafts in the thread.
+          <span className="ml-1 shrink-0 font-normal text-error-ink">
+            {t.draftsMarker(th.draftCount)}
+          </span>
         )}
       </div>
       <div role="gridcell" className="flex min-w-0 flex-1 items-center gap-1">

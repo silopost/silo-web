@@ -311,6 +311,8 @@ export const pl: Messages = {
   messageBody: "Treść wiadomości",
   attachments: "Załączniki",
   draftLabel: "Wersja robocza",
+  draftsMarker: (n: number) =>
+    plural("pl", n, { one: "Wersja robocza", other: `Wersje robocze (${num(n)})` }),
   scheduledLabel: "Wiadomość czeka na wysłanie",
 
   // compose

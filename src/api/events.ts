@@ -69,6 +69,10 @@ export function applyEvent(qc: QueryClient, type: string, data: Data): void {
       if (typeof data.snippet === "string") patch.snippet = data.snippet;
       // Snooze (plan 3.10): the wake time, or null once the thread is back in Inbox.
       if ("snoozedUntil" in data) patch.snoozedUntil = str(data.snoozedUntil) ?? null;
+      // Drafts of the thread ("Draft" / "Drafts (n)" in the row): a reply started, discarded,
+      // sent or unsent, or an empty draft the server purged.
+      if ("draftId" in data) patch.draftId = str(data.draftId) ?? null;
+      if (typeof data.draftCount === "number") patch.draftCount = data.draftCount;
       let seen = false;
       let moved = false;
       updateLists(qc, accountId, (row) => {

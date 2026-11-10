@@ -336,3 +336,64 @@ it("the row menu says there are no labels and scrolling a submenu keeps it open"
   expect(screen.getByRole("menu", { name: "Label as" })).toBeInTheDocument();
   expect(mail.state.calls.modify).toEqual([]);
 });
+
+/** Inbox whose t_1 has no draft, t_2 one and t_3 two (Thread.draftCount). */
+function withDrafts(language: "en" | "pl") {
+  const mail = createMockMail();
+  mail.session.settings.language = language;
+  for (const [id, n] of [
+    ["t_2", 1],
+    ["t_3", 2],
+  ] as const) {
+    const th = mail.state.threads.find((x) => x.id === id)!;
+    th.draftCount = n;
+    th.draftId = `d_${id}`;
+  }
+  server.use(...mail.handlers);
+  renderApp("/u/0/inbox");
+  return mail;
+}
+
+it.each([
+  ["en", "Draft", "Drafts (2)"],
+  ["pl", "Wersja robocza", "Wersje robocze (2)"],
+] as const)("marks threads with drafts in red after the senders (%s)", async (lang, one, two) => {
+  withDrafts(lang);
+  const r1 = await row("Temat 1");
+  const r2 = await row("Temat 2");
+  const r3 = await row("Temat 3");
+  for (const marker of [one, two]) expect(within(r1).queryByText(marker)).toBeNull();
+  const m1 = within(r2).getByText(one);
+  expect(m1).toHaveClass("text-error-ink");
+  // In the cell of the senders, after the names; read out as part of the row.
+  expect(m1.closest('[role="gridcell"]')).toHaveTextContent(new RegExp(`Osoba 2.*${one}$`));
+  expect(r2).toHaveAttribute("aria-label", expect.stringContaining(`Osoba 2, ${one}, Temat 2`));
+  expect(within(r3).getByText(two)).toHaveClass("text-error-ink");
+  expect(r3).toHaveAttribute("aria-label", expect.stringContaining(two));
+  expect(r1.getAttribute("aria-label")).not.toContain(one);
+});
+
+it("thread.updated adds and removes the draft marker without a refetch", async () => {
+  const mail = withDrafts("en");
+  const r1 = await row("Temat 1");
+  const pages = mail.state.calls.threadPages.length;
+  const update = (draftCount: number) =>
+    act(() =>
+      FakeEventSource.latest().emit("thread.updated", {
+        threadId: "t_1",
+        accountId: "acc_1",
+        labelIds: draftCount ? ["INBOX", "DRAFT", "UNREAD"] : ["INBOX", "UNREAD"],
+        unreadCount: 1,
+        pendingSync: false,
+        draftId: draftCount ? "d_x" : null,
+        draftCount,
+      }),
+    );
+  update(1);
+  expect(await within(r1).findByText("Draft")).toBeInTheDocument();
+  update(3);
+  expect(await within(r1).findByText("Drafts (3)")).toBeInTheDocument();
+  update(0);
+  await waitFor(() => expect(within(r1).queryByText(/^Drafts?\b/)).toBeNull());
+  expect(mail.state.calls.threadPages.length).toBe(pages);
+});
