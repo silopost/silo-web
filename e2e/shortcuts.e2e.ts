@@ -88,7 +88,7 @@ test("shortcuts from the real keyboard", async ({ page }) => {
   await page.keyboard.press("z");
   await expect(firstRow).toBeVisible();
 
-  // o opens the thread, r / a / f open reply windows, Esc closes them, u goes back.
+  // o opens the thread, r / a open the inline reply, f a forward window; u goes back.
   await firstRow.focus();
   await page.keyboard.press("o");
   await expect(page.getByRole("heading", { name: `${tag} C` })).toBeVisible();
@@ -98,7 +98,7 @@ test("shortcuts from the real keyboard", async ({ page }) => {
     ["f", `Fwd: ${tag} C`],
   ] as const) {
     await page.keyboard.press(key);
-    const win = page.getByRole("dialog", { name: title });
+    const win = page.getByRole(key === "f" ? "dialog" : "region", { name: title });
     await expect(win).toBeVisible();
     await win.getByRole("button", { name: "Save & close" }).click();
     await expect(win).toBeHidden();

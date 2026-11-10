@@ -57,7 +57,8 @@ test("replies; delivery, headers, Sent copy and \\Answered checked over IMAP", a
   await expect(page.getByRole("heading", { name: subject })).toBeVisible();
 
   await page.keyboard.press("r");
-  const win = page.getByRole("dialog", { name: `Re: ${subject}` });
+  // The reply opens inline, under the message it answers.
+  const win = page.getByRole("region", { name: `Re: ${subject}` });
   await expect(win).toBeVisible();
   await expect(win.getByRole("list", { name: "Recipients: To" })).toContainText(
     /Dev Two|dev2@silo\.test/,

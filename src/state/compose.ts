@@ -8,16 +8,32 @@ export type WindowMode = "normal" | "minimized" | "maximized";
  */
 export type ComposeWindowState = { draftId: string; key: string; mode: WindowMode };
 
+/**
+ * A reply shown under a message of its thread instead of in the dock, as in Gmail. One at a time:
+ * another reply in a thread saves and closes the previous one. threadId and anchorId (the message
+ * it answers) tell ThreadView where to render it.
+ */
+export type InlineReplyState = {
+  draftId: string;
+  key: string;
+  threadId: string;
+  anchorId: string;
+  mode: "reply" | "replyAll";
+};
+
 /** A failed send reported by outbound.status (plan 3.9 step 6), shown in the window's bar. */
 export type SendFailure = { error?: string; failedRecipients?: string[] };
 
 type Compose = {
   /** Open compose windows, oldest first (plan 6.4). */
   windows: ComposeWindowState[];
+  inline: InlineReplyState | null;
   failures: Record<string, SendFailure>;
   /** Versions saved by other tabs or programs (draft.updated), per draft. */
   remoteVersions: Record<string, number>;
   open: (draftId: string, mode?: WindowMode) => void;
+  /** Shows a draft as the inline reply of a thread. */
+  openInline: (draftId: string, at: Omit<InlineReplyState, "draftId" | "key">) => void;
   close: (draftId: string) => void;
   setMode: (draftId: string, mode: WindowMode) => void;
   setFailure: (draftId: string, failure: SendFailure | null) => void;
@@ -37,12 +53,15 @@ const MAX_EXPANDED = 3;
 
 export const useCompose = create<Compose>()((set) => ({
   windows: [],
+  inline: null,
   failures: {},
   remoteVersions: {},
   open: (draftId, mode = "normal") =>
     set((s) => {
       const others = s.windows.filter((w) => w.draftId !== draftId);
-      const key = s.windows.find((w) => w.draftId === draftId)?.key ?? draftId;
+      // "Open in a window" of an inline reply: the draft moves to the dock with its key.
+      const fromInline = s.inline?.draftId === draftId ? s.inline : null;
+      const key = s.windows.find((w) => w.draftId === draftId)?.key ?? fromInline?.key ?? draftId;
       const windows = [
         ...others.map((w) =>
           mode === "maximized" && w.mode === "maximized" ? { ...w, mode: "normal" as const } : w,
@@ -51,6 +70,7 @@ export const useCompose = create<Compose>()((set) => ({
       ];
       let expanded = windows.filter((w) => w.mode !== "minimized").length;
       return {
+        inline: fromInline ? null : s.inline,
         windows: windows.map((w) => {
           if (expanded > MAX_EXPANDED && w.mode !== "minimized" && w.draftId !== draftId) {
             expanded -= 1;
@@ -60,7 +80,17 @@ export const useCompose = create<Compose>()((set) => ({
         }),
       };
     }),
-  close: (draftId) => set((s) => ({ windows: s.windows.filter((w) => w.draftId !== draftId) })),
+  openInline: (draftId, at) =>
+    set((s) => ({
+      // A draft is shown in one place only.
+      windows: s.windows.filter((w) => w.draftId !== draftId),
+      inline: { ...at, draftId, key: s.inline?.draftId === draftId ? s.inline.key : draftId },
+    })),
+  close: (draftId) =>
+    set((s) => ({
+      windows: s.windows.filter((w) => w.draftId !== draftId),
+      inline: s.inline?.draftId === draftId ? null : s.inline,
+    })),
   setMode: (draftId, mode) =>
     set((s) => ({
       windows: s.windows.map((w) =>
@@ -83,6 +113,7 @@ export const useCompose = create<Compose>()((set) => ({
   rename: (from, to) =>
     set((s) => ({
       windows: s.windows.map((w) => (w.draftId === from ? { ...w, draftId: to } : w)),
+      inline: s.inline?.draftId === from ? { ...s.inline, draftId: to } : s.inline,
       failures: rekey(s.failures, from, to),
       remoteVersions: rekey(s.remoteVersions, from, to),
     })),

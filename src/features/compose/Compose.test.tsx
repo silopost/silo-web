@@ -113,7 +113,8 @@ it("a reply sends replyToMessageId and mode and opens prefilled", async () => {
   const { mail, user } = setup("/u/0/inbox/t_2");
   await screen.findByRole("heading", { name: "Temat 2" });
   await user.keyboard("a");
-  const win = await screen.findByRole("dialog", { name: "Re: Temat 2" });
+  // Reply all opens inline, under the message it answers.
+  const win = await screen.findByRole("region", { name: "Re: Temat 2" });
   expect(mail.state.calls.createDraft).toEqual([{ replyToMessageId: "m_t_2_2", mode: "replyAll" }]);
   const to = within(win).getByRole("list", { name: "Recipients: To" });
   expect(within(to).getByText("Nadawca 2")).toBeInTheDocument();
@@ -121,8 +122,12 @@ it("a reply sends replyToMessageId and mode and opens prefilled", async () => {
   expect(within(cc).getByText("Inna Osoba")).toBeInTheDocument();
   expect(within(win).getByText("Cytowana treść")).toBeInTheDocument();
 
-  await user.click(screen.getByRole("button", { name: "Forward" }));
+  // Forward opens in the dock, beside the inline reply.
+  const card = document.querySelector<HTMLElement>('[data-message-id="m_t_2_2"]')!;
+  await user.click(within(card).getByRole("button", { name: "More message options" }));
+  await user.click(await screen.findByRole("menuitem", { name: "Forward" }));
   await screen.findByRole("dialog", { name: "Fwd: Temat 2" });
+  expect(screen.getByRole("region", { name: "Re: Temat 2" })).toBeInTheDocument();
   expect(mail.state.calls.createDraft[1]).toEqual({
     replyToMessageId: "m_t_2_2",
     mode: "forward",

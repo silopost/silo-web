@@ -15,7 +15,7 @@ import type { Address, Draft, SendResult, UploadInfo } from "../../api/types";
 import { formatSnoozeTime } from "../../lib/format";
 import { t } from "../../lib/i18n";
 import { refersToCid, toEditorHtml, toServerHtml } from "../../lib/inlineImages";
-import { useCompose } from "../../state/compose";
+import { useCompose, type InlineReplyState } from "../../state/compose";
 import { toast, useToasts } from "../../state/toasts";
 
 /** Autosave after this much idle time (plan 3.8 step 1). */
@@ -658,16 +658,33 @@ export async function undoSend(
   void qc.invalidateQueries({ queryKey: keys.threadsAll(accountId) });
 }
 
-/** Opens a window for a draft the caller already has (POST /drafts, cancel). */
+/**
+ * Opens a window for a draft the caller already has (POST /drafts, cancel); with inline, the
+ * draft is shown under its message in the thread instead.
+ */
 export function openLoaded(
   qc: QueryClient,
   d: Draft,
-  opts: { created?: boolean; maximized?: boolean } = {},
+  opts: {
+    created?: boolean;
+    maximized?: boolean;
+    inline?: Omit<InlineReplyState, "draftId" | "key">;
+  } = {},
 ) {
   const s = getSession(qc, d.id);
   s.load(d);
   if (opts.created) s.createdHere = true;
-  useCompose.getState().open(d.id, opts.maximized ? "maximized" : "normal");
+  if (opts.inline) useCompose.getState().openInline(d.id, opts.inline);
+  else useCompose.getState().open(d.id, opts.maximized ? "maximized" : "normal");
+}
+
+/** Saves and closes the inline reply, if one is open (another reply, leaving the thread). */
+export async function closeInline() {
+  const inline = useCompose.getState().inline;
+  if (!inline) return;
+  const s = sessions.get(inline.draftId);
+  if (s) await s.close();
+  else useCompose.getState().close(inline.draftId);
 }
 
 /** Opens a window for a draft by id (Drafts list, failed send); GET /drafts/{id}. */

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { DraftMode } from "../../api/drafts";
 import { neighbourInList, type ThreadLists } from "../../api/mutations/cache";
 import { snoozeThreads, wakeThread } from "../../api/mutations/snooze";
@@ -14,8 +14,10 @@ import { t } from "../../lib/i18n";
 import { isSystemLabelId } from "../../lib/labels";
 import { useShortcutHandlers } from "../../shortcuts/useShortcuts";
 import { useActiveAccount } from "../account";
-import { openReply } from "../compose/actions";
-import { openDraft } from "../compose/session";
+import { useCompose } from "../../state/compose";
+import { openInlineReply, openReply } from "../compose/actions";
+import { InlineReply } from "../compose/InlineReply";
+import { closeInline, openDraft } from "../compose/session";
 import { LabelsPopover } from "../labels/LabelsPopover";
 import type { MoveCommand } from "../labels/move";
 import { MovePopover } from "../labels/MovePopover";
@@ -136,14 +138,31 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
     const ls = m.labelIds ?? [];
     return !ls.includes("DRAFT") && !ls.includes("SCHEDULED");
   });
+  // Reply and reply all open under the message they answer; forward opens in the dock.
   const reply = (mode: DraftMode, messageId = replyTarget?.id) => {
-    if (messageId) void openReply(qc, messageId, mode);
+    if (!messageId) return;
+    if (mode === "forward") void openReply(qc, messageId, mode);
+    else void openInlineReply(qc, threadId, messageId, mode);
   };
+  const inlineReply = useCompose((s) => (s.inline?.threadId === threadId ? s.inline : null));
+  // Leaving the thread (another thread, back to the list) saves and closes its inline reply.
+  useEffect(
+    () => () => {
+      if (useCompose.getState().inline?.threadId === threadId) void closeInline();
+    },
+    [threadId],
+  );
 
   // Fold long runs of collapsed messages after the first one.
   const firstExpanded = messages.findIndex((m, i) => i > 0 && expanded.has(m.id));
   const foldEnd = firstExpanded < 0 ? messages.length - 1 : firstExpanded;
   const fold = !unfolded && foldEnd - 1 >= FOLD_MIN;
+  // The inline reply goes under its message; when that one is folded away or gone, at the end.
+  const anchorIndex = inlineReply ? messages.findIndex((m) => m.id === inlineReply.anchorId) : -1;
+  const inlineAnchor =
+    inlineReply && anchorIndex >= 0 && !(fold && anchorIndex >= 1 && anchorIndex < foldEnd)
+      ? inlineReply.anchorId
+      : null;
 
   // n / p: the cursor starts at the first expanded message (unread or the last one).
   const focusMessage = (step: 1 | -1) => {
@@ -310,6 +329,8 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
                 );
               }
               const draftId = m.draftId;
+              // The draft of the open inline reply is shown as the reply itself.
+              if (draftId && draftId === inlineReply?.draftId) return null;
               if (draftId) {
                 return (
                   <button
@@ -324,18 +345,25 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
                 );
               }
               return (
-                <MessageCard
-                  key={m.id}
-                  message={m}
-                  expanded={expanded.has(m.id)}
-                  me={account?.email ?? ""}
-                  onToggle={() => toggle(m.id)}
-                  onStar={(star) => act(star ? "star" : "unstar")}
-                  onReply={(mode) => reply(mode, m.id)}
-                />
+                <Fragment key={m.id}>
+                  <MessageCard
+                    message={m}
+                    expanded={expanded.has(m.id)}
+                    me={account?.email ?? ""}
+                    onToggle={() => toggle(m.id)}
+                    onStar={(star) => act(star ? "star" : "unstar")}
+                    onReply={(mode) => reply(mode, m.id)}
+                  />
+                  {inlineReply && inlineAnchor === m.id && (
+                    <InlineReply key={inlineReply.key} reply={inlineReply} />
+                  )}
+                </Fragment>
               );
             })}
-            {replyTarget && <ReplyBar onReply={(mode) => reply(mode)} />}
+            {inlineReply && inlineAnchor === null && (
+              <InlineReply key={inlineReply.key} reply={inlineReply} />
+            )}
+            {replyTarget && !inlineReply && <ReplyBar onReply={(mode) => reply(mode)} />}
           </>
         )}
       </div>

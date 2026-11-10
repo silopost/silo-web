@@ -86,3 +86,69 @@ it("goes back to the list with u", async () => {
   await user.keyboard("u");
   await waitFor(() => expect(router.state.location.pathname).toBe("/u/0/inbox"));
 });
+
+const card = (id: string) => document.querySelector<HTMLElement>(`[data-message-id="${id}"]`)!;
+
+it("opens a reply inline under the message it answers and closes it", async () => {
+  const { mail, user } = setup("/u/0/inbox/t_2");
+  await screen.findByRole("heading", { name: "Temat 2" });
+  // The first message is collapsed (read): expand it, then reply from its card.
+  await user.click(screen.getByRole("button", { name: "Nadawca 1" }));
+  await user.click(within(card("m_t_2_1")).getByRole("button", { name: "Reply" }));
+  const first = await screen.findByRole("region", { name: "Re: Temat 2" });
+  expect(mail.state.calls.createDraft).toEqual([{ replyToMessageId: "m_t_2_1", mode: "reply" }]);
+  // Right under its message, above the next one; not a dock window.
+  expect(card("m_t_2_1").nextElementSibling).toContainElement(first);
+  expect(first.compareDocumentPosition(card("m_t_2_2")) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+    Node.DOCUMENT_POSITION_FOLLOWING,
+  );
+  expect(screen.queryByRole("dialog", { name: "Re: Temat 2" })).toBeNull();
+  await waitFor(() =>
+    expect(within(first).getByRole("textbox", { name: "Message body" })).toHaveFocus(),
+  );
+  // The reply bar is hidden while the reply is open.
+  expect(screen.queryByRole("button", { name: "Reply all" })).toBeNull();
+
+  // Reply on another message: the first reply is saved and closed, the new one opens there.
+  await user.click(within(card("m_t_2_2")).getByRole("button", { name: "Reply" }));
+  await waitFor(() => expect(mail.state.calls.createDraft).toHaveLength(2));
+  const second = await screen.findByRole("region", { name: "Re: Temat 2" });
+  expect(card("m_t_2_2").nextElementSibling).toContainElement(second);
+  expect(screen.getAllByRole("region", { name: "Re: Temat 2" })).toHaveLength(1);
+
+  // Save & close removes it; the reply bar is back.
+  await user.click(within(second).getByRole("button", { name: "Save & close" }));
+  await waitFor(() => expect(screen.queryByRole("region", { name: "Re: Temat 2" })).toBeNull());
+  expect(screen.getByRole("button", { name: "Reply all" })).toBeInTheDocument();
+});
+
+it("opens the reply of the reply bar and of r under the last message; Esc closes it", async () => {
+  const { mail, user } = setup("/u/0/inbox/t_2");
+  await screen.findByRole("heading", { name: "Temat 2" });
+  await user.click(screen.getByRole("button", { name: "Reply all" }));
+  const win = await screen.findByRole("region", { name: "Re: Temat 2" });
+  expect(mail.state.calls.createDraft).toEqual([{ replyToMessageId: "m_t_2_2", mode: "replyAll" }]);
+  expect(card("m_t_2_2").nextElementSibling).toContainElement(win);
+  const body = within(win).getByRole("textbox", { name: "Message body" });
+  await waitFor(() => expect(body).toHaveFocus());
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(screen.queryByRole("region", { name: "Re: Temat 2" })).toBeNull());
+
+  await user.keyboard("r");
+  const again = await screen.findByRole("region", { name: "Re: Temat 2" });
+  expect(card("m_t_2_2").nextElementSibling).toContainElement(again);
+  expect(mail.state.calls.createDraft.at(-1)).toEqual({
+    replyToMessageId: "m_t_2_2",
+    mode: "reply",
+  });
+});
+
+it("moves an inline reply to a dock window with Open in a window", async () => {
+  const { user } = setup("/u/0/inbox/t_2");
+  await screen.findByRole("heading", { name: "Temat 2" });
+  await user.keyboard("r");
+  const win = await screen.findByRole("region", { name: "Re: Temat 2" });
+  await user.click(within(win).getByRole("button", { name: "Open in a window" }));
+  expect(await screen.findByRole("dialog", { name: "Re: Temat 2" })).toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "Re: Temat 2" })).toBeNull();
+});

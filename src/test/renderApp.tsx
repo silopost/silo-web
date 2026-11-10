@@ -17,7 +17,7 @@ export function renderApp(url: string) {
     pendingPrefix: null,
     labelPickerOpen: false,
   });
-  useCompose.setState({ windows: [], failures: {}, remoteVersions: {} });
+  useCompose.setState({ windows: [], inline: null, failures: {}, remoteVersions: {} });
   resetSessions();
   useToasts.setState({ current: null, lastUndo: null });
   useConnection.setState({ state: "connecting", tooManyStreams: false });

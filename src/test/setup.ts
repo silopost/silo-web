@@ -8,7 +8,16 @@ import { FakeEventSource } from "./fakeEventSource";
 // (all files run in parallel): give findBy/waitFor more time than the default 1 s.
 configure({ asyncUtilTimeout: 3000 });
 
-afterEach(() => {
+afterEach(async () => {
+  // Before unmounting: a thread view that unmounts saves its inline reply, which would reach
+  // the next test's mock server. Imported here, not at the top: the API client must load after
+  // the Request patch below.
+  const [{ useCompose }, { resetSessions }] = await Promise.all([
+    import("../state/compose"),
+    import("../features/compose/session"),
+  ]);
+  useCompose.setState({ windows: [], inline: null });
+  resetSessions();
   cleanup();
   FakeEventSource.instances.length = 0;
   // Every test starts in the default language (English), as a new user does.

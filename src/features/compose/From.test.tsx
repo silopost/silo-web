@@ -95,7 +95,7 @@ it("hides Od for a reply", async () => {
   const { user } = setup("/u/0/inbox/t_2");
   await screen.findByRole("heading", { name: "Temat 2" });
   await user.keyboard("r");
-  const win = await screen.findByRole("dialog", { name: "Re: Temat 2" });
+  const win = await screen.findByRole("region", { name: "Re: Temat 2" });
   expect(within(win).queryByRole("combobox", { name: "From" })).toBeNull();
   expect(within(win).getByText("Dev One <dev1@silo.test>")).toBeInTheDocument();
 });

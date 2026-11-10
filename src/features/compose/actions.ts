@@ -6,8 +6,9 @@ import { sessionQuery } from "../../api/queries/session";
 import { threadQuery } from "../../api/queries/threads";
 import type { Draft, Session, Settings } from "../../api/types";
 import { t } from "../../lib/i18n";
+import { useCompose, type InlineReplyState } from "../../state/compose";
 import { toast } from "../../state/toasts";
-import { openDraft, openLoaded } from "./session";
+import { closeInline, openDraft, openLoaded } from "./session";
 
 let creating = false;
 
@@ -29,13 +30,19 @@ function withSignature(qc: QueryClient, d: Draft): Draft {
   };
 }
 
-async function create(qc: QueryClient, body: Parameters<typeof createDraft>[0], maximized = false) {
+type OpenOpts = { maximized?: boolean; inline?: Omit<InlineReplyState, "draftId" | "key"> };
+
+async function create(
+  qc: QueryClient,
+  body: Parameters<typeof createDraft>[0],
+  opts: OpenOpts = {},
+) {
   // A second `c` while the first draft is being created must not create another one.
   if (creating) return;
   creating = true;
   try {
     const d = withSignature(qc, await createDraft(body));
-    openLoaded(qc, d, { created: true, maximized });
+    openLoaded(qc, d, { created: true, ...opts });
     // Forward: parts of the original that could not be carried over (plan 5.1 POST /drafts).
     const warnings = (d.warnings ?? []).map((w) => t.forwardWarnings[w]).filter(Boolean);
     if (warnings.length > 0) toast(warnings.join(" "));
@@ -49,11 +56,45 @@ async function create(qc: QueryClient, body: Parameters<typeof createDraft>[0], 
 
 /** "Compose" / `c`: POST /drafts for the account (plan 3.8). */
 export const openNewCompose = (qc: QueryClient, accountId: string | undefined, maximized = false) =>
-  create(qc, { accountId }, maximized);
+  create(qc, { accountId }, { maximized });
 
 /** Reply, reply all, forward: the server prefills recipients, subject and quote. */
 export const openReply = (qc: QueryClient, messageId: string, mode: DraftMode) =>
   create(qc, { replyToMessageId: messageId, mode });
+
+/** Focuses the editor of the open inline reply and scrolls it into view. */
+export function focusInline() {
+  const inline = useCompose.getState().inline;
+  if (!inline) return;
+  const body = document.getElementById(`${inline.key}-body`);
+  body?.focus();
+  body?.scrollIntoView?.({ block: "nearest" });
+}
+
+/**
+ * Reply / reply all in a thread: the reply opens under the message it answers (as in Gmail),
+ * not in the dock. The same message and mode again only focuses the open reply; any other
+ * saves and closes it first (one inline reply at a time; the saved draft stays in the thread).
+ */
+export async function openInlineReply(
+  qc: QueryClient,
+  threadId: string,
+  messageId: string,
+  mode: InlineReplyState["mode"],
+) {
+  const cur = useCompose.getState().inline;
+  if (cur && cur.threadId === threadId && cur.anchorId === messageId && cur.mode === mode) {
+    focusInline();
+    return;
+  }
+  if (creating) return;
+  await closeInline();
+  await create(
+    qc,
+    { replyToMessageId: messageId, mode },
+    { inline: { threadId, anchorId: messageId, mode } },
+  );
+}
 
 /** A row of the Drafts list opens its draft in a compose window instead of the thread. */
 export async function openDraftOfThread(qc: QueryClient, threadId: string): Promise<boolean> {
