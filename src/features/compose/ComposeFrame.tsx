@@ -315,6 +315,7 @@ export function ComposeFrame({
                 id={ids.body}
                 content={form.bodyJson ?? form.bodyHtml}
                 loadSeq={state.loadSeq}
+                collapseQuote
                 onChange={(bodyHtml, bodyJson) => session.edit(() => ({ bodyHtml, bodyJson }))}
                 onFiles={(files) => session.addFiles(files)}
                 onInlineImage={(file) => session.uploadInline(file)}

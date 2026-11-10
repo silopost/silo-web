@@ -17,6 +17,7 @@ import type { IconName } from "../../components/Icon";
 import { t } from "../../lib/i18n";
 import { inlinePreviewUrl } from "../../lib/inlineImages";
 import { sanitizePastedHtml } from "../../lib/pasteHtml";
+import { CollapsedQuote } from "./collapsedQuote";
 
 type Props = {
   /** Id of the editable element (focus on open). */
@@ -32,6 +33,8 @@ type Props = {
   onFiles?: (files: File[]) => void;
   /** Uploads a pasted or dropped picture as an inline upload (POST /uploads inline=true). */
   onInlineImage?: (file: File) => Promise<UploadInfo>;
+  /** Hides the quote of a reply behind a "⋯" toggle until the user opens it (compose only). */
+  collapseQuote?: boolean;
 };
 
 const filesOf = (list: FileList | null | undefined) => (list ? Array.from(list) : []);
@@ -76,7 +79,16 @@ const Signature = Node.create({
 let uploadKeySeq = 0;
 
 /** Rich text of the message (plan 6.1): TipTap with StarterKit, Link, Placeholder and Image. */
-export function Editor({ id, label, content, loadSeq, onChange, onFiles, onInlineImage }: Props) {
+export function Editor({
+  id,
+  label,
+  content,
+  loadSeq,
+  onChange,
+  onFiles,
+  onInlineImage,
+  collapseQuote = false,
+}: Props) {
   const callbacks = useRef({ onChange, onFiles, onInlineImage });
   useEffect(() => {
     callbacks.current = { onChange, onFiles, onInlineImage };
@@ -144,6 +156,7 @@ export function Editor({ id, label, content, loadSeq, onChange, onFiles, onInlin
       Placeholder.configure({ placeholder: t.bodyPlaceholder }),
       InlineImage.configure({ inline: false, allowBase64: false }),
       Signature,
+      ...(collapseQuote ? [CollapsedQuote] : []),
     ],
     content: (content as string | object | null) ?? "",
     editorProps: {

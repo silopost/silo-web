@@ -134,6 +134,35 @@ it("a reply sends replyToMessageId and mode and opens prefilled", async () => {
   });
 });
 
+it("a reply hides the quote behind ⋯, opens it on click and always sends it", async () => {
+  const { mail, user } = setup("/u/0/inbox/t_2");
+  await screen.findByRole("heading", { name: "Temat 2" });
+  await user.keyboard("r");
+  const win = await screen.findByRole("region", { name: "Re: Temat 2" });
+  const body = within(win).getByRole("textbox", { name: "Message body" });
+  await waitFor(() => expect(body).toHaveFocus());
+  // Collapsed: in the editor (and the draft) but hidden behind the toggle.
+  const quote = within(win).getByText("Cytowana treść").closest("blockquote")!;
+  expect(quote).toHaveClass("quote-collapsed");
+  const toggle = within(win).getByRole("button", { name: "Show trimmed content" });
+  await user.click(within(win).getByRole("button", { name: "Send" }));
+  expect(await screen.findByText("Message sent")).toBeInTheDocument();
+  const sent = mail.state.calls.putDraft.at(-1)!.bodyHtml ?? "";
+  expect(sent).toContain("<blockquote><p>Cytowana treść</p></blockquote>");
+  expect(sent).not.toContain("quote-toggle");
+  expect(sent).not.toContain("quote-collapsed");
+  expect(toggle).not.toBeInTheDocument();
+
+  // Another reply: the toggle opens the quote for editing.
+  await user.keyboard("r");
+  const again = await screen.findByRole("region", { name: "Re: Temat 2" });
+  await user.click(within(again).getByRole("button", { name: "Show trimmed content" }));
+  expect(within(again).getByText("Cytowana treść").closest("blockquote")).not.toHaveClass(
+    "quote-collapsed",
+  );
+  expect(within(again).queryByRole("button", { name: "Show trimmed content" })).toBeNull();
+});
+
 it("RecipientInput makes chips, marks invalid ones and removes with Backspace", async () => {
   const { user } = setup();
   const win = await openCompose(user);

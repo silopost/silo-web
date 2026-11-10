@@ -313,6 +313,7 @@ export const en = {
   exitMaximize: "Exit full screen",
   saveAndClose: "Save & close",
   openInWindow: "Open in a window",
+  showTrimmedContent: "Show trimmed content",
   discardDraft: "Discard draft",
   send: "Send",
   sending: "Sending…",

@@ -319,6 +319,7 @@ export const pl: Messages = {
   exitMaximize: "Zamknij pełny ekran",
   saveAndClose: "Zapisz i zamknij",
   openInWindow: "Otwórz w oknie",
+  showTrimmedContent: "Pokaż przyciętą treść",
   discardDraft: "Odrzuć wersję roboczą",
   send: "Wyślij",
   sending: "Wysyłanie…",

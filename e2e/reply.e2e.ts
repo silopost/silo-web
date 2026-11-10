@@ -63,6 +63,9 @@ test("replies; delivery, headers, Sent copy and \\Answered checked over IMAP", a
   await expect(win.getByRole("list", { name: "Recipients: To" })).toContainText(
     /Dev Two|dev2@silo\.test/,
   );
+  // The quote of the original is collapsed behind "⋯" (still in the draft and the message).
+  await expect(win.getByRole("button", { name: "Show trimmed content" })).toBeVisible();
+  await expect(win.getByText("Czy termin w piątek jest aktualny?")).toBeHidden();
   const body = win.getByRole("textbox", { name: "Message body" });
   await body.click();
   await page.keyboard.type("Tak, piątek jest aktualny.");
@@ -78,6 +81,7 @@ test("replies; delivery, headers, Sent copy and \\Answered checked over IMAP", a
   expect(reply.inReplyTo).toBe(originalId);
   expect(reply.references).toContain(originalId);
   expect(decodedText(reply.source)).toContain("Tak, piątek jest aktualny.");
+  expect(decodedText(reply.source)).toContain("Czy termin w piątek jest aktualny?");
 
   // One copy in Sent on the server, the same message.
   const sent = await waitForMessage(dev1, "sent", `Re: ${subject}`, 20_000);
