@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, useParams } from "@tanstack/react-router";
 import { useActiveAccount } from "../features/account";
+import { SplitPane } from "../features/layout/SplitPane";
 import { ThreadList } from "../features/threadlist/ThreadList";
 import { useSearchListContext } from "../features/threadlist/routeContext";
 import { t } from "../lib/i18n";
@@ -22,6 +23,12 @@ function SearchView() {
   const ctx = useSearchListContext(account, active?.id ?? "", q, t.searchResults(q));
 
   if (!active) return <p className="p-6">{t.noAccount}</p>;
-  if (threadId) return <Outlet />;
-  return <ThreadList key={`${account}?${q}`} ctx={ctx} />;
+  return (
+    <SplitPane
+      open={!!threadId}
+      onClose={ctx.backToList}
+      list={<ThreadList key={`${account}?${q}`} ctx={ctx} />}
+      pane={<Outlet />}
+    />
+  );
 }

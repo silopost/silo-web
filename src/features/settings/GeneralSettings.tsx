@@ -3,7 +3,7 @@ import { usePatchSettings, useSettings } from "../../api/queries/settings";
 import type { Settings } from "../../api/types";
 import { isLocale, LOCALE_NAMES, LOCALES, setLocale, t, useLocale } from "../../lib/i18n";
 import { toast } from "../../state/toasts";
-import { usePrefs, type Density } from "../../state/ui";
+import { READING_PANES, usePrefs, type Density } from "../../state/ui";
 import { Editor } from "../compose/Editor";
 import { requestNotificationPermission } from "../notifications/desktop";
 
@@ -69,6 +69,8 @@ function GeneralForm({ settings }: { settings: Settings }) {
   const patch = usePatchSettings();
   const setDensity = usePrefs((s) => s.setDensity);
   const density = usePrefs((s) => s.density);
+  const readingPane = usePrefs((s) => s.readingPane);
+  const setReadingPane = usePrefs((s) => s.setReadingPane);
   const allZones = useMemo(() => zones(), []);
   const timezone = settings.timezone || detectedTimeZone();
   const signature = useRef(settings.signature);
@@ -122,6 +124,24 @@ function GeneralForm({ settings }: { settings: Settings }) {
                 className="accent-primary"
               />
               {t.densities[d]}
+            </label>
+          ))}
+        </div>
+      </Row>
+      {/* A preference of this browser only (localStorage), not a server setting. */}
+      <Row title={t.readingPane}>
+        <div role="radiogroup" aria-label={t.readingPane} className="flex gap-4">
+          {READING_PANES.map((m) => (
+            <label key={m} className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="readingPane"
+                value={m}
+                checked={readingPane === m}
+                onChange={() => setReadingPane(m)}
+                className="accent-primary"
+              />
+              {t.readingPanes[m]}
             </label>
           ))}
         </div>

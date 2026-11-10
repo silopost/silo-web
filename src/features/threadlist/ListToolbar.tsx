@@ -4,6 +4,7 @@ import { IconButton } from "../../components/IconButton";
 import { t } from "../../lib/i18n";
 import { LabelsPopover } from "../labels/LabelsPopover";
 import { MovePopover } from "../labels/MovePopover";
+import { ReadingPaneMenu } from "../layout/ReadingPaneMenu";
 import { ACTION_META } from "./actionMeta";
 import { SelectMenu } from "./SelectMenu";
 import type { SelectKind } from "./selection";
@@ -83,11 +84,14 @@ export function ListToolbar(p: Props) {
           />
         </>
       )}
-      {p.rows.length > 0 && (
-        <span className="ml-auto pr-2 text-xs text-ink-muted">
-          {t.range(1, p.rows.length, Math.max(p.total, p.rows.length))}
-        </span>
-      )}
+      <div className="ml-auto flex items-center gap-1">
+        {p.rows.length > 0 && (
+          <span className="pr-2 text-xs text-ink-muted">
+            {t.range(1, p.rows.length, Math.max(p.total, p.rows.length))}
+          </span>
+        )}
+        <ReadingPaneMenu />
+      </div>
     </div>
   );
 }

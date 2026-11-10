@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useSettings } from "../api/queries/settings";
 import {
@@ -16,15 +16,28 @@ import { SEQUENCES, SINGLES, type ShortcutId } from "./keymap";
 
 type Handlers = Partial<Record<ShortcutId, () => void>>;
 
+/**
+ * Whether the layers registered below this provider are passive right now. A passive layer is
+ * asked only after every active one: with the reading pane split, the list and the thread view
+ * are mounted together and the pane holding the focus answers first (SplitPane).
+ */
+export const ShortcutScopeContext = createContext<(() => boolean) | null>(null);
+
+type Layer = { handlers: { current: Handlers }; passive: (() => boolean) | null };
+
 /** Handler layers: the app registers global ones, the list or thread view its own on top. */
-const layers: { current: Handlers }[] = [];
+const layers: Layer[] = [];
 
 export function dispatchShortcut(id: ShortcutId): boolean {
-  for (let i = layers.length - 1; i >= 0; i--) {
-    const handler = layers[i]!.current[id];
-    if (handler) {
-      handler();
-      return true;
+  const passive = layers.map((l) => l.passive?.() ?? false);
+  for (const pass of [false, true]) {
+    for (let i = layers.length - 1; i >= 0; i--) {
+      if (passive[i] !== pass) continue;
+      const handler = layers[i]!.handlers.current[id];
+      if (handler) {
+        handler();
+        return true;
+      }
     }
   }
   return false;
@@ -33,17 +46,18 @@ export function dispatchShortcut(id: ShortcutId): boolean {
 /** Registers handlers while the calling component is mounted; the latest render wins. */
 export function useShortcutHandlers(handlers: Handlers): void {
   const ref = useRef(handlers);
+  const passive = useContext(ShortcutScopeContext);
   useLayoutEffect(() => {
     ref.current = handlers;
   });
   useEffect(() => {
-    const layer = ref;
+    const layer = { handlers: ref, passive };
     layers.push(layer);
     return () => {
       const i = layers.indexOf(layer);
       if (i >= 0) layers.splice(i, 1);
     };
-  }, []);
+  }, [passive]);
 }
 
 export const PREFIX_TIMEOUT_MS = 1500;
