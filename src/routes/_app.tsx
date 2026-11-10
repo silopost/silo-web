@@ -16,6 +16,7 @@ import { VersionBanner } from "../features/sync/VersionBanner";
 import { Snackbar } from "../features/toasts/Snackbar";
 import { TopBar } from "../features/topbar/TopBar";
 import { applyServerLocale, t, useLocale } from "../lib/i18n";
+import { setFaviconCount } from "../lib/favicon";
 import { applyServerTheme } from "../lib/theme";
 import { GoToLabelDialog } from "../features/labels/GoToLabelDialog";
 import { ShortcutsHelpDialog } from "../shortcuts/ShortcutsHelpDialog";
@@ -125,6 +126,14 @@ function useDocumentTitle() {
     if (!account) return;
     document.title = `${t.inboxTitle}${unread > 0 ? ` (${unread})` : ""} – ${account.email} – ${t.appName}`;
   }, [account, unread, locale]);
+  useFaviconBadge(account ? unread : 0);
+}
+
+/** The same unread count as a Gmail-style badge on the favicon; the plain icon when signed out. */
+function useFaviconBadge(unread: number) {
+  useEffect(() => setFaviconCount(unread), [unread]);
+  // Leaving the app (sign-out, the login page): back to the original icon.
+  useEffect(() => () => setFaviconCount(0), []);
 }
 
 function AppLayout() {

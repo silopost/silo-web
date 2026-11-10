@@ -144,3 +144,46 @@ describe("AccountSwitcher", () => {
     expect(await screen.findByRole("dialog", { name: "Add account" })).toBeInTheDocument();
   });
 });
+
+describe("favicon badge", () => {
+  const icon = () => document.querySelector('link[rel="icon"]')!.getAttribute("href")!;
+  const badge = () => {
+    const href = icon();
+    if (!href.startsWith("data:")) return null;
+    const svg = decodeURIComponent(href.slice(href.indexOf(",") + 1));
+    return /<text[^>]*>([^<]*)<\/text>/.exec(svg)?.[1] ?? null;
+  };
+  afterEach(() => document.querySelector('link[rel="icon"]')?.remove());
+
+  it("shows the unread count of the active Inbox, follows label.counts and the switch, and goes on sign-out", async () => {
+    document.head.insertAdjacentHTML(
+      "beforeend",
+      '<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">',
+    );
+    const { user, router } = setup();
+    await waitFor(() => expect(badge()).toBe("1"), { timeout: 5000 });
+    act(() =>
+      FakeEventSource.latest().emit("label.counts", {
+        accountId: "acc_1",
+        labels: [{ id: "INBOX", threadsUnread: 120, threadsTotal: 200 }],
+      }),
+    );
+    await waitFor(() => expect(badge()).toBe("99+"));
+    act(() =>
+      FakeEventSource.latest().emit("label.counts", {
+        accountId: "acc_1",
+        labels: [{ id: "INBOX", threadsUnread: 0, threadsTotal: 200 }],
+      }),
+    );
+    await waitFor(() => expect(icon()).toBe("/icons/icon.svg"));
+
+    let menu = await openMenu(user);
+    await user.click(within(menu).getByRole("menuitemradio", { name: /^dev2@silo.test/ }));
+    await waitFor(() => expect(badge()).toBe("4"));
+
+    menu = await openMenu(user);
+    await user.click(within(menu).getByRole("menuitem", { name: "Sign out" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
+    expect(icon()).toBe("/icons/icon.svg");
+  });
+});
