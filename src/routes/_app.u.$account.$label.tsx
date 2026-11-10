@@ -59,7 +59,7 @@ function NoAccounts({ account }: { account: string }) {
         to="/u/$account/settings/accounts"
         params={{ account }}
         search={{ add: true }}
-        className="rounded-full bg-primary px-4 py-1.5 font-medium text-white"
+        className="rounded-full bg-primary px-4 py-1.5 font-medium text-on-primary"
       >
         {t.switcher.addAccount}
       </Link>

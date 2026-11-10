@@ -30,7 +30,7 @@ export const IconButton = forwardRef<HTMLButtonElement, Props>(function IconButt
       <Tooltip.Portal>
         <Tooltip.Content
           sideOffset={4}
-          className="z-50 rounded bg-tooltip px-2 py-1 text-xs text-white shadow"
+          className="z-50 rounded bg-tooltip px-2 py-1 text-xs text-on-tooltip shadow"
         >
           {label}
         </Tooltip.Content>

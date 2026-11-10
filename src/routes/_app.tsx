@@ -68,7 +68,7 @@ function AppError({ reset }: { reset: () => void }) {
           reset();
           location.reload();
         }}
-        className="rounded-full bg-primary px-4 py-2 text-white"
+        className="rounded-full bg-primary px-4 py-2 text-on-primary"
       >
         {t.retry}
       </button>

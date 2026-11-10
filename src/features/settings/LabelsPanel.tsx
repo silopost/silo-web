@@ -11,7 +11,12 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Icon } from "../../components/Icon";
 import { IconButton } from "../../components/IconButton";
 import { intlLocale, t } from "../../lib/i18n";
-import { DEFAULT_LABEL_BG, DEFAULT_LABEL_TEXT, LABEL_COLORS } from "../../lib/labelColors";
+import {
+  DEFAULT_LABEL_TEXT,
+  LABEL_COLORS,
+  NO_COLOR_BG,
+  NO_COLOR_TEXT,
+} from "../../lib/labelColors";
 import { toast } from "../../state/toasts";
 import { useActiveAccount } from "../account";
 import { KeywordWarning } from "../labels/KeywordWarning";
@@ -222,7 +227,7 @@ function ColorPicker({ value, onChange }: { value: Color; onChange: (c: Color) =
         aria-label={t.labelsPanel.noColor}
         onClick={() => onChange(null)}
         className="size-7 rounded border border-line aria-checked:outline-2 aria-checked:outline-primary"
-        style={{ backgroundColor: DEFAULT_LABEL_BG, color: DEFAULT_LABEL_TEXT }}
+        style={{ backgroundColor: NO_COLOR_BG, color: NO_COLOR_TEXT }}
       >
         –
       </button>
@@ -315,8 +320,8 @@ function LabelDialog({
   return (
     <Dialog.Root open onOpenChange={(o) => !o && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 w-[min(30rem,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-panel p-6 shadow-xl">
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-scrim" />
+        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 w-[min(30rem,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-raised p-6 shadow-xl">
           <Dialog.Title className="mb-4 text-lg">{title}</Dialog.Title>
           <Dialog.Description className="sr-only">{title}</Dialog.Description>
           <form onSubmit={submit} className="flex flex-col gap-4">
@@ -369,7 +374,7 @@ function LabelDialog({
               <button
                 type="submit"
                 disabled={!name.trim() || save.isPending}
-                className="rounded-full bg-primary px-4 py-2 font-medium text-white disabled:opacity-60"
+                className="rounded-full bg-primary px-4 py-2 font-medium text-on-primary disabled:opacity-60"
               >
                 {l ? t.labelsPanel.save : t.labelsPanel.create}
               </button>

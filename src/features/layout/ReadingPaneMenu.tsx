@@ -21,7 +21,7 @@ export function ReadingPaneMenu() {
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           align="end"
-          className="z-50 min-w-48 rounded-lg bg-panel p-1 shadow-lg"
+          className="z-50 min-w-48 rounded-lg bg-raised p-1 shadow-lg"
         >
           <DropdownMenu.Label className="px-3 py-1 text-xs text-ink-muted">
             {t.readingPane}

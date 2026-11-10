@@ -42,7 +42,9 @@ export function frameDocument(body: string, showImages: boolean): string {
   return (
     `<!doctype html><html><head><meta charset="utf-8">` +
     `<meta http-equiv="Content-Security-Policy" content="${csp}">` +
-    `<style>body{margin:0;font:14px/1.5 Arial,sans-serif;color:#1f1f1f;overflow-wrap:anywhere}` +
+    // Always light paper, whatever the theme of the app: senders write their HTML for a white page.
+    `<style>:root{color-scheme:light;background:#fff}` +
+    `body{margin:0;font:14px/1.5 Arial,sans-serif;color:#1f1f1f;overflow-wrap:anywhere}` +
     `img{max-width:100%;height:auto}pre{white-space:pre-wrap}</style>` +
     `</head><body>${body}</body></html>`
   );

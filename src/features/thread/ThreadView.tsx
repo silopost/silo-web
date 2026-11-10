@@ -11,6 +11,7 @@ import type { Message, ThreadDetail } from "../../api/types";
 import { IconButton } from "../../components/IconButton";
 import { formatFullDate } from "../../lib/format";
 import { t } from "../../lib/i18n";
+import { NO_COLOR_BG, NO_COLOR_TEXT } from "../../lib/labelColors";
 import { isSystemLabelId } from "../../lib/labels";
 import { useShortcutHandlers } from "../../shortcuts/useShortcuts";
 import { useActiveAccount } from "../account";
@@ -289,8 +290,8 @@ export function ThreadView({ ctx, threadId }: { ctx: ListContext; threadId: stri
                   key={l.id}
                   className="rounded px-1.5 text-xs"
                   style={{
-                    backgroundColor: l.colorBg ?? "#e0e3e7",
-                    color: l.colorText ?? "#1f1f1f",
+                    backgroundColor: l.colorBg ?? NO_COLOR_BG,
+                    color: l.colorText ?? NO_COLOR_TEXT,
                   }}
                 >
                   {l.name}

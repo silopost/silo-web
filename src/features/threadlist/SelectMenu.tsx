@@ -47,7 +47,7 @@ export function SelectMenu({ total, selected, onSelect }: Props) {
         <DropdownMenu.Portal>
           <DropdownMenu.Content
             align="start"
-            className="z-50 min-w-40 rounded-lg bg-panel p-1 shadow-lg"
+            className="z-50 min-w-40 rounded-lg bg-raised p-1 shadow-lg"
           >
             {items().map(([kind, label]) => (
               <DropdownMenu.Item

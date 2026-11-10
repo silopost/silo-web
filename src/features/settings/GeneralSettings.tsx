@@ -233,7 +233,7 @@ function GeneralForm({ settings }: { settings: Settings }) {
             setSignatureDirty(false);
             save({ signature: signature.current });
           }}
-          className="self-start rounded-full bg-primary px-4 py-1.5 font-medium text-white disabled:opacity-50"
+          className="self-start rounded-full bg-primary px-4 py-1.5 font-medium text-on-primary disabled:opacity-50"
         >
           {t.settings.signatureSave}
         </button>

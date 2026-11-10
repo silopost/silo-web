@@ -61,7 +61,7 @@ export function AdvancedSearchPopover({ accountId, text, onSearch }: Props) {
           align="end"
           sideOffset={8}
           aria-label={t.advancedSearch}
-          className="z-50 w-[min(40rem,95vw)] rounded-lg bg-panel p-6 shadow-xl"
+          className="z-50 w-[min(40rem,95vw)] rounded-lg bg-raised p-6 shadow-xl"
         >
           <form onSubmit={submit} className="flex flex-col gap-3">
             <AdvancedFieldsForm accountId={accountId} value={f} onChange={setF} />
@@ -77,7 +77,7 @@ export function AdvancedSearchPopover({ accountId, text, onSearch }: Props) {
               <button
                 type="submit"
                 disabled={!q}
-                className="rounded bg-primary px-6 py-2 font-medium text-white disabled:opacity-60"
+                className="rounded bg-primary px-6 py-2 font-medium text-on-primary disabled:opacity-60"
               >
                 {t.adv.search}
               </button>

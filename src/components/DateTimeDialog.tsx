@@ -16,10 +16,10 @@ export function DateTimeDialog({ open, onOpenChange, title, onSubmit }: Props) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-scrim" />
         <Dialog.Content
           aria-describedby={undefined}
-          className="fixed top-1/2 left-1/2 z-50 w-[min(24rem,90vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-panel p-6 shadow-xl"
+          className="fixed top-1/2 left-1/2 z-50 w-[min(24rem,90vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-raised p-6 shadow-xl"
         >
           {/* Remounted on every open: the minimum is "now" of that moment. */}
           {open && <Form title={title} onCancel={() => onOpenChange(false)} onSubmit={onSubmit} />}
@@ -63,7 +63,7 @@ function Form(props: { title: string; onCancel: () => void; onSubmit: (iso: stri
         <button
           type="submit"
           disabled={!iso}
-          className="rounded-full bg-primary px-4 py-2 font-medium text-white disabled:opacity-60"
+          className="rounded-full bg-primary px-4 py-2 font-medium text-on-primary disabled:opacity-60"
         >
           {t.save}
         </button>

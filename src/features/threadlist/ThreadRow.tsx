@@ -10,6 +10,7 @@ import {
   participantNames,
 } from "../../lib/format";
 import { t } from "../../lib/i18n";
+import { NO_COLOR_BG, NO_COLOR_TEXT } from "../../lib/labelColors";
 import { isSystemLabelId } from "../../lib/labels";
 import { PendingIcon } from "../sync/PendingIcon";
 import { ACTION_META } from "./actionMeta";
@@ -98,7 +99,7 @@ export const ThreadRow = memo(function ThreadRow(p: Props) {
       onFocus={(e) => e.target === e.currentTarget && p.onFocus(th.id)}
       onMouseEnter={() => p.onHoverIntent(th.id)}
       onMouseLeave={p.onHoverEnd}
-      className={`group absolute top-0 left-0 flex h-[var(--row-h)] w-full cursor-pointer items-center gap-2 border-b border-line px-[var(--row-px)] hover:z-10 hover:shadow-[inset_1px_0_0_#dadce0,inset_-1px_0_0_#dadce0,0_1px_2px_0_rgba(60,64,67,.3)] focus-visible:z-10 ${
+      className={`group absolute top-0 left-0 flex h-[var(--row-h)] w-full cursor-pointer items-center gap-2 border-b border-line px-[var(--row-px)] hover:z-10 hover:shadow-[inset_1px_0_0_var(--color-row-edge),inset_-1px_0_0_var(--color-row-edge),0_1px_2px_0_var(--color-row-shadow)] focus-visible:z-10 ${
         p.selected ? "bg-row-selected" : unread ? "bg-panel" : "bg-row-read"
       } ${p.focused ? "shadow-[inset_4px_0_0_var(--color-primary)]" : ""}`}
     >
@@ -140,7 +141,10 @@ export const ThreadRow = memo(function ThreadRow(p: Props) {
           <span
             key={l.id}
             className="shrink-0 rounded px-1.5 text-xs"
-            style={{ backgroundColor: l.colorBg ?? "#e0e3e7", color: l.colorText ?? "#1f1f1f" }}
+            style={{
+              backgroundColor: l.colorBg ?? NO_COLOR_BG,
+              color: l.colorText ?? NO_COLOR_TEXT,
+            }}
           >
             {l.name}
           </span>

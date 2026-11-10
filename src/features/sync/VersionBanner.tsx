@@ -36,7 +36,7 @@ export function VersionBanner() {
   return (
     <div
       role="status"
-      className="flex items-center justify-center gap-3 bg-primary px-4 py-1.5 text-sm text-white"
+      className="flex items-center justify-center gap-3 bg-primary px-4 py-1.5 text-sm text-on-primary"
     >
       <span>{text}</span>
       <span aria-hidden="true">·</span>

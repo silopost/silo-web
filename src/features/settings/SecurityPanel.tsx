@@ -15,7 +15,7 @@ import { copyText } from "../security/clipboard";
 import { QrCode } from "../security/QrCode";
 
 const primary =
-  "self-start rounded-full bg-primary px-4 py-1.5 font-medium text-white disabled:opacity-60";
+  "self-start rounded-full bg-primary px-4 py-1.5 font-medium text-on-primary disabled:opacity-60";
 const outline =
   "rounded-full border border-line px-4 py-1.5 font-medium text-primary hover:bg-hover disabled:opacity-60";
 const input = "rounded border border-line px-3 py-2";
@@ -319,8 +319,8 @@ function SecondFactorDialog({
   return (
     <Dialog.Root open onOpenChange={(o) => !o && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 w-[min(28rem,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-panel p-6 shadow-xl">
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-scrim" />
+        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 w-[min(28rem,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-raised p-6 shadow-xl">
           <Dialog.Title className="text-lg">{title}</Dialog.Title>
           <Dialog.Description className="mt-2 text-ink-muted">
             {kind === "regenerate" && `${t.security.regenerateHint} `}
@@ -364,7 +364,7 @@ function SecondFactorDialog({
               <button
                 type="submit"
                 disabled={run.isPending}
-                className="rounded-full bg-primary px-4 py-2 font-medium text-white disabled:opacity-60"
+                className="rounded-full bg-primary px-4 py-2 font-medium text-on-primary disabled:opacity-60"
               >
                 {kind === "disable" ? t.security.totpDisable : t.security.confirm}
               </button>

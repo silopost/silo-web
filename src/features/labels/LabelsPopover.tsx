@@ -52,7 +52,7 @@ export function LabelsPopover({ accountId, threads, onChange, open, onOpenChange
         <Popover.Content
           align="start"
           sideOffset={4}
-          className="z-50 w-64 rounded-lg bg-panel p-2 shadow-lg"
+          className="z-50 w-64 rounded-lg bg-raised p-2 shadow-lg"
           aria-label={t.labelAs}
         >
           <p className="px-2 pb-1 font-medium">{t.labelAs}</p>

@@ -185,7 +185,7 @@ export function MessageCard({ message, expanded, me, onToggle, onStar, onReply }
             <DropdownMenu.Portal>
               <DropdownMenu.Content
                 align="end"
-                className="z-50 min-w-48 rounded-lg bg-panel p-1 shadow-lg"
+                className="z-50 min-w-48 rounded-lg bg-raised p-1 shadow-lg"
               >
                 {!sending &&
                   (

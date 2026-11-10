@@ -199,7 +199,7 @@ function LoginPage() {
         <button
           type="submit"
           disabled={login.isPending}
-          className="rounded-full bg-primary px-6 py-2 font-medium text-white disabled:opacity-60"
+          className="rounded-full bg-primary px-6 py-2 font-medium text-on-primary disabled:opacity-60"
         >
           {login.isPending ? t.signingIn : step === "code" ? t.login.verify : t.signIn}
         </button>

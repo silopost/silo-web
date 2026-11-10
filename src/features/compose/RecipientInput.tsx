@@ -188,7 +188,7 @@ export function RecipientInput({ id, label, value, onChange, children, invalidAd
           id={listId}
           role="listbox"
           aria-label={t.suggestions}
-          className="absolute top-full left-10 z-40 w-80 rounded-lg bg-panel py-1 shadow-lg"
+          className="absolute top-full left-10 z-40 w-80 rounded-lg bg-raised py-1 shadow-lg"
         >
           {items.map((c, i) => (
             <li

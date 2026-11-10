@@ -59,7 +59,7 @@ export function UsersPanel() {
           <button
             type="button"
             onClick={() => setDialog({ kind: "add" })}
-            className="rounded-full bg-primary px-4 py-1.5 font-medium text-white"
+            className="rounded-full bg-primary px-4 py-1.5 font-medium text-on-primary"
           >
             {t.admin.addUser}
           </button>
@@ -180,7 +180,7 @@ function UserRow({
           <DropdownMenu.Portal>
             <DropdownMenu.Content
               align="end"
-              className="z-50 min-w-56 rounded-lg bg-panel p-1 shadow-lg"
+              className="z-50 min-w-56 rounded-lg bg-raised p-1 shadow-lg"
             >
               <DropdownMenu.Item
                 className={menuItem}

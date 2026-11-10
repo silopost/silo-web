@@ -85,14 +85,14 @@ export function AccountSwitcher() {
           <span
             aria-hidden="true"
             data-testid="switcher-badge"
-            className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-error-ink px-1 text-center text-[10px] leading-4 font-medium text-white"
+            className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-error-ink px-1 text-center text-[10px] leading-4 font-medium text-error-bg"
           >
             {others > 99 ? "99+" : others}
           </span>
         )}
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
-        <DropdownMenu.Content align="end" className="z-50 w-80 rounded-lg bg-panel p-1 shadow-lg">
+        <DropdownMenu.Content align="end" className="z-50 w-80 rounded-lg bg-raised p-1 shadow-lg">
           <div className="px-3 py-2">
             <div className="font-medium">{user.displayName || user.email}</div>
             <div className="text-ink-muted">{user.email}</div>

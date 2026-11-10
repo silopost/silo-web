@@ -77,7 +77,7 @@ export function AccountsPanel() {
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="rounded-full bg-primary px-4 py-1.5 font-medium text-white"
+          className="rounded-full bg-primary px-4 py-1.5 font-medium text-on-primary"
         >
           {t.accountsPanel.add}
         </button>
@@ -277,7 +277,7 @@ function AccountRow({ account }: { account: Account }) {
             <button
               type="submit"
               disabled={!password || changePassword.isPending}
-              className="rounded-full bg-primary px-4 py-1.5 font-medium text-white disabled:opacity-60"
+              className="rounded-full bg-primary px-4 py-1.5 font-medium text-on-primary disabled:opacity-60"
             >
               {t.accountsPanel.savePassword}
             </button>
@@ -297,7 +297,7 @@ function AccountRow({ account }: { account: Account }) {
             type="button"
             disabled={reauth.isPending}
             onClick={() => reauth.mutate()}
-            className="rounded-full bg-primary px-4 py-1.5 font-medium text-white disabled:opacity-60"
+            className="rounded-full bg-primary px-4 py-1.5 font-medium text-on-primary disabled:opacity-60"
           >
             {t.reauthorize}
           </button>

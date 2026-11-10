@@ -25,10 +25,10 @@ export function ConfirmDialog({
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && onCancel()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-scrim" />
         <Dialog.Content
           role="alertdialog"
-          className="fixed top-1/2 left-1/2 z-50 w-[min(28rem,90vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-panel p-6 shadow-xl"
+          className="fixed top-1/2 left-1/2 z-50 w-[min(28rem,90vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-raised p-6 shadow-xl"
         >
           <Dialog.Title className="text-lg">{title}</Dialog.Title>
           <Dialog.Description className="mt-2 text-ink-muted">{body}</Dialog.Description>
@@ -39,7 +39,7 @@ export function ConfirmDialog({
             <button
               type="button"
               disabled={busy}
-              className="rounded-full bg-primary px-4 py-2 font-medium text-white disabled:opacity-60"
+              className="rounded-full bg-primary px-4 py-2 font-medium text-on-primary disabled:opacity-60"
               onClick={onConfirm}
             >
               {confirmLabel}

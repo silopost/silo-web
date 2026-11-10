@@ -18,7 +18,7 @@ export function GoToLabelDialog() {
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/20" />
-        <Dialog.Content className="fixed top-24 left-1/2 z-50 w-[min(24rem,90vw)] -translate-x-1/2 rounded-2xl bg-panel p-4 shadow-xl">
+        <Dialog.Content className="fixed top-24 left-1/2 z-50 w-[min(24rem,90vw)] -translate-x-1/2 rounded-2xl bg-raised p-4 shadow-xl">
           <Dialog.Title className="mb-2 text-lg">{t.goToLabel}</Dialog.Title>
           <Dialog.Description className="sr-only">{t.goToLabel}</Dialog.Description>
           {open && <Picker onDone={() => setOpen(false)} />}

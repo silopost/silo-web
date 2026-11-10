@@ -14,7 +14,7 @@ export function ShortcutsHelpDialog() {
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-scrim" />
         {/* Focus the dialog itself, not its close button: the button's tooltip would open and take
             the first Esc (a Radix layer above the dialog), so Esc did not close the dialog. */}
         <Dialog.Content
@@ -23,7 +23,7 @@ export function ShortcutsHelpDialog() {
             e.preventDefault();
             (e.currentTarget as HTMLElement | null)?.focus();
           }}
-          className="fixed top-1/2 left-1/2 z-50 max-h-[80vh] w-[min(40rem,90vw)] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-2xl bg-panel p-6 shadow-xl"
+          className="fixed top-1/2 left-1/2 z-50 max-h-[80vh] w-[min(40rem,90vw)] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-2xl bg-raised p-6 shadow-xl"
         >
           <div className="mb-4 flex items-center justify-between">
             <Dialog.Title className="text-lg">{t.shortcuts}</Dialog.Title>

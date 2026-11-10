@@ -42,7 +42,7 @@ type Props = {
 const item =
   "flex cursor-pointer items-center gap-3 rounded px-3 py-2 outline-none data-[disabled]:cursor-default data-[disabled]:text-ink-muted data-[highlighted]:bg-hover data-[state=open]:bg-hover";
 const panel =
-  "z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto rounded-lg bg-panel p-1 shadow-lg";
+  "z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto rounded-lg bg-raised p-1 shadow-lg";
 
 function Entry({ i }: { i: ContextMenuAction | ContextMenuCheck }) {
   if (i.kind === "check") {

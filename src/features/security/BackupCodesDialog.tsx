@@ -13,11 +13,11 @@ export function BackupCodesDialog({ codes, onClose }: { codes: string[]; onClose
   return (
     <Dialog.Root open onOpenChange={(o) => !o && saved && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-scrim" />
         <Dialog.Content
           onEscapeKeyDown={(e) => !saved && e.preventDefault()}
           onPointerDownOutside={(e) => e.preventDefault()}
-          className="fixed top-1/2 left-1/2 z-50 w-[min(30rem,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-panel p-6 shadow-xl"
+          className="fixed top-1/2 left-1/2 z-50 w-[min(30rem,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-raised p-6 shadow-xl"
         >
           <Dialog.Title className="text-lg">{t.security.backupTitle}</Dialog.Title>
           <Dialog.Description className="mt-2 text-ink-muted">
@@ -61,7 +61,7 @@ export function BackupCodesDialog({ codes, onClose }: { codes: string[]; onClose
               type="button"
               disabled={!saved}
               onClick={onClose}
-              className="rounded-full bg-primary px-4 py-2 font-medium text-white disabled:opacity-50"
+              className="rounded-full bg-primary px-4 py-2 font-medium text-on-primary disabled:opacity-50"
             >
               {t.security.done}
             </button>

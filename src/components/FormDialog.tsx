@@ -35,8 +35,8 @@ export function FormDialog({
   return (
     <Dialog.Root open onOpenChange={(o) => !o && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 w-[min(30rem,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-panel p-6 shadow-xl">
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-scrim" />
+        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 w-[min(30rem,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-raised p-6 shadow-xl">
           <Dialog.Title className="text-lg">{title}</Dialog.Title>
           {description ? (
             <Dialog.Description className="mt-2 text-ink-muted">{description}</Dialog.Description>
@@ -55,7 +55,7 @@ export function FormDialog({
               <button
                 type="submit"
                 disabled={busy || disabled}
-                className="rounded-full bg-primary px-4 py-2 font-medium text-white disabled:opacity-60"
+                className="rounded-full bg-primary px-4 py-2 font-medium text-on-primary disabled:opacity-60"
               >
                 {submitLabel}
               </button>

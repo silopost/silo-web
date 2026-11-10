@@ -52,7 +52,7 @@ export function PresetTimeMenu(p: PresetTimeMenuProps) {
             aria-label={p.title}
             aria-labelledby={undefined}
             onCloseAutoFocus={p.onCloseAutoFocus}
-            className="z-50 min-w-64 rounded-lg bg-panel p-1 shadow-lg"
+            className="z-50 min-w-64 rounded-lg bg-raised p-1 shadow-lg"
           >
             <DropdownMenu.Label className="px-3 py-1.5 text-sm text-ink-muted">
               {p.title}

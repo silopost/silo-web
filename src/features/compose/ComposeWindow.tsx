@@ -29,7 +29,7 @@ export function ComposeWindow({ draftId, mode }: { draftId: string; mode: Window
       {maximized && (
         <div
           aria-hidden="true"
-          className="fixed inset-0 z-30 bg-black/40"
+          className="fixed inset-0 z-30 bg-scrim"
           onClick={() => setMode(draftId, "normal")}
         />
       )}
@@ -37,7 +37,8 @@ export function ComposeWindow({ draftId, mode }: { draftId: string; mode: Window
         draftId={draftId}
         role="dialog"
         collapsed={minimized}
-        className={`shadow-2xl ${SIZE[mode]}`}
+        // A raised surface: its panel colour is the one of menus and dialogs (dark theme: lighter).
+        className={`shadow-2xl [--color-panel:var(--color-raised)] ${SIZE[mode]}`}
         header={(title, session) => (
           <header
             className="flex h-10 shrink-0 cursor-pointer items-center rounded-t-xl bg-surface pl-4"

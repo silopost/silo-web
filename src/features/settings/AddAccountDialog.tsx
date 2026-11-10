@@ -53,7 +53,7 @@ function errorText(err: unknown): string {
 
 const input = "rounded border border-line px-2 py-1 read-only:bg-hover read-only:text-ink-muted";
 const button = "rounded-full px-4 py-2 font-medium text-primary hover:bg-hover disabled:opacity-60";
-const primary = "rounded-full bg-primary px-4 py-2 font-medium text-white disabled:opacity-60";
+const primary = "rounded-full bg-primary px-4 py-2 font-medium text-on-primary disabled:opacity-60";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -309,8 +309,8 @@ export function AddAccountDialog({ open, onClose }: { open: boolean; onClose: ()
       }}
     >
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 max-h-[92vh] w-[min(36rem,94vw)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-panel p-6 shadow-xl">
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-scrim" />
+        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 max-h-[92vh] w-[min(36rem,94vw)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-raised p-6 shadow-xl">
           <Dialog.Title className="mb-1 text-lg">{t.addAccount.title}</Dialog.Title>
           <Dialog.Description className="mb-4 text-sm text-ink-muted">
             {t.addAccount.appPasswordHint}
@@ -376,7 +376,7 @@ export function AddAccountDialog({ open, onClose }: { open: boolean; onClose: ()
                     type="button"
                     disabled={busy}
                     onClick={() => oauth.mutate(hinted)}
-                    className="self-start rounded-full bg-primary px-4 py-1.5 font-medium text-white disabled:opacity-60"
+                    className="self-start rounded-full bg-primary px-4 py-1.5 font-medium text-on-primary disabled:opacity-60"
                   >
                     {t.addAccount.oauth[hinted]}
                   </button>

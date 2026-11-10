@@ -94,15 +94,19 @@ export function MessageHtmlFrame({
           </button>
         </p>
       )}
-      <iframe
-        ref={frame}
-        title={`${t.messageBody}: ${subject}`}
-        sandbox={FRAME_SANDBOX}
-        srcDoc={srcDoc}
-        onLoad={onLoad}
-        className="block w-full border-0"
-        style={{ height: Math.max(height, 40) }}
-      />
+      {/* The light paper of the message (--color-paper); padded only where the panel is not
+          white (dark theme), so the default theme shows the frame edge to edge as before. */}
+      <div className="rounded-lg bg-paper p-[var(--paper-pad,0px)]">
+        <iframe
+          ref={frame}
+          title={`${t.messageBody}: ${subject}`}
+          sandbox={FRAME_SANDBOX}
+          srcDoc={srcDoc}
+          onLoad={onLoad}
+          className="block w-full border-0"
+          style={{ height: Math.max(height, 40) }}
+        />
+      </div>
     </div>
   );
 }

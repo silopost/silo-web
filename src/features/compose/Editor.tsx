@@ -282,7 +282,7 @@ function LinkButton({ editor, active }: { editor: TiptapEditor; active: boolean 
         <Popover.Content
           side="top"
           sideOffset={4}
-          className="z-50 flex items-center gap-2 rounded-lg bg-panel p-2 shadow-lg"
+          className="z-50 flex items-center gap-2 rounded-lg bg-raised p-2 shadow-lg"
           onKeyDown={(e) => e.key === "Escape" && e.stopPropagation()}
         >
           <form

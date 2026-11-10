@@ -12,8 +12,9 @@
     format("woff2-variations");
 }
 
-/* Gmail-like design tokens (plan 6.1). Text colours meet WCAG AA on their backgrounds:
-   ink #1f1f1f and ink-muted #444746 on white/surface, white on primary #0b57d0. */
+/* Gmail-like design tokens (plan 6.1) of the default theme; the other themes (below) override
+   them. Text colours meet WCAG AA on their backgrounds in every theme (src/lib/theme.test.ts
+   computes it from this file): ink and ink-muted on surface/panel/rows, on-primary on primary. */
 @theme {
   --font-sans: "Google Sans Text", Roboto, "Segoe UI", Arial, sans-serif;
   --font-brand: "Nunito Variable", "Nunito", var(--font-sans);
@@ -22,6 +23,8 @@
   --color-ink-muted: #444746;
   --color-surface: #f6f8fc;
   --color-panel: #ffffff;
+  /* Menus, popovers, dialogs and compose windows over the panel. */
+  --color-raised: #ffffff;
   --color-line: #e0e3e7;
   --color-line-strong: #747775;
   --color-hover: rgb(31 31 31 / 0.08);
@@ -39,6 +42,22 @@
   --color-error-ink: #8c1d18;
   --color-tooltip: #3c4043;
   --color-snackbar: #303030;
+  /* The dimmed page behind a modal dialog. */
+  --color-scrim: rgb(0 0 0 / 0.4);
+  --color-on-primary: #ffffff;
+  --color-on-tooltip: #ffffff;
+  --color-on-snackbar: #ffffff;
+  --color-snackbar-action: #a8c7fa;
+  --color-search: #e9eef6;
+  --color-success-bg: #e6f4ea;
+  --color-success-ink: #0d652d;
+  --color-row-edge: #dadce0;
+  --color-row-shadow: rgb(60 64 67 / 0.3);
+  --color-quote-line: #cccccc;
+  --color-quote-hover: #c4c7c5;
+  /* The "paper" of a message from a sender (MessageHtmlFrame): always light, as senders write
+     their HTML for a white page; padded where the panel around it is not white. */
+  --color-paper: #ffffff;
 }
 
 /* Density (plan 6.3): <html data-density>; ThreadList uses the same row heights (state/ui.ts). */
@@ -168,10 +187,10 @@ body {
   cursor: pointer;
 }
 .compose-body .quote-toggle:hover {
-  background: #c4c7c5;
+  background: var(--color-quote-hover);
 }
 .compose-body blockquote {
-  border-left: 1px solid #ccc;
+  border-left: 1px solid var(--color-quote-line);
   margin-left: 0.8ex;
   padding-left: 1ex;
 }

@@ -5,7 +5,7 @@ import { t } from "../../lib/i18n";
 import { Forbidden } from "./AdminLayout";
 
 const STATE_COLORS: Record<string, string> = {
-  live: "bg-[#e6f4ea] text-[#0d652d]",
+  live: "bg-success-bg text-success-ink",
   initial_sync: "bg-nav-active text-ink",
   connecting: "bg-nav-active text-ink",
   discovering: "bg-nav-active text-ink",

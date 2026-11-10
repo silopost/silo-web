@@ -13,7 +13,7 @@ import { SearchBox } from "../search/SearchBox";
 
 const menuItem =
   "flex cursor-pointer items-center gap-2 rounded px-3 py-2 outline-none data-[highlighted]:bg-hover";
-const menuContent = "z-50 min-w-48 rounded-lg bg-panel p-1 shadow-lg";
+const menuContent = "z-50 min-w-48 rounded-lg bg-raised p-1 shadow-lg";
 
 function DensityMenu() {
   const density = usePrefs((s) => s.density);

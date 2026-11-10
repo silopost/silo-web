@@ -332,7 +332,7 @@ export function ComposeFrame({
                     type="button"
                     disabled={state.sending}
                     onClick={() => void session.send()}
-                    className="rounded-l-full bg-primary py-2 pr-4 pl-6 font-medium text-white hover:shadow disabled:opacity-60"
+                    className="rounded-l-full bg-primary py-2 pr-4 pl-6 font-medium text-on-primary hover:shadow disabled:opacity-60"
                   >
                     {state.sending ? t.sending : t.send}
                   </button>
@@ -349,7 +349,7 @@ export function ComposeFrame({
                       aria-label={t.sendOptions}
                       title={t.sendOptions}
                       disabled={state.sending}
-                      className="flex items-center rounded-r-full border-l border-white/40 bg-primary pr-2 pl-1 text-white hover:shadow disabled:opacity-60"
+                      className="flex items-center rounded-r-full border-l border-on-primary/40 bg-primary pr-2 pl-1 text-on-primary hover:shadow disabled:opacity-60"
                     >
                       <Icon name="arrowDropDown" size={20} />
                     </button>

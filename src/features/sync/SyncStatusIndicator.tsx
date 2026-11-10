@@ -35,7 +35,7 @@ export function SyncStatusIndicator() {
         <Popover.Content
           align="end"
           sideOffset={4}
-          className="z-50 w-72 rounded-lg bg-panel p-4 shadow-lg"
+          className="z-50 w-72 rounded-lg bg-raised p-4 shadow-lg"
         >
           <p className="font-medium">{label}</p>
           <p className="text-ink-muted">{status.email}</p>

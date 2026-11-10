@@ -138,7 +138,7 @@ export function SearchBox() {
   let index = -1;
   return (
     <form role="search" onSubmit={submit} className="relative max-w-2xl flex-1">
-      <div className="flex h-12 items-center gap-3 rounded-full bg-[#e9eef6] pr-1 pl-4 focus-within:bg-panel focus-within:shadow">
+      <div className="flex h-12 items-center gap-3 rounded-full bg-search pr-1 pl-4 focus-within:bg-panel focus-within:shadow">
         <Icon name="search" size={22} className="text-ink-muted" />
         <input
           ref={input}
@@ -181,7 +181,7 @@ export function SearchBox() {
         hidden={!expanded}
         // Clicks in the list must not blur the field (which closes the list).
         onMouseDown={(e) => e.preventDefault()}
-        className="absolute top-full right-0 left-0 z-40 mt-1 overflow-hidden rounded-lg bg-panel py-2 shadow-lg"
+        className="absolute top-full right-0 left-0 z-40 mt-1 overflow-hidden rounded-lg bg-raised py-2 shadow-lg"
       >
         <ul id={listId} role="listbox" aria-label={t.searchSuggestions}>
           {groups.map((g) => (

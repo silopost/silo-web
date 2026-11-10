@@ -21,13 +21,13 @@ export function Snackbar() {
       className="pointer-events-none fixed bottom-6 left-6 z-50"
     >
       {current && (
-        <div className="pointer-events-auto flex min-w-72 items-center gap-4 rounded bg-snackbar py-2 pr-2 pl-4 text-white shadow-lg">
+        <div className="pointer-events-auto flex min-w-72 items-center gap-4 rounded bg-snackbar py-2 pr-2 pl-4 text-on-snackbar shadow-lg">
           <span className="flex-1">{current.message}</span>
           {current.action && (
             <button
               type="button"
               onClick={current.action.run}
-              className="rounded px-2 py-1 font-medium text-[#a8c7fa] hover:bg-white/10"
+              className="rounded px-2 py-1 font-medium text-snackbar-action hover:bg-on-snackbar/10"
             >
               {current.action.label}
             </button>
@@ -36,7 +36,7 @@ export function Snackbar() {
             icon="close"
             label={t.close}
             onClick={() => dismiss(current.id)}
-            className="size-8 text-white hover:bg-white/10"
+            className="size-8 text-on-snackbar hover:bg-on-snackbar/10"
           />
         </div>
       )}

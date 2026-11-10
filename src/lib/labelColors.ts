@@ -25,5 +25,11 @@ export const LABEL_COLORS: { bg: string; text: string }[] = [
   { bg: "#666666", text: "#ffffff" },
 ];
 
-export const DEFAULT_LABEL_BG = "#e0e3e7";
 export const DEFAULT_LABEL_TEXT = "#1f1f1f";
+
+/**
+ * A chip of a label without a colour: theme tokens, not data, so that it follows the theme (the
+ * default theme gives #e0e3e7 / #1f1f1f, as before themes).
+ */
+export const NO_COLOR_BG = "var(--color-line)";
+export const NO_COLOR_TEXT = "var(--color-ink)";
