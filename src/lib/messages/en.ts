@@ -437,6 +437,13 @@ export const en = {
     notificationsDenied:
       "The browser blocks notifications for Silo. Allow them in the site settings.",
     notificationsUnsupported: "This browser doesn't support notifications.",
+    trustedSenders: "Trusted image senders",
+    trustedSendersHint:
+      "Messages from these addresses show external images right away. An address is added when you click Display images.",
+    trustedSendersFilter: "Filter addresses",
+    trustedSendersEmpty: "No trusted senders yet.",
+    trustedSendersNoMatch: "No address matches the filter.",
+    removeTrustedSender: (address: string) => `Remove ${address}`,
   },
   security: {
     unavailable: "Not available in this mode. You sign in with your mailbox password.",

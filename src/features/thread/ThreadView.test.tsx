@@ -152,3 +152,29 @@ it("moves an inline reply to a dock window with Open in a window", async () => {
   expect(await screen.findByRole("dialog", { name: "Re: Temat 2" })).toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "Re: Temat 2" })).toBeNull();
 });
+
+it("trusts the sender when external images are shown and shows them by default after that", async () => {
+  const { mail, user } = setup();
+  mail.state.html = '<p>Treść</p><img src="https://cdn.example/a.png">';
+  const frame = await screen.findByTitle("Message body: Temat 1");
+  expect(frame.getAttribute("srcdoc")).toContain("img-src 'self' data:;");
+  await user.click(screen.getByRole("button", { name: "Display images" }));
+  expect(frame.getAttribute("srcdoc")).toContain("img-src 'self' data: https: http:");
+  expect(screen.queryByText("External images are hidden.")).toBeNull();
+  await waitFor(() =>
+    expect(mail.state.calls.settings).toEqual([{ trustedImageSenders: ["osoba@firma.pl"] }]),
+  );
+  expect(mail.session.settings.trustedImageSenders).toEqual(["osoba@firma.pl"]);
+});
+
+it("shows external images at once for a trusted sender (any case)", async () => {
+  const mail = createMockMail();
+  mail.session.settings.trustedImageSenders = ["osoba@firma.pl"];
+  mail.state.html = '<p>Treść</p><img src="https://cdn.example/a.png">';
+  server.use(...mail.handlers);
+  renderApp("/u/0/inbox/t_1");
+  const frame = await screen.findByTitle("Message body: Temat 1");
+  expect(frame.getAttribute("srcdoc")).toContain("img-src 'self' data: https: http:");
+  expect(screen.queryByRole("button", { name: "Display images" })).toBeNull();
+  expect(mail.state.calls.settings).toEqual([]);
+});

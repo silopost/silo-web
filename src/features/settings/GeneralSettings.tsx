@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { usePatchSettings, useSettings } from "../../api/queries/settings";
 import type { Settings } from "../../api/types";
+import { IconButton } from "../../components/IconButton";
 import { isLocale, LOCALE_NAMES, LOCALES, setLocale, t, useLocale } from "../../lib/i18n";
 import { toast } from "../../state/toasts";
 import { READING_PANES, usePrefs, type Density } from "../../state/ui";
@@ -51,6 +52,56 @@ function Toggle({
       />
       {label}
     </label>
+  );
+}
+
+/** settings.trustedImageSenders: a substring filter and the addresses, each with a remove button. */
+function TrustedSenders({
+  senders,
+  onRemove,
+}: {
+  senders: string[];
+  onRemove: (address: string) => void;
+}) {
+  const [filter, setFilter] = useState("");
+  const needle = filter.trim().toLowerCase();
+  const shown = needle ? senders.filter((a) => a.toLowerCase().includes(needle)) : senders;
+  if (senders.length === 0)
+    return <p className="text-ink-muted">{t.settings.trustedSendersEmpty}</p>;
+  return (
+    <>
+      <input
+        type="search"
+        aria-label={t.settings.trustedSendersFilter}
+        placeholder={t.settings.trustedSendersFilter}
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        className="w-80 rounded border border-line px-2 py-1"
+      />
+      {shown.length === 0 ? (
+        <p className="text-ink-muted">{t.settings.trustedSendersNoMatch}</p>
+      ) : (
+        <ul
+          aria-label={t.settings.trustedSenders}
+          className="max-h-72 w-80 overflow-y-auto rounded border border-line"
+        >
+          {shown.map((address) => (
+            <li
+              key={address}
+              className="flex items-center justify-between gap-2 border-b border-line py-0.5 pl-3 pr-1 last:border-b-0"
+            >
+              <span className="min-w-0 truncate">{address}</span>
+              <IconButton
+                icon="close"
+                size={18}
+                label={t.settings.removeTrustedSender(address)}
+                onClick={() => onRemove(address)}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
 
@@ -221,6 +272,18 @@ function GeneralForm({ settings }: { settings: Settings }) {
           label={t.settings.desktopNotifications}
           checked={settings.desktopNotifications}
           onChange={(v) => void toggleNotifications(v)}
+        />
+      </Row>
+      <Row title={t.settings.trustedSenders} hint={t.settings.trustedSendersHint}>
+        <TrustedSenders
+          senders={settings.trustedImageSenders ?? []}
+          onRemove={(address) =>
+            save({
+              trustedImageSenders: (settings.trustedImageSenders ?? []).filter(
+                (a) => a !== address,
+              ),
+            })
+          }
         />
       </Row>
     </div>

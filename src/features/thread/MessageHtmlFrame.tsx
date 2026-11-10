@@ -1,13 +1,45 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FRAME_SANDBOX, frameDocument, hasRemoteImages, sanitize } from "../../lib/messageHtml";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { keys } from "../../api/keys";
 import { messageHtmlQuery } from "../../api/queries/messageHtml";
+import { usePatchSettings, useSettings } from "../../api/queries/settings";
+import type { Settings } from "../../api/types";
 import { t } from "../../lib/i18n";
 
-/** HTML of one message in a sandboxed iframe with automatic height. */
-export function MessageHtmlFrame({ messageId, subject }: { messageId: string; subject: string }) {
+/**
+ * HTML of one message in a sandboxed iframe with automatic height. External images are blocked
+ * unless the sender is on settings.trustedImageSenders; showing them adds the sender to the list.
+ */
+export function MessageHtmlFrame({
+  messageId,
+  subject,
+  sender,
+}: {
+  messageId: string;
+  subject: string;
+  /** Address of the sender; empty when the message has none (images are then shown only here). */
+  sender: string;
+}) {
   const html = useQuery(messageHtmlQuery(messageId));
-  const [showImages, setShowImages] = useState(false);
+  const qc = useQueryClient();
+  const settings = useSettings();
+  const patchSettings = usePatchSettings();
+  const from = sender.trim().toLowerCase();
+  const trusted = from !== "" && (settings?.trustedImageSenders ?? []).includes(from);
+  const [revealed, setRevealed] = useState(false);
+  const showImages = revealed || trusted;
+  const revealImages = () => {
+    setRevealed(true);
+    if (!from || trusted) return;
+    // The PATCH replaces the whole list: start from the cache, which the optimistic update of an
+    // earlier click (another message) has already changed.
+    const list =
+      qc.getQueryData<Settings>(keys.settings)?.trustedImageSenders ??
+      settings?.trustedImageSenders ??
+      [];
+    if (!list.includes(from)) patchSettings.mutate({ trustedImageSenders: [...list, from] });
+  };
   const frame = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(0);
 
@@ -57,11 +89,7 @@ export function MessageHtmlFrame({ messageId, subject }: { messageId: string; su
       {remoteImages && !showImages && (
         <p className="mb-2 flex items-center gap-2 text-ink-muted">
           {t.imagesBlocked}
-          <button
-            type="button"
-            className="font-medium text-primary"
-            onClick={() => setShowImages(true)}
-          >
+          <button type="button" className="font-medium text-primary" onClick={revealImages}>
             {t.showImages}
           </button>
         </p>

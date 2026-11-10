@@ -442,6 +442,13 @@ export const pl: Messages = {
     notificationsDenied:
       "Przeglądarka blokuje powiadomienia dla Silo. Zezwól na nie w ustawieniach witryny.",
     notificationsUnsupported: "Ta przeglądarka nie obsługuje powiadomień.",
+    trustedSenders: "Zaufani nadawcy obrazów",
+    trustedSendersHint:
+      "Wiadomości z tych adresów od razu wyświetlają obrazy zewnętrzne. Adres trafia na listę po kliknięciu „Wyświetl obrazy”.",
+    trustedSendersFilter: "Filtruj adresy",
+    trustedSendersEmpty: "Brak zaufanych nadawców.",
+    trustedSendersNoMatch: "Żaden adres nie pasuje do filtra.",
+    removeTrustedSender: (address: string) => `Usuń ${address}`,
   },
   security: {
     unavailable: "Niedostępne w tym trybie. Logujesz się hasłem skrzynki pocztowej.",

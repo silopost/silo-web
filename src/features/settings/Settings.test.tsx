@@ -40,6 +40,43 @@ const labelsOf = (mail: Mail) => {
 };
 
 describe("general settings", () => {
+  it("lists the trusted image senders with a filter and removes one", async () => {
+    const { mail, user } = setup("/u/0/settings/general", (m) => {
+      m.session.settings.trustedImageSenders = [
+        "ann@example.com",
+        "bob@firma.pl",
+        "carol@example.com",
+      ];
+    });
+    const list = await screen.findByRole("list", { name: "Trusted image senders" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(3);
+    await user.type(screen.getByRole("searchbox", { name: "Filter addresses" }), "EXAMPLE");
+    expect(
+      within(list)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent),
+    ).toEqual(["ann@example.com", "carol@example.com"]);
+    await user.click(within(list).getByRole("button", { name: "Remove ann@example.com" }));
+    await waitFor(() =>
+      expect(mail.state.calls.settings).toEqual([
+        { trustedImageSenders: ["bob@firma.pl", "carol@example.com"] },
+      ]),
+    );
+    expect(
+      within(list)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent),
+    ).toEqual(["carol@example.com"]);
+    await user.clear(screen.getByRole("searchbox", { name: "Filter addresses" }));
+    await user.type(screen.getByRole("searchbox", { name: "Filter addresses" }), "nobody");
+    expect(screen.getByText("No address matches the filter.")).toBeInTheDocument();
+  });
+
+  it("says when there are no trusted image senders", async () => {
+    setup("/u/0/settings/general");
+    expect(await screen.findByText("No trusted senders yet.")).toBeInTheDocument();
+  });
+
   it("applies the density at once and PATCHes only that field", async () => {
     const { mail, user } = setup("/u/0/settings/general");
     await user.click(await screen.findByRole("radio", { name: "Compact" }));

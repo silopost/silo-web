@@ -63,6 +63,7 @@ export function createMockMail() {
       timezone: "Europe/Warsaw",
       undoSendSeconds: 5,
       desktopNotifications: false,
+      trustedImageSenders: [],
       updatedAt: null,
     },
     accounts: [

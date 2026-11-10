@@ -871,7 +871,7 @@ export interface paths {
         head?: never;
         /**
          * Change settings
-         * @description JSON merge: only the fields sent change; activeAccountId null clears it. The answer is the whole settings object with updatedAt; the other sessions of the user get settings.updated {updatedAt} and reload GET /settings. 422 invalid_setting (density, undoSendSeconds, signature over 32 KiB, an activeAccountId that is not the user's, an unsupported language) or invalid_timezone.
+         * @description JSON merge: only the fields sent change; activeAccountId null clears it. The answer is the whole settings object with updatedAt; the other sessions of the user get settings.updated {updatedAt} and reload GET /settings. 422 invalid_setting (density, undoSendSeconds, signature over 32 KiB, an activeAccountId that is not the user's, an unsupported language, over 1000 trustedImageSenders) or invalid_timezone.
          */
         patch: operations["updateSettings"];
         trace?: never;
@@ -2019,6 +2019,8 @@ export interface components {
              * @example Europe/Warsaw
              */
             timezone: string;
+            /** @description Sender addresses (lowercase) whose messages show external images without asking; always an array. */
+            trustedImageSenders: string[];
             /**
              * Format: int64
              * @description Delay before a sent message leaves, in seconds.
@@ -2053,6 +2055,8 @@ export interface components {
              * @example Europe/Warsaw
              */
             timezone?: string;
+            /** @description Replaces the whole list. Addresses are trimmed and lowercased; empty, invalid and duplicate ones are dropped. More than 1000: 422 invalid_setting. */
+            trustedImageSenders?: string[] | null;
             /**
              * Format: int64
              * @description 5, 10, 20 or 30; else 422 invalid_setting. Sets undoUntil of POST /drafts/{id}/send.

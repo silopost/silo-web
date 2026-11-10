@@ -172,7 +172,11 @@ export function MessageCard({ message, expanded, me, onToggle, onStar, onReply }
         </div>
       </header>
       <div className="mt-3 pl-14">
-        <MessageHtmlFrame messageId={message.id} subject={message.subject} />
+        <MessageHtmlFrame
+          messageId={message.id}
+          subject={message.subject}
+          sender={message.from.email ?? ""}
+        />
         <AttachmentChips attachments={message.attachments ?? []} />
       </div>
     </article>
