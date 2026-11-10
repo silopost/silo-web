@@ -240,6 +240,10 @@ for progress, three at a time. Sending is `POST /drafts/{id}/send` after the las
 deduplication and the send queue; the browser keeps no copy of drafts and only warns on leaving
 the page with unsaved edits.
 
+Like Gmail, a thread row shows a red `Draft` / `Drafts (n)` after the senders while the thread has
+unsent drafts (`Thread.draftCount`, kept current by `thread.updated`: a reply started, discarded,
+sent or unsent, or an empty draft the server purged).
+
 With more than one account, new messages get a **From** picker: the draft is created in the
 account of `/u/<n>`; another choice is `PUT /drafts/{id} {accountId}`, whose answer carries new
 `id`/`messageId`/`threadId` – the window follows the new id without remounting and the Drafts lists
@@ -352,7 +356,10 @@ and in `api/openapi.yaml`.
   Sign out; the badge on the avatar sums the other accounts' unread threads. Choosing an account
   opens `/u/<position>/<view>` (system views are kept, a user label falls back to `inbox`) and
   stores `PATCH /settings {activeAccountId}`; `g 1`…`g 9` do the same for the n-th account.
-  `document.title` follows the tab's account (for example `Inbox (3) – dev1@silo.test – Silo`).
+  `document.title` follows the tab's account (for example `Inbox (3) – dev1@silo.test – Silo`),
+  and the favicon shows the same count as a Gmail-style red badge (`src/lib/favicon.ts`: the
+  `public/icons/icon.svg` icon with the badge as an SVG data URL in the `href` of
+  `<link rel="icon">`, `99+` above 99); 0 unread, sign-out and the sign-in page show the plain icon.
 - **Add account** (`AddAccountDialog.tsx`, Settings → Accounts, also `?add`): address and password
   → `POST /accounts/discover` (the source is shown: ISPDB, autoconfig, SRV, guessed or default
   server; Advanced with host/port/TLS opens when nothing was found, and is read-only and not sent
