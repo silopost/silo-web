@@ -23,6 +23,7 @@
   --color-surface: #f6f8fc;
   --color-panel: #ffffff;
   --color-line: #e0e3e7;
+  --color-line-strong: #747775;
   --color-hover: rgb(31 31 31 / 0.08);
   --color-primary: #0b57d0;
   --color-focus: #0b57d0;
@@ -82,6 +83,46 @@ body {
 :focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 1px;
+}
+
+/* Text entry (fields, the search box, recipients, the compose editor) shows no blue focus ring:
+   browsers match :focus-visible on every click into a field. The field's own border or underline
+   turns the strong neutral colour instead; buttons, links and menu items keep the ring above.
+   Unlayered, like the rule above, so it also wins over outline utilities. */
+:is(
+  input:not(
+    [type="checkbox"],
+    [type="radio"],
+    [type="range"],
+    [type="color"],
+    [type="file"],
+    [type="button"],
+    [type="submit"],
+    [type="reset"],
+    [type="image"]
+  ),
+  textarea,
+  select,
+  [contenteditable]:not([contenteditable="false"])
+):focus-visible {
+  outline: none;
+}
+:is(
+  input:not(
+    [type="checkbox"],
+    [type="radio"],
+    [type="range"],
+    [type="color"],
+    [type="file"],
+    [type="button"],
+    [type="submit"],
+    [type="reset"],
+    [type="image"]
+  ),
+  textarea,
+  select
+):focus {
+  border-color: var(--color-line-strong);
 }
 
 @media (prefers-reduced-motion: reduce) {
